@@ -459,3 +459,15 @@ td code {
   margin: 22px 0 0;
   min-width: 0;
 }
+
+.matching-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  white-space: nowrap;
+}
+.matching-option input {
+  width: auto;
+  margin: 0;
+}

@@ -1,3 +1,8 @@
+import {
+  BankMatching,
+  type MatchState,
+  type BankCandidate,
+} from "./BankMatching";
 import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
@@ -64,7 +69,7 @@ type Draft = {
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
 type State = PurchaseState &
-  BankState & {
+  BankState & MatchState & {
     business: string;
     currency: string;
     customers: Customer[];
@@ -144,6 +149,24 @@ function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
       return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function bankCandidates(id: string): Promise<BankCandidate[] | null> {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      return await api(`/api/bank/transactions/${id}/candidates`);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not load recorded entries.",
+      );
+      return null;
     } finally {
       setBusy(false);
     }
@@ -353,6 +376,7 @@ function App() {
     "Bills",
     "Expenses",
     "Bank imports",
+    "Bank matching",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -1124,6 +1148,14 @@ function App() {
               setError(message);
               setNotice("");
             }}
+          />
+        )}
+        {page === "Bank matching" && (
+          <BankMatching
+            data={data}
+            busy={busy}
+            candidates={bankCandidates}
+            act={act}
           />
         )}
         {page === "Activity" && (
