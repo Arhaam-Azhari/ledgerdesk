@@ -18,9 +18,12 @@ public class ReportService {
     public record ProfitLoss(List<Account> accounts, BigDecimal revenue, BigDecimal expenses, BigDecimal netProfit) {}
     public record TrialRow(String code, String name, BigDecimal debit, BigDecimal credit) {}
     public record TrialBalance(List<TrialRow> accounts, BigDecimal debits, BigDecimal credits) {}
+    public record BalanceSheet(List<Account> assets, List<Account> liabilities, List<Account> equityAccounts,
+            BigDecimal totalAssets, BigDecimal totalLiabilities, BigDecimal postedEquity,
+            BigDecimal accumulatedEarnings, BigDecimal totalEquity, BigDecimal liabilitiesAndEquity, BigDecimal difference) {}
     public record AgingItem(String id, String reference, String party, LocalDate dueOn, long daysOverdue, String bucket, BigDecimal outstanding) {}
     public record Aging(List<AgingItem> items, Map<String, BigDecimal> buckets, BigDecimal total) {}
-    public record Reports(LocalDate startsOn, LocalDate endsOn, ProfitLoss profitLoss, TrialBalance trialBalance, Aging receivables, Aging payables) {}
+    public record Reports(LocalDate startsOn, LocalDate endsOn, ProfitLoss profitLoss, TrialBalance trialBalance, BalanceSheet balanceSheet, Aging receivables, Aging payables) {}
     public ReportService(JdbcTemplate db) { this.db = db; }
     private static BigDecimal zero() { return new BigDecimal("0.00"); }
 
@@ -46,12 +49,12 @@ public class ReportService {
             accounts.add(new Account(row.get("code").toString(), row.get("name").toString(), row.get("kind").toString(), amount.setScale(2)));
         }
         var balances = db.queryForList("""
-            SELECT a.code, a.name, COALESCE(SUM(cash.debit-cash.credit), 0) AS balance
+            SELECT a.code, a.name, a.kind, COALESCE(SUM(cash.debit-cash.credit), 0) AS balance
             FROM accounts a LEFT JOIN (
                 SELECT l.* FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
                 WHERE e.business_id = 1 AND e.entry_date <= ?
             ) cash ON cash.account_code = a.code
-            GROUP BY a.code, a.name ORDER BY a.code
+            GROUP BY a.code, a.name, a.kind ORDER BY a.code
             """, endsOn);
         var trial = new ArrayList<TrialRow>();
         BigDecimal debits = zero(), credits = zero();
@@ -63,7 +66,32 @@ public class ReportService {
             debits = debits.add(debit); credits = credits.add(credit);
         }
         return new Reports(startsOn, endsOn, new ProfitLoss(accounts, revenue, expenses, revenue.subtract(expenses)),
-                new TrialBalance(trial, debits, credits), aging(endsOn, true), aging(endsOn, false));
+                new TrialBalance(trial, debits, credits), balanceSheet(balances), aging(endsOn, true), aging(endsOn, false));
+    }
+
+    private BalanceSheet balanceSheet(List<Map<String, Object>> balances) {
+        var assets = new ArrayList<Account>();
+        var liabilities = new ArrayList<Account>();
+        var equity = new ArrayList<Account>();
+        BigDecimal totalAssets = zero(), totalLiabilities = zero(), postedEquity = zero(), earnings = zero();
+        for (var row : balances) {
+            String kind = row.get("kind").toString();
+            BigDecimal debitBalance = ((BigDecimal) row.get("balance")).setScale(2);
+            BigDecimal amount = kind.equals("LIABILITY") || kind.equals("EQUITY") ? debitBalance.negate() : debitBalance;
+            var account = new Account(row.get("code").toString(), row.get("name").toString(), kind, amount);
+            switch (kind) {
+                case "ASSET" -> { assets.add(account); totalAssets = totalAssets.add(amount); }
+                case "LIABILITY" -> { liabilities.add(account); totalLiabilities = totalLiabilities.add(amount); }
+                case "EQUITY" -> { equity.add(account); postedEquity = postedEquity.add(amount); }
+                // Include every dated income/expense entry, not just the selected profit period.
+                case "REVENUE", "EXPENSE" -> earnings = earnings.subtract(debitBalance);
+                default -> { }
+            }
+        }
+        BigDecimal totalEquity = postedEquity.add(earnings);
+        BigDecimal rightSide = totalLiabilities.add(totalEquity);
+        return new BalanceSheet(assets, liabilities, equity, totalAssets, totalLiabilities, postedEquity,
+                earnings, totalEquity, rightSide, totalAssets.subtract(rightSide));
     }
 
     private Aging aging(LocalDate asOf, boolean receivables) {

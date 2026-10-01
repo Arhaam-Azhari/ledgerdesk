@@ -125,4 +125,72 @@ class ReportTest {
         http.perform(get("/api/reports?startsOn=bad&endsOn=2026-10-01").with(httpBasic("test", "test-only"))).andExpect(status().isBadRequest());
         assertThatThrownBy(() -> reports.reports(null, end)).isInstanceOf(IllegalArgumentException.class);
     }
+    @Test void balanceSheetExplainsAssetsWithLiabilitiesAndAccumulatedEarnings() {
+        String i = invoice("1200", start, end, "invoice");
+        ledger.recordPayment(i, new LedgerService.Payment(start, "700"), "paid", "test");
+        String b = bill("600", start, end, "bill");
+        purchases.payBill(b, new LedgerService.Payment(start, "200"), "bill-paid", "test");
+        purchases.postExpense(new PurchaseService.Expense(vendor, "Software", end, "5100", "50"), "expense", "test");
+        var balance = report().balanceSheet();
+        assertThat(balance.totalAssets()).isEqualByComparingTo("950");
+        assertThat(balance.totalLiabilities()).isEqualByComparingTo("400");
+        assertThat(balance.accumulatedEarnings()).isEqualByComparingTo("550");
+        assertThat(balance.postedEquity()).isEqualByComparingTo("0");
+        assertThat(balance.totalEquity()).isEqualByComparingTo("550");
+        assertThat(balance.liabilitiesAndEquity()).isEqualByComparingTo("950");
+        assertThat(balance.difference()).isEqualByComparingTo("0");
+    }
+    @Test void accumulatedEarningsIncludeEarlierPeriodsAndIgnoreReportStart() {
+        invoice("100", start.minusMonths(1), start, "earlier");
+        invoice("200", start, end, "current");
+        var r = report();
+        assertThat(r.profitLoss().netProfit()).isEqualByComparingTo("200");
+        assertThat(r.balanceSheet().accumulatedEarnings()).isEqualByComparingTo("300");
+        assertThat(reports.reports(end, end).balanceSheet()).isEqualTo(r.balanceSheet());
+    }
+    @Test void laterPaymentsChangeLaterAssetCompositionButNotEarlierBalanceSheets() {
+        String i = invoice("100", start, end, "invoice");
+        var earlier = report().balanceSheet();
+        ledger.recordPayment(i, new LedgerService.Payment(end.plusDays(1), "100"), "paid", "test");
+        assertThat(report().balanceSheet()).isEqualTo(earlier);
+        var later = reports.reports(start, end.plusDays(1)).balanceSheet();
+        assertThat(later.totalAssets()).isEqualByComparingTo("100");
+        assertThat(later.accumulatedEarnings()).isEqualByComparingTo("100");
+        assertThat(later.assets()).anySatisfy(a -> {
+            assertThat(a.code()).isEqualTo("1000"); assertThat(a.amount()).isEqualByComparingTo("100");
+        });
+    }
+    @Test void negativeCashAndLossRemainVisibleRatherThanBeingClamped() {
+        purchases.postExpense(new PurchaseService.Expense(vendor, "Software", start, "5100", "25.50"), "expense", "test");
+        var balance = report().balanceSheet();
+        assertThat(balance.totalAssets()).isEqualByComparingTo("-25.50");
+        assertThat(balance.accumulatedEarnings()).isEqualByComparingTo("-25.50");
+        assertThat(balance.difference()).isEqualByComparingTo("0");
+    }
+    @Test void expenseCorrectionAffectsOnlyBalanceSheetsOnOrAfterItsDate() {
+        String expense = purchases.postExpense(new PurchaseService.Expense(vendor, "Software", start, "5100", "25"), "expense", "test");
+        var before = report().balanceSheet();
+        purchases.reverseExpense(expense, end.plusDays(1), "reverse", "test");
+        assertThat(report().balanceSheet()).isEqualTo(before);
+        var after = reports.reports(start, end.plusDays(1)).balanceSheet();
+        assertThat(after.totalAssets()).isEqualByComparingTo("0");
+        assertThat(after.accumulatedEarnings()).isEqualByComparingTo("0");
+        assertThat(after.difference()).isEqualByComparingTo("0");
+    }
+    @Test void emptyAndExactDecimalBalanceSheetsPreserveTheEquation() {
+        assertThat(report().balanceSheet().difference()).isEqualByComparingTo("0");
+        invoice("0.10", start, end, "first"); invoice("0.20", end, end, "last");
+        invoice("100", end.plusDays(1), end.plusDays(1), "future");
+        var balance = report().balanceSheet();
+        assertThat(balance.totalAssets()).isEqualByComparingTo("0.30");
+        assertThat(balance.accumulatedEarnings()).isEqualByComparingTo("0.30");
+        assertThat(balance.difference()).isEqualByComparingTo("0");
+    }
+    @Test void equationDifferenceExposesAnUnbalancedUnsupportedDatabaseWrite() {
+        db.update("INSERT INTO journal_entries VALUES ('broken', 1, ?, 'Diagnostic fixture', 'broken')", start);
+        db.update("INSERT INTO journal_lines VALUES ('broken-line', 'broken', '1000', 5, 0)");
+        assertThat(report().balanceSheet().difference()).isEqualByComparingTo("5");
+        assertThat(report().balanceSheet().accumulatedEarnings()).isEqualByComparingTo("0");
+    }
+
 }
