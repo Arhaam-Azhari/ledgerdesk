@@ -2,7 +2,24 @@
 
 Checks are recorded per milestone. Prepared checks are not counted as passing checks.
 
-## Invoice milestone
+## Purchases milestone
+
+The purchase source checkpoint passed **45 backend integration tests on H2**, **45 on PostgreSQL 17**, and **six Chromium workflows** on [GitHub Actions](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36914631754). The source commit was `3880cc732a7bbaaaca0bda7694ce36e4dae0514d`. All backend tests had zero failures, errors, and skipped tests. The browser suite completed in 15.0 seconds.
+
+The 21 purchase integration tests exercise bill posting, partial and full payments, exact decimals, duplicate bill references, request retries, conflicting request keys, competing payments, invalid dates/categories/amounts, unpaid bill voids, direct expense corrections, rollback, vendor totals, and long descriptions. Receipt checks cover authenticated downloads, CSRF, duplicate content, storage rollback, five-file limits, forged types, oversized files/images, and rejection of encrypted or interactive PDFs. These run against real JDBC transactions and the security filter chain.
+
+The two added browser workflows cover:
+
+1. Add two vendors; post a $600 bill; pay $200; attach and download a PNG receipt; record a separate $50 software expense with a JPEG receipt; inspect the $400 vendor balance and a balanced trial balance.
+2. Reject a duplicate bill reference and a forged PDF; void an unpaid mistaken bill; reverse a mistaken direct expense; use the workspace at a 390-pixel width without page overflow.
+
+The four invoice browser workflows below also passed alongside the purchases. The refreshed captures use the same test database: purchases run first, then invoices. The overview and trial balance show $700 received from a customer, $250 spent, $500 receivable, $400 payable, $1,200 revenue, and $650 expenses. Later customer and mobile captures also include the second invoice and its payment. All data is fictional.
+
+Screenshots were inspected for readable text, layout, and the recorded amounts. A secondary-button hover contrast issue found during review was corrected before the follow-up run. The saved captures come from that successful run.
+
+[Vendor balances](screenshots/vendor-balances.png), [bills and receipt attachments](screenshots/bills.png), and [direct expenses](screenshots/expenses.png) show the completed purchase workflow.
+
+## Earlier invoice milestone
 
 The backend suite contains **24 integration tests**, using real Spring services, JDBC transactions, Flyway migrations, PDFBox, and the security filter chain. There is no mocked accounting service.
 
@@ -33,9 +50,9 @@ TypeScript checking and the Vite production build passed. **All four Playwright 
 3. Discard a draft, reload, and use the workspace at a 390-pixel width. Check that wide customer tables can scroll and the page itself does not overflow.
 4. Interrupt the refresh after a successful invoice posting, retry, and verify only one invoice exists. Check that locking is disabled during posting and returns to the login screen after requests finish.
 
-The tests use an initially empty demo database and fictional customers. Captures are taken at different workflow steps: the overview/trial-balance images show the first invoice; the customer and mobile captures also include the second invoice. The later retry test creates another invoice after those screenshots.
+The earlier invoice checks used an initially empty demo database and fictional customers. Current captures are refreshed from the purchases milestone run described above; the later invoice retry workflow adds another invoice after those screenshots.
 
-Actual captures and downloaded output:
+Invoice workflow captures and downloaded output:
 
 ![Overview after partial payment](screenshots/overview.png)
 
@@ -55,4 +72,4 @@ The [first milestone GitHub run](https://github.com/Arhaam-Azhari/ledgerdesk/act
 
 ## Release scope
 
-This is a local invoice milestone, published as source code. There is no hosted application deployment. Expenses, bank reconciliation, period reports, separate roles, backups, and deployment hardening remain on the README roadmap. The tests cover the workflows described here; they are not a guarantee for every possible edge case or production security.
+The purchases milestone is currently on the development branch. The default branch remains the verified invoice milestone until the documentation and screenshot follow-up are complete. There is no hosted application deployment. Bank reconciliation, period reports, separate roles, backups, and deployment hardening remain on the roadmap. The tests cover the workflows described here; they are not a guarantee for every possible edge case or production security.
