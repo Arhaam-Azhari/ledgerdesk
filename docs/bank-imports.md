@@ -1,6 +1,6 @@
 # Bank import sprint
 
-This development branch adds CSV import and matching in the browser and backend. Statement reconciliation is the next step. Importing statement rows does not post accounting entries or change the recorded bank balance.
+This development branch adds CSV import and matching in the browser and backend. A [read-only statement reconciliation preview](bank-reconciliation.md) is available in the backend. Its browser interface and close/reopen workflow are still to come. Importing statement rows does not post accounting entries or change the recorded bank balance.
 
 ## Accepted format
 
@@ -24,7 +24,7 @@ The current account is the one business bank ledger account, `1000`, in USD. The
 
 `POST /api/bank/imports` accepts the same JSON plus an `Idempotency-Key`. It rechecks duplicates under the business write lock, then commits the import summary, new statement rows, request result, and activity event together. A failed write rolls them all back. `/api/state` returns `bankImports` and `bankTransactions` alongside the existing workspace data.
 
-The backend checks cover parsing, signed amounts, duplicate and overlapping exports, conflicting IDs, retries, concurrent imports, transaction rollback, and API authentication/CSRF. All 58 backend integration tests passed on H2 and all 58 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36917162259](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36917162259). This includes the 13 bank-import tests and the 45 existing tests. Verified source commit: `bc4dff92965a898377fbb295a0411f3b0e67c6c1`. Browser import testing will be added with the interface.
+The backend checks cover parsing, signed amounts, duplicate and overlapping exports, conflicting IDs, retries, concurrent imports, transaction rollback, and API authentication/CSRF. All 58 backend integration tests passed on H2 and all 58 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36917162259](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36917162259). This includes the 13 bank-import tests and the 45 existing tests. Verified source commit: `bc4dff92965a898377fbb295a0411f3b0e67c6c1`. The browser checks are recorded below.
 
 ## Browser workflow
 
@@ -42,7 +42,7 @@ The matching API compares each statement transaction with posted customer paymen
 
 A statement row and a ledger cash line can each have only one active match. Match/unmatch events are retained separately from active associations. Neither operation changes journal entries. A matched direct expense must be unmatched before a bookkeeping correction; corrected expenses and their reversal entries are excluded from candidates.
 
-The matching backend adds ten integration tests. All 68 backend tests passed on H2 and all 68 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36919491993](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36919491993), source commit `5f4d970314bbc2ff05783ac83a40ceef3de391a5`. The browser matching interface and its checks are complete. Statement reconciliation is still to come.
+The matching backend adds ten integration tests. All 68 backend tests passed on H2 and all 68 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36919491993](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36919491993), source commit `5f4d970314bbc2ff05783ac83a40ceef3de391a5`. The browser matching interface and its checks are complete. The statement preview is documented separately; saving and closing a reconciliation is still to come.
 
 ## Browser matching workflow
 
