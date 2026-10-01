@@ -17,6 +17,12 @@ public class EquityController {
         return Map.of("id", equity.post(body, key, user.getName()));
     }
 
+    @PostMapping("/{id}/reverse")
+    Map<String, String> reverse(@PathVariable String id, @RequestBody EquityService.Reversal body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", equity.reverse(id, body, key, user.getName()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) {

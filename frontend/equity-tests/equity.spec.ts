@@ -143,4 +143,68 @@ test("record owner transfers, retry an uncertain refresh and check dated equity"
   await expect(page.getByRole("row")).toHaveCount(5);
   await expect(page.locator("section.metrics")).toContainText("$750.00");
   expect((await state()).ledger).toEqual(data.ledger);
+  await page
+    .getByRole("button", {
+      name: "Correct transfer Extra setup funds",
+      exact: true,
+    })
+    .click();
+  await page.getByLabel("Correction date").fill("2026-11-02");
+  await page
+    .getByLabel("Correction reason")
+    .fill("Duplicate setup funding record");
+  failRefresh = true;
+  await page.route("**/api/state", async (route) => {
+    if (failRefresh) {
+      failRefresh = false;
+      await route.abort();
+    } else await route.continue();
+  });
+  await page
+    .getByRole("button", { name: "Reverse mistaken transfer", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  let corrected = await state();
+  expect(corrected.ledger).toHaveLength(10);
+  await page
+    .getByRole("button", { name: "Reverse mistaken transfer", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Owner transfer reversed. The original is retained.",
+  );
+  await expect(
+    page.getByRole("row").filter({ hasText: "Extra setup funds" }),
+  ).toContainText("Reversed 2026-11-02");
+  await expect(
+    page.getByRole("row").filter({ hasText: "Extra setup funds" }),
+  ).toContainText("Duplicate setup funding record");
+  await expect(page.locator("section.metrics")).toContainText("$700.00");
+  corrected = await state();
+  expect(corrected.equityTransactions).toHaveLength(4);
+  expect(corrected.ledger).toHaveLength(10);
+  expect(
+    corrected.audit.filter(
+      (a: { action: string }) => a.action === "OWNER_TRANSFER_REVERSED",
+    ),
+  ).toHaveLength(1);
+  await page.unroute("**/api/state");
+  await page.screenshot({
+    path: "equity-results/owner-correction.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await page.getByLabel("Report start").fill("2026-10-01");
+  await page.getByLabel("Report end").fill("2026-10-31");
+  await page.getByRole("button", { name: "Run reports", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Balance sheet", exact: true })
+    .click();
+  await expect(
+    page.getByRole("row").filter({ hasText: "Total equity" }),
+  ).toContainText("$850.00");
+  await page.getByLabel("Report end").fill("2026-11-03");
+  await page.getByRole("button", { name: "Run reports", exact: true }).click();
+  await expect(
+    page.getByRole("row").filter({ hasText: "Total equity" }),
+  ).toContainText("$700.00");
 });

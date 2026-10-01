@@ -41,7 +41,7 @@ public class BankMatching {
         WHERE l.account_code = '1000' AND e.business_id = 1 AND
             ((i.business_id = 1 AND i.status = 'POSTED') OR
              (b.business_id = 1 AND b.status = 'POSTED') OR
-             (x.business_id = 1 AND x.status = 'POSTED') OR q.business_id = 1)
+             (x.business_id = 1 AND x.status = 'POSTED') OR (q.business_id = 1 AND NOT EXISTS (SELECT 1 FROM equity_reversals r WHERE r.transfer_id = q.id)))
         """;
 
     static void describe(Map<String, Object> row) {

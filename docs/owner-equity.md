@@ -1,6 +1,6 @@
 # Owner funding and withdrawals
 
-This checkpoint adds the posting API and bank matching for a single owner of the demo business. The browser form records contributions and withdrawals and lists their retained history. A correction workflow remains the next step. It does not model share issuance, multiple owners, loans or tax treatment.
+This checkpoint adds the posting API and bank matching for a single owner of the demo business. The browser form records contributions and withdrawals and lists their retained history. Mistaken records can be reversed with a date and reason while retaining the original. It does not model share issuance, multiple owners, loans or tax treatment.
 
 `POST /api/equity` requires the workspace credentials, CSRF token and `Idempotency-Key`. Supply `kind` (`CONTRIBUTION` or `DRAWING`), `postedOn`, `memo` and a positive decimal `amount` with at most two decimal places. The state endpoint returns the retained records in `equityTransactions`.
 
@@ -10,9 +10,9 @@ The business lock, exact decimal journal helper, request-key check and activity 
 
 Owner cash entries appear as bank matching candidates with their direction and memo. The same one-to-one amount checks apply. Pending funding is an outstanding deposit and pending drawings are outstanding payments during reconciliation. Importing or matching a statement does not post the owner transfer again.
 
-Migration V7 adds the two accounts and transfer table without changing earlier migration files. General adjustments and reversals are still pending; posted owner records currently have no edit/delete endpoint. This checkpoint should remain a draft until the correction workflow is complete.
+Migration V7 adds the two accounts and transfer table without changing earlier migration files. General adjustments remain pending. Owner records have no edit/delete endpoint; corrections retain both the original and the dated offset. Final correction verification is pending.
 
-Eight integration tests cover exact contributions/drawings and equity reports, historical cutoff, request retries/conflicts, input validation, transaction rollback, matching/reconciliation with closed-date protection, outstanding funding, and endpoint authentication/CSRF/request keys. All 109 backend integration tests passed on H2 and all 109 passed on PostgreSQL 17, with zero failures, errors or skipped tests in [run 36941728558](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36941728558), source `38b9202ce48d2ab38f730bfdcc0b0c78a14bacd8`. The production frontend build and all ten existing Chromium workflows also passed. Those browser checks cover existing screens; an owner form and its browser proof remain pending.
+Eight integration tests cover exact contributions/drawings and equity reports, historical cutoff, request retries/conflicts, input validation, transaction rollback, matching/reconciliation with closed-date protection, outstanding funding, and endpoint authentication/CSRF/request keys. All 109 backend integration tests passed on H2 and all 109 passed on PostgreSQL 17, with zero failures, errors or skipped tests in [run 36941728558](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36941728558), source `38b9202ce48d2ab38f730bfdcc0b0c78a14bacd8`. The production frontend build and all ten existing Chromium workflows also passed. Those browser checks cover existing screens; the later owner-form checkpoint is documented below.
 
 ## Browser workflow
 
@@ -25,3 +25,13 @@ Build the backend JAR as described in the reporting notes, install frontend depe
 ![Owner funding and withdrawal history](screenshots/owner-transfers.png)
 
 [Mobile owner transfer screen](screenshots/mobile-owner-transfers.png)
+
+## Correcting a mistaken record
+
+In Owner transfer history, choose **Correct** beside the mistaken transfer. Enter a correction date on or after the original date and a short reason, then choose **Reverse mistaken transfer**. The original remains visible with its reversal date and reason. Record the corrected replacement separately when needed. A real transfer of money back is a new owner transfer in the opposite direction, rather than a correction of a record that was accurate.
+
+A matched transfer must be unmatched first. A closed original date or closed correction date blocks the reversal; reopen the latest reconciliation through the existing workflow before changing a closed period. Reversed original transfers are excluded from bank matching candidates. Their offset entries remain in the ledger and reconciliation calculations; unbanked mistakes and their reversals cancel in the net book balance. Imported statement rows still need a correct replacement match or other resolution.
+
+Migration V8 retains one reversal per transfer. The reversal row, offsetting journal, command and activity record commit together under the business lock. Retrying the same reversal returns its existing ID; another key cannot reverse the same transfer twice. The historical balance sheet includes the original until the reversal date. Current owner totals subtract all recorded reversals, including future dates; use Reports for a dated balance.
+
+Eight additional backend checks cover both directions, earlier balances, retained journal lines, duplicate/conflicting retries, invalid dates/reasons/IDs, transaction rollback, matched/closed protections and net reconciliation. The owner browser check now reverses a transfer, simulates an interrupted refresh, retries without duplicating the offset, and compares earlier/later equity. Results and a reviewed correction capture will be added after CI.

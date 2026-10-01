@@ -119,4 +119,83 @@ class EquityTest {
         http.perform(post("/api/equity").with(httpBasic("test", "test-only")).with(csrf()).contentType("application/json").content(body)).andExpect(status().isBadRequest());
         http.perform(post("/api/equity").with(httpBasic("test", "test-only")).with(csrf()).contentType("application/json").content(body).header("Idempotency-Key", "post")).andExpect(status().isOk());
     }
+    @Test void contributionReversalPreservesEarlierEquityAndOriginalRecords() {
+        String id = equity.post(transfer("CONTRIBUTION", "1000"), "fund", "test");
+        var original = db.queryForList("SELECT * FROM journal_lines ORDER BY id");
+        equity.reverse(id, new EquityService.Reversal(end.plusDays(1), "Wrong amount recorded"), "reverse", "test");
+        assertThat(reports.reports(start, end).balanceSheet().totalEquity()).isEqualByComparingTo("1000");
+        var later = reports.reports(start, end.plusDays(1));
+        assertThat(later.balanceSheet().totalAssets()).isEqualByComparingTo("0");
+        assertThat(later.balanceSheet().totalEquity()).isEqualByComparingTo("0");
+        assertThat(later.profitLoss().netProfit()).isEqualByComparingTo("0");
+        assertThat(db.queryForList("SELECT * FROM journal_lines ORDER BY id")).containsAll(original).hasSize(4);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM equity_transactions", Integer.class)).isEqualTo(1);
+        assertThat((java.util.List<?>) ledger.state().get("equityTransactions")).hasSize(1);
+    }
+    @Test void drawingReversalRestoresCashWithoutRecognizingIncome() {
+        String id = equity.post(transfer("DRAWING", "25.01"), "draw", "test");
+        equity.reverse(id, new EquityService.Reversal(start, "Duplicate personal transfer"), "reverse", "test");
+        var r = reports.reports(start, end);
+        assertThat(r.balanceSheet().totalAssets()).isEqualByComparingTo("0");
+        assertThat(r.balanceSheet().postedEquity()).isEqualByComparingTo("0");
+        assertThat(r.profitLoss().revenue()).isEqualByComparingTo("0");
+        assertThat(r.balanceSheet().difference()).isEqualByComparingTo("0");
+    }
+    @Test void reversalRetriesCannotDuplicateOrChangeTheReason() {
+        String id = equity.post(transfer("CONTRIBUTION", "10"), "fund", "test");
+        var request = new EquityService.Reversal(start, "Incorrect record");
+        String reversal = equity.reverse(id, request, "reverse", "test");
+        assertThat(equity.reverse(id, request, "reverse", "test")).isEqualTo(reversal);
+        assertThatThrownBy(() -> equity.reverse(id, request, "another", "test")).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("already reversed");
+        assertThatThrownBy(() -> equity.reverse(id, new EquityService.Reversal(start, "Changed reason"), "reverse", "test")).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("different details");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM equity_reversals", Integer.class)).isEqualTo(1);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM journal_lines", Integer.class)).isEqualTo(4);
+    }
+    @Test void invalidReversalDetailsAndUnknownIdsLeaveOriginalUntouched() {
+        String id = equity.post(transfer("CONTRIBUTION", "10"), "fund", "test");
+        for (var request : java.util.List.of(new EquityService.Reversal(start.minusDays(1), "Before original"),
+                new EquityService.Reversal(start, " "), new EquityService.Reversal(null, "Missing date"),
+                new EquityService.Reversal(start, "x".repeat(241)), new EquityService.Reversal(LocalDate.of(10000, 1, 1), "Invalid year")))
+            assertThatThrownBy(() -> equity.reverse(id, request, "bad", "test")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> equity.reverse("missing", new EquityService.Reversal(start, "Missing transfer"), "bad", "test")).isInstanceOf(IllegalArgumentException.class);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM equity_reversals", Integer.class)).isZero();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM journal_lines", Integer.class)).isEqualTo(2);
+    }
+    @Test void reversalRollsBackWhenTheActivityRecordFails() {
+        String id = equity.post(transfer("CONTRIBUTION", "10"), "fund", "test");
+        assertThatThrownBy(() -> equity.reverse(id, new EquityService.Reversal(start, "Wrong record"), "reverse", "x".repeat(101))).isInstanceOf(RuntimeException.class);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM equity_reversals", Integer.class)).isZero();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM journal_lines", Integer.class)).isEqualTo(2);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM commands", Integer.class)).isEqualTo(1);
+    }
+    @Test void matchedTransfersMustBeUnmatchedAndReversedRecordsCannotMatch() {
+        String id = equity.post(transfer("CONTRIBUTION", "1000"), "fund", "test");
+        String row = match(id, "FUND", "1000");
+        var request = new EquityService.Reversal(start, "Wrong record");
+        assertThatThrownBy(() -> equity.reverse(id, request, "reverse", "test")).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Unmatch");
+        String matchId = db.queryForObject("SELECT id FROM bank_matches WHERE transaction_id = ?", String.class, row);
+        matching.unmatch(row, new BankMatching.Unmatch(matchId), "unmatch", "test");
+        equity.reverse(id, request, "reverse", "test");
+        assertThat(matching.candidates(row)).isEmpty();
+        String line = db.queryForObject("SELECT l.id FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id WHERE e.source_id = ? AND l.account_code = '1000'", String.class, id);
+        assertThatThrownBy(() -> matching.match(row, new BankMatching.Match(line), "rematch", "test")).isInstanceOf(IllegalArgumentException.class);
+    }
+    @Test void closedOriginalDatesPreventCorrectionsEvenWithALaterReversalDate() {
+        String id = equity.post(transfer("CONTRIBUTION", "100"), "fund", "test");
+        match(id, "FUND", "100");
+        reconciliation.close(new BankReconciliation.Statement(start, end, "0", "100"), "close", "test");
+        assertThatThrownBy(() -> equity.reverse(id, new EquityService.Reversal(end.plusDays(1), "Wrong record"), "reverse", "test")).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("closed period");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM equity_reversals", Integer.class)).isZero();
+    }
+    @Test void reversingAnUnmatchedMistakeLeavesZeroReconciliationDifference() {
+        String id = equity.post(transfer("CONTRIBUTION", "100"), "fund", "test");
+        equity.reverse(id, new EquityService.Reversal(start, "No transfer took place"), "reverse", "test");
+        var preview = reconciliation.preview(new BankReconciliation.Statement(start, end, "0", "0"));
+        assertThat(preview.bookBalance()).isEqualByComparingTo("0");
+        assertThat(preview.bookDifference()).isEqualByComparingTo("0");
+        assertThat(preview.outstandingDeposits()).isEqualByComparingTo("100");
+        assertThat(preview.outstandingPayments()).isEqualByComparingTo("100");
+        assertThat(preview.outstandingEntries()).hasSize(2);
+    }
+
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { cents, dollars, today } from "./money";
 
 export type EquityState = {
@@ -8,6 +8,9 @@ export type EquityState = {
     posted_on: string;
     memo: string;
     amount: string;
+    reversal_id: string | null;
+    reversed_on: string | null;
+    reversal_reason: string | null;
   }[];
 };
 type Props = {
@@ -22,11 +25,14 @@ type Props = {
 };
 
 export function OwnerEquity({ data, busy, act }: Props) {
+  const [correcting, setCorrecting] = useState<
+    EquityState["equityTransactions"][number] | null
+  >(null);
   const contributions = data.equityTransactions
-    .filter((t) => t.kind === "CONTRIBUTION")
+    .filter((t) => t.kind === "CONTRIBUTION" && !t.reversal_id)
     .reduce((total, t) => total + cents(t.amount), 0n);
   const drawings = data.equityTransactions
-    .filter((t) => t.kind === "DRAWING")
+    .filter((t) => t.kind === "DRAWING" && !t.reversal_id)
     .reduce((total, t) => total + cents(t.amount), 0n);
   return (
     <>
@@ -38,12 +44,12 @@ export function OwnerEquity({ data, busy, act }: Props) {
         <article>
           <span>Owner contributions</span>
           <h2>{dollars(contributions)}</h2>
-          <small>All recorded dates</small>
+          <small>All dates, less recorded reversals</small>
         </article>
         <article>
           <span>Owner withdrawals</span>
           <h2>{dollars(drawings)}</h2>
-          <small>All recorded dates</small>
+          <small>All dates, less recorded reversals</small>
         </article>
         <article>
           <span>Net owner funding</span>
@@ -131,6 +137,7 @@ export function OwnerEquity({ data, busy, act }: Props) {
                   <th>Type</th>
                   <th>Memo</th>
                   <th>Amount</th>
+                  <th>Correction</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,6 +151,24 @@ export function OwnerEquity({ data, busy, act }: Props) {
                     </td>
                     <td>{t.memo}</td>
                     <td>{dollars(cents(t.amount))}</td>
+                    <td>
+                      {t.reversal_id ? (
+                        <>
+                          <strong>Reversed {t.reversed_on}</strong>
+                          <br />
+                          {t.reversal_reason}
+                        </>
+                      ) : (
+                        <button
+                          className="secondary"
+                          disabled={busy}
+                          aria-label={`Correct transfer ${t.memo}`}
+                          onClick={() => setCorrecting(t)}
+                        >
+                          Correct
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -151,6 +176,68 @@ export function OwnerEquity({ data, busy, act }: Props) {
           </div>
         )}
       </section>
+      {correcting && (
+        <section className="card">
+          <h2>Correct a mistaken transfer</h2>
+          <p>
+            {correcting.memo} · {correcting.posted_on} ·{" "}
+            {dollars(cents(correcting.amount))}
+          </p>
+          <p>
+            The original stays in history. This records an offset on the
+            correction date. For money actually returned, record a new transfer
+            in the opposite direction. Matched transfers must be unmatched
+            first; closed periods must be reopened.
+          </p>
+          <form
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const values = new FormData(form);
+              const done = await act(
+                `/api/equity/${correcting.id}/reverse`,
+                {
+                  reversedOn: String(values.get("reversedOn")),
+                  reason: String(values.get("reason")),
+                },
+                "Owner transfer reversed. The original is retained.",
+                form,
+              );
+              if (done) setCorrecting(null);
+            }}
+          >
+            <fieldset className="owner-fields" disabled={busy}>
+              <label>
+                Correction date
+                <input
+                  type="date"
+                  name="reversedOn"
+                  defaultValue={
+                    today() < correcting.posted_on
+                      ? correcting.posted_on
+                      : today()
+                  }
+                  min={correcting.posted_on}
+                  max="9999-12-31"
+                  required
+                />
+              </label>
+              <label>
+                Correction reason
+                <input name="reason" maxLength={240} required />
+              </label>
+              <button type="submit">Reverse mistaken transfer</button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setCorrecting(null)}
+              >
+                Cancel correction
+              </button>
+            </fieldset>
+          </form>
+        </section>
+      )}
     </>
   );
 }

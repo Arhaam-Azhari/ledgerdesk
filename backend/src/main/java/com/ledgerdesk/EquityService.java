@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class EquityService {
     private final JdbcTemplate db;
     private final LedgerService ledger;
+    public record Reversal(LocalDate reversedOn, String reason) {}
     public record Transfer(String kind, LocalDate postedOn, String memo, String amount) {}
 
     public EquityService(JdbcTemplate db, LedgerService ledger) {
@@ -41,8 +42,40 @@ public class EquityService {
         return id;
     }
 
+    @Transactional
+    public String reverse(String transferId, Reversal request, String key, String actor) {
+        if (request == null || request.reversedOn() == null || request.reversedOn().getYear() < 1 || request.reversedOn().getYear() > 9999)
+            throw new IllegalArgumentException("Choose a valid reversal date.");
+        String reason = LedgerService.text(request.reason(), 240, "Reversal reason");
+        LedgerService.text(transferId, 36, "Transfer ID");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("owner-equity-reversal", transferId, request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        var rows = db.queryForList("SELECT * FROM equity_transactions WHERE id = ? AND business_id = 1", transferId);
+        if (rows.isEmpty()) throw new IllegalArgumentException("Owner transfer not found.");
+        var transfer = rows.get(0);
+        LocalDate posted = ((java.sql.Date) transfer.get("posted_on")).toLocalDate();
+        if (request.reversedOn().isBefore(posted))
+            throw new IllegalArgumentException("The reversal date cannot precede the original transfer.");
+        ledger.requireOpenDate(posted);
+        if (db.queryForObject("SELECT COUNT(*) FROM equity_reversals WHERE transfer_id = ?", Integer.class, transferId) != 0)
+            throw new IllegalArgumentException("This owner transfer was already reversed. Reload the workspace.");
+        if (db.queryForObject("SELECT COUNT(*) FROM bank_matches m JOIN journal_lines l ON l.id = m.line_id JOIN journal_entries e ON e.id = l.entry_id WHERE e.source_id = ?", Integer.class, transferId) != 0)
+            throw new IllegalArgumentException("Unmatch this owner transfer before correcting it.");
+        String reversal = ledger.id();
+        db.update("INSERT INTO equity_reversals VALUES (?, ?, ?, ?)", reversal, transferId, request.reversedOn(), reason);
+        boolean contribution = transfer.get("kind").equals("CONTRIBUTION");
+        // Keep the original entry. The offset belongs to the chosen correction date.
+        ledger.journal(reversal, request.reversedOn(), "Owner transfer reversal: " + reason,
+                contribution ? "3000" : "1000", contribution ? "1000" : "3100",
+                (java.math.BigDecimal) transfer.get("amount"));
+        ledger.complete(key, hash, reversal, actor, "OWNER_TRANSFER_REVERSED");
+        return reversal;
+    }
+
     static Map<String, Object> readState(JdbcTemplate db) {
         return Map.of("equityTransactions", db.queryForList(
-                "SELECT * FROM equity_transactions WHERE business_id = 1 ORDER BY posted_on, id"));
+                "SELECT t.*, r.id AS reversal_id, r.reversed_on, r.reason AS reversal_reason FROM equity_transactions t LEFT JOIN equity_reversals r ON r.transfer_id = t.id WHERE t.business_id = 1 ORDER BY t.posted_on, t.id"));
     }
 }
