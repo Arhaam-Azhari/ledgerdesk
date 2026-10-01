@@ -23,6 +23,8 @@ public class LedgerService {
     }
     public record Customer(String name, String email) {}
     public record Invoice(String customerId, String description, LocalDate issuedOn, LocalDate dueOn, String amount) {}
+    public record DraftChanges(Invoice invoice, long version) {}
+    public record DraftVersion(long version) {}
     public record Payment(LocalDate paidOn, String amount) {}
 
     static BigDecimal money(String value) {
@@ -95,24 +97,120 @@ public class LedgerService {
         return customer;
     }
 
-    @Transactional
-    public String postInvoice(Invoice request, String key, String actor) {
+    private BigDecimal validateInvoice(Invoice request) {
+        if (request == null) throw new IllegalArgumentException("Invoice details are required.");
         BigDecimal amount = money(request.amount());
-        String description = text(request.description(), 240, "Description");
+        text(request.description(), 240, "Description");
         if (request.issuedOn() == null || request.dueOn() == null || request.dueOn().isBefore(request.issuedOn()))
             throw new IllegalArgumentException("Due date must be on or after the invoice date.");
+        if (db.queryForObject("SELECT COUNT(*) FROM customers WHERE id = ? AND business_id = 1", Integer.class, request.customerId()) != 1)
+            throw new IllegalArgumentException("Customer not found.");
+        return amount;
+    }
+
+    private String insertInvoice(Invoice request, BigDecimal amount) {
+        String invoice = id();
+        db.update("INSERT INTO invoices VALUES (?, 1, ?, ?, ?, ?, ?, 0, 'POSTED')", invoice,
+                request.customerId(), request.description().trim(), request.issuedOn(), request.dueOn(), amount);
+        long number = db.queryForObject("SELECT next_invoice_number FROM businesses WHERE id = 1", Long.class);
+        db.update("INSERT INTO invoice_numbers VALUES (?, ?)", invoice, number);
+        db.update("UPDATE businesses SET next_invoice_number = next_invoice_number + 1 WHERE id = 1");
+        journal(invoice, request.issuedOn(), request.description().trim(), "1100", "4000", amount);
+        return invoice;
+    }
+
+    @Transactional
+    public String postInvoice(Invoice request, String key, String actor) {
         lockBusiness();
+        BigDecimal amount = validateInvoice(request);
         String hash = fingerprint(List.of("invoice", request));
         String previous = retry(key, hash);
         if (previous != null) return previous;
-        if (db.queryForObject("SELECT COUNT(*) FROM customers WHERE id = ? AND business_id = 1", Integer.class, request.customerId()) != 1)
-            throw new IllegalArgumentException("Customer not found.");
-        String invoice = id();
-        db.update("INSERT INTO invoices VALUES (?, 1, ?, ?, ?, ?, ?, 0, 'POSTED')", invoice,
-                request.customerId(), description, request.issuedOn(), request.dueOn(), amount);
-        journal(invoice, request.issuedOn(), description, "1100", "4000", amount);
+        String invoice = insertInvoice(request, amount);
         complete(key, hash, invoice, actor, "INVOICE_POSTED");
         return invoice;
+    }
+
+    @Transactional
+    public String createDraft(Invoice request, String key, String actor) {
+        lockBusiness();
+        BigDecimal amount = validateInvoice(request);
+        String hash = fingerprint(List.of("draft", request));
+        String previous = retry(key, hash);
+        if (previous != null) return previous;
+        String draft = id();
+        db.update("INSERT INTO invoice_drafts (id, business_id, customer_id, description, issued_on, due_on, amount) VALUES (?, 1, ?, ?, ?, ?, ?)",
+                draft, request.customerId(), request.description().trim(), request.issuedOn(), request.dueOn(), amount);
+        complete(key, hash, draft, actor, "DRAFT_SAVED");
+        return draft;
+    }
+
+    private Map<String, Object> draft(String draftId) {
+        var rows = db.queryForList("SELECT * FROM invoice_drafts WHERE id = ? AND business_id = 1", draftId);
+        if (rows.isEmpty()) throw new IllegalArgumentException("Draft not found.");
+        return rows.get(0);
+    }
+
+    private void editableDraft(Map<String, Object> draft, long version) {
+        if (draft.get("posted_invoice_id") != null || Boolean.TRUE.equals(draft.get("cancelled")))
+            throw new IllegalArgumentException("This draft was already posted or discarded.");
+        // A second tab must reload rather than overwrite a newer saved version.
+        if (((Number) draft.get("version")).longValue() != version)
+            throw new IllegalArgumentException("This draft has changed. Reload the workspace before trying again.");
+    }
+
+    @Transactional
+    public String updateDraft(String draftId, DraftChanges request, String key, String actor) {
+        lockBusiness();
+        BigDecimal amount = validateInvoice(request.invoice());
+        String hash = fingerprint(List.of("draft-update", draftId, request));
+        String previous = retry(key, hash);
+        if (previous != null) return previous;
+        editableDraft(draft(draftId), request.version());
+        Invoice details = request.invoice();
+        db.update("UPDATE invoice_drafts SET customer_id = ?, description = ?, issued_on = ?, due_on = ?, amount = ?, version = version + 1 WHERE id = ?",
+                details.customerId(), details.description().trim(), details.issuedOn(), details.dueOn(), amount, draftId);
+        complete(key, hash, draftId, actor, "DRAFT_UPDATED");
+        return draftId;
+    }
+
+    @Transactional
+    public String postDraft(String draftId, long version, String key, String actor) {
+        lockBusiness();
+        String hash = fingerprint(List.of("draft-post", draftId, version));
+        String previous = retry(key, hash);
+        if (previous != null) return previous;
+        Map<String, Object> saved = draft(draftId);
+        editableDraft(saved, version);
+        Invoice request = new Invoice((String) saved.get("customer_id"), (String) saved.get("description"),
+                ((java.sql.Date) saved.get("issued_on")).toLocalDate(), ((java.sql.Date) saved.get("due_on")).toLocalDate(),
+                saved.get("amount").toString());
+        String invoice = insertInvoice(request, validateInvoice(request));
+        db.update("UPDATE invoice_drafts SET posted_invoice_id = ?, version = version + 1 WHERE id = ?", invoice, draftId);
+        complete(key, hash, invoice, actor, "DRAFT_POSTED");
+        return invoice;
+    }
+
+    @Transactional
+    public String discardDraft(String draftId, long version, String key, String actor) {
+        lockBusiness();
+        String hash = fingerprint(List.of("draft-discard", draftId, version));
+        String previous = retry(key, hash);
+        if (previous != null) return previous;
+        editableDraft(draft(draftId), version);
+        db.update("UPDATE invoice_drafts SET cancelled = TRUE, version = version + 1 WHERE id = ?", draftId);
+        complete(key, hash, draftId, actor, "DRAFT_DISCARDED");
+        return draftId;
+    }
+
+    public static String invoiceNumber(long value) { return String.format(java.util.Locale.ROOT, "INV-%06d", value); }
+
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public Map<String, Object> invoiceDocument(String invoiceId) {
+        var rows = db.queryForList("SELECT i.*, n.number_value, c.name AS customer_name, c.email AS customer_email FROM invoices i JOIN invoice_numbers n ON n.invoice_id = i.id JOIN customers c ON c.id = i.customer_id WHERE i.id = ? AND i.business_id = 1", invoiceId);
+        if (rows.isEmpty()) throw new IllegalArgumentException("Invoice not found.");
+        return Map.of("invoice", rows.get(0), "business", "Northline Design Studio", "payments",
+                db.queryForList("SELECT paid_on, amount FROM payments WHERE invoice_id = ? ORDER BY paid_on, id", invoiceId));
     }
 
     @Transactional
@@ -164,8 +262,9 @@ public class LedgerService {
     public Map<String, Object> state() {
         List<Map<String, Object>> trial = db.queryForList("SELECT a.code, a.name, a.kind, COALESCE(SUM(l.debit), 0) AS debits, COALESCE(SUM(l.credit), 0) AS credits FROM accounts a LEFT JOIN journal_lines l ON l.account_code = a.code GROUP BY a.code, a.name, a.kind ORDER BY a.code");
         return Map.of("business", "Northline Design Studio", "currency", "USD", "customers",
-                db.queryForList("SELECT * FROM customers ORDER BY name"), "invoices",
-                db.queryForList("SELECT i.*, c.name AS customer_name FROM invoices i JOIN customers c ON c.id = i.customer_id ORDER BY issued_on DESC, id"),
+                db.queryForList("SELECT c.*, COALESCE(SUM(CASE WHEN i.status = 'POSTED' THEN i.amount ELSE 0 END), 0) AS invoiced, COALESCE(SUM(i.paid), 0) AS paid, COALESCE(SUM(CASE WHEN i.status = 'POSTED' THEN i.amount - i.paid ELSE 0 END), 0) AS outstanding FROM customers c LEFT JOIN invoices i ON i.customer_id = c.id GROUP BY c.id, c.business_id, c.name, c.email ORDER BY c.name, c.id"), "invoices",
+                db.queryForList("SELECT i.*, n.number_value, c.name AS customer_name FROM invoices i JOIN invoice_numbers n ON n.invoice_id = i.id JOIN customers c ON c.id = i.customer_id ORDER BY issued_on DESC, id"),
+                "drafts", db.queryForList("SELECT d.*, c.name AS customer_name FROM invoice_drafts d JOIN customers c ON c.id = d.customer_id WHERE d.cancelled = FALSE AND d.posted_invoice_id IS NULL ORDER BY d.issued_on DESC, d.id"),
                 "trialBalance", trial, "ledger", db.queryForList("SELECT e.entry_date, e.memo, e.source_id, e.id AS entry_id, a.code, a.name, l.debit, l.credit FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id JOIN accounts a ON a.code = l.account_code ORDER BY e.entry_date, e.id, l.credit"),
                 "payments", db.queryForList("SELECT * FROM payments ORDER BY paid_on DESC"),
                 "audit", db.queryForList("SELECT * FROM audit_events ORDER BY occurred_at DESC"));

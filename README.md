@@ -1,12 +1,16 @@
 # Ledgerdesk
 
-A small-business accounting application for freelancers and service agencies. The first milestone connects customers, posted invoices, partial payments, a double-entry ledger, and a trial balance.
+A small-business accounting application for freelancers and service agencies. The invoice milestone connects saved drafts, numbered invoices, partial payments, customer balances, PDF downloads, a double-entry ledger, and a trial balance.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. This is an early working milestone, not a finished accounting product.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. This is a working invoice milestone, not a finished accounting product.
 
 ## Working now
 
-- Add customers and post a service invoice.
+- Add customers and save, edit, post, or discard a complete invoice draft.
+- Assign a permanent sequential invoice number when posting.
+- Download an invoice PDF with its status, payment history, and amount due.
+- Inspect each customer's invoices, payments total, and outstanding balance.
+- Post a service invoice directly when no draft is needed.
 - Record partial or full payment without recognizing revenue again.
 - Reject overpayments, invalid amounts, and dates before the invoice.
 - Retry a request without recording it twice.
@@ -51,12 +55,27 @@ Stop both servers with Ctrl+C. To clear the local demo, stop the backend and del
 
 These figures are not an income statement or reconciled bank balance. Expenses, opening balances, and period reporting are later milestones.
 
+## Drafts, invoice numbers, and PDFs
+
+On **Invoices**, fill in all invoice details and choose **Save draft**. Drafts do not recognize revenue or create receivables. Use **Edit draft** to revise the saved amount or details, then **Save changes**. **Post draft** posts exactly the saved version and assigns a number such as `INV-000001`. **Discard draft** removes it from the active list while retaining its saved record and activity history.
+
+A draft must have complete, valid invoice details; partially filled forms are not saved. Posting or discarding makes the saved copy read-only. If another tab has changed a draft, reload the workspace before editing or posting it. Save changes before posting; unsaved form edits are not posted.
+
+Numbers increase within this one business and are not reused after voiding. The number and ledger entry commit together. Earlier invoices receive numbers ordered by invoice date and internal ID during the migration. This is an application sequence, not a claim of compliance with jurisdiction-specific invoice numbering requirements.
+
+Choose **PDF** next to a posted invoice. The PDF includes the customer, service description, total, recorded payments, and current amount due. A voided copy clearly says **VOID** and shows zero due. The embedded DejaVu font supports common Latin and other characters; unsupported glyphs appear as explicit Unicode codes rather than disappearing. Long descriptions wrap, and payment histories continue across pages.
+
+On **Customers**, balances exclude drafts and voided invoices. Select a customer name to inspect their posted invoices. These are all-time balances; aging and date-based statements come later.
+
+Screenshots: [saved drafts](docs/screenshots/drafts.png), [customer balances](docs/screenshots/customer-balances.png), [narrow-screen overview](docs/screenshots/mobile-overview.png), and an [example invoice PDF](docs/invoice-example.pdf). All use fictional data.
+
 ## Stack and design
 
 - Java 17 / Spring Boot, Spring JDBC, and Spring Security
 - React / TypeScript / Vite
 - PostgreSQL configuration and Flyway migrations; H2 for the local demo
-- JUnit integration checks and a Playwright browser workflow
+- Apache PDFBox for invoice PDFs, with an embedded DejaVu font
+- JUnit integration checks and Playwright browser workflows
 
 This is one backend with separate service, API, and security responsibilities. JDBC makes the SQL and transaction boundaries visible. Java `BigDecimal` and SQL `NUMERIC` handle money. The API serializes amounts as decimal strings, and the interface uses integer cents for sums and display.
 
@@ -97,20 +116,19 @@ npm run test:e2e
 
 The browser test needs the demo backend running on port 8080. Playwright starts the frontend if needed. It posts a $1,200 invoice and $700 payment, checks the remaining balance and ledger, and captures the overview and trial balance.
 
-GitHub Actions passed the 12 backend tests against both H2 and PostgreSQL, the frontend production build, and the Chromium workflow. See the [first milestone run](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36828185923) and [verification notes](docs/verification.md).
+The invoice milestone has 24 backend integration tests and four browser workflows. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
-1. Draft invoices, numbering, invoice PDFs, and richer customer balances.
-2. Vendor bills and expenses, including payment allocation and supporting documents.
-3. CSV bank imports, duplicate detection, matching, and reconciliation.
-4. Date-based financial statements, aging reports, adjustments, and period close.
-5. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
+1. Vendor bills and expenses, including payment allocation and supporting documents.
+2. CSV bank imports, duplicate detection, matching, and reconciliation.
+3. Date-based financial statements, aging reports, adjustments, and period close.
+4. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
 The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
 
 ## What this project demonstrates
 
-The first milestone demonstrates double-entry posting, invoice-to-payment accounting, exact monetary calculations, SQL relationships and constraints, transactional rollback, serialized concurrent writes, retry handling, protected API writes, and a tested browser workflow.
+The current milestone demonstrates double-entry posting, invoice-to-payment accounting, exact monetary calculations, SQL relationships and constraints, transactional rollback, serialized concurrent writes, retry handling, protected API writes, optimistic draft version checks, database upgrades, PDF generation, and tested browser workflows.
 
 Further milestones will extend those foundations into a complete service-business accounting product.
