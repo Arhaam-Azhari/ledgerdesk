@@ -2,6 +2,12 @@ import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 import { Purchases, type PurchaseState, type Receipt } from "./Purchases";
+import {
+  Bank,
+  type BankState,
+  type BankPreview,
+  type BankRequest,
+} from "./Bank";
 import { cents, dollars, today } from "./money";
 
 type Customer = {
@@ -57,17 +63,18 @@ type Draft = {
   version: number;
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
-type State = PurchaseState & {
-  business: string;
-  currency: string;
-  customers: Customer[];
-  invoices: Invoice[];
-  drafts: Draft[];
-  trialBalance: Trial[];
-  ledger: Line[];
-  audit: Audit[];
-  payments: Payment[];
-};
+type State = PurchaseState &
+  BankState & {
+    business: string;
+    currency: string;
+    customers: Customer[];
+    invoices: Invoice[];
+    drafts: Draft[];
+    trialBalance: Trial[];
+    ledger: Line[];
+    audit: Audit[];
+    payments: Payment[];
+  };
 
 function App() {
   const [credentials, setCredentials] = useState("");
@@ -137,6 +144,26 @@ function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
       return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function previewBank(body: BankRequest): Promise<BankPreview | null> {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api("/api/bank/imports/preview", body);
+      requests.current.delete(
+        "/api/bank/imports/preview" + JSON.stringify(body),
+      );
+      return result;
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Could not preview the CSV.",
+      );
+      return null;
     } finally {
       setBusy(false);
     }
@@ -325,6 +352,7 @@ function App() {
     "Vendors",
     "Bills",
     "Expenses",
+    "Bank imports",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -483,7 +511,8 @@ function App() {
         {page === "Overview" && (
           <>
             <p className="intro">
-              A clear view of recorded sales, purchases, and outstanding balances.
+              A clear view of recorded sales, purchases, and outstanding
+              balances.
             </p>
             <section className="metrics">
               <article>
@@ -1083,6 +1112,18 @@ function App() {
             act={act}
             upload={uploadReceipt}
             download={downloadReceipt}
+          />
+        )}
+        {page === "Bank imports" && (
+          <Bank
+            data={data}
+            busy={busy}
+            preview={previewBank}
+            act={act}
+            reportError={(message) => {
+              setError(message);
+              setNotice("");
+            }}
           />
         )}
         {page === "Activity" && (

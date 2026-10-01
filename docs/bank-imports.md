@@ -1,6 +1,6 @@
 # Bank import sprint
 
-This development branch adds the bank-import backend. The browser import screen, matching, and statement reconciliation are the next steps. Importing statement rows does not post accounting entries or change the recorded bank balance.
+This development branch adds CSV preview and import in the browser and backend. Matching and statement reconciliation are the next steps. Importing statement rows does not post accounting entries or change the recorded bank balance.
 
 ## Accepted format
 
@@ -25,3 +25,9 @@ The current account is the one business bank ledger account, `1000`, in USD. The
 `POST /api/bank/imports` accepts the same JSON plus an `Idempotency-Key`. It rechecks duplicates under the business write lock, then commits the import summary, new statement rows, request result, and activity event together. A failed write rolls them all back. `/api/state` returns `bankImports` and `bankTransactions` alongside the existing workspace data.
 
 The backend checks cover parsing, signed amounts, duplicate and overlapping exports, conflicting IDs, retries, concurrent imports, transaction rollback, and API authentication/CSRF. All 58 backend integration tests passed on H2 and all 58 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36917162259](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36917162259). This includes the 13 bank-import tests and the 45 existing tests. Verified source commit: `bc4dff92965a898377fbb295a0411f3b0e67c6c1`. Browser import testing will be added with the interface.
+
+## Browser workflow
+
+Open **Bank imports**, download the fictional example or select a UTF-8 `.csv`, and enter an import label. **Preview import** validates the complete file and shows which rows are new and which will be skipped. **Confirm import** saves the validated request and refreshes the statement transactions and import history. Changing the selected file or label clears the preview. Invalid UTF-8 is rejected before sending the file to the backend.
+
+The browser check covers example download, preview without saving, import without changing the ledger, overlapping rows, a changed-ID rejection, broken UTF-8, and use at a 390-pixel width. That check is pending at this checkpoint.

@@ -452,3 +452,10 @@ td code {
     grid-template-columns: 1fr;
   }
 }
+
+.bank-fields {
+  border: 0;
+  padding: 0;
+  margin: 22px 0 0;
+  min-width: 0;
+}
