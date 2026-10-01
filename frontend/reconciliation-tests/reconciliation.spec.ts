@@ -1,0 +1,212 @@
+import { test, expect } from "@playwright/test";
+
+test("preview, close, protect the period, reopen and retain the original calculation", async ({
+  page,
+  request,
+}) => {
+  const auth = {
+    Authorization: `Basic ${Buffer.from("demo:demo-local-only").toString("base64")}`,
+  };
+  async function post(path: string, body: object, key: string) {
+    const csrf = await request.get("/api/csrf").then((r) => r.json());
+    const response = await request.post(path, {
+      headers: {
+        ...auth,
+        [csrf.headerName]: csrf.token,
+        "Idempotency-Key": key,
+      },
+      data: body,
+    });
+    const result = await response.json();
+    expect(response.ok(), JSON.stringify(result)).toBe(true);
+    return result.id as string;
+  }
+  const vendor = await post(
+    "/api/vendors",
+    { name: "Harbor Supply", email: "accounts@harbor.example" },
+    "vendor",
+  );
+  const invoice = await post(
+    "/api/invoices",
+    {
+      customerId: "demo-customer",
+      description: "October design work",
+      issuedOn: "2026-10-01",
+      dueOn: "2026-10-31",
+      amount: "500",
+    },
+    "invoice",
+  );
+  const payment = await post(
+    `/api/invoices/${invoice}/payments`,
+    { paidOn: "2026-10-02", amount: "500" },
+    "payment",
+  );
+  await post(
+    "/api/expenses",
+    {
+      vendorId: vendor,
+      description: "Supplies awaiting bank clearance",
+      spentOn: "2026-10-30",
+      accountCode: "5000",
+      amount: "80",
+    },
+    "expense",
+  );
+  await post(
+    "/api/bank/imports",
+    {
+      label: "October statement",
+      csv: "transaction_id,date,description,amount\nOCT-1,2026-10-03,Design payment,500",
+    },
+    "import",
+  );
+  const before = await request
+    .get("/api/state", { headers: auth })
+    .then((r) => r.json());
+  const cash = before.ledger.find(
+    (r: { source_id: string; code: string }) =>
+      r.source_id === payment && r.code === "1000",
+  );
+  // The state exposes journal entries; candidates supply the individual bank line ID.
+  const transaction = before.bankTransactions[0];
+  const candidates = await request
+    .get(`/api/bank/transactions/${transaction.id}/candidates`, {
+      headers: auth,
+    })
+    .then((r) => r.json());
+  expect(cash).toBeTruthy();
+  await post(
+    `/api/bank/transactions/${transaction.id}/match`,
+    { lineId: candidates[0].line_id },
+    "match",
+  );
+  await page.goto("/");
+  await page.getByLabel("Username").fill("demo");
+  await page.getByLabel("Password", { exact: true }).fill("demo-local-only");
+  await page.getByRole("button", { name: "Open workspace" }).click();
+  await page
+    .getByRole("button", { name: "Reconciliation", exact: true })
+    .click();
+  await page.getByLabel("Statement start").fill("2026-10-01");
+  await page.getByLabel("Statement end").fill("2026-10-31");
+  await page.getByLabel("Closing balance", { exact: true }).fill("490");
+  await page.getByRole("button", { name: "Preview reconciliation" }).click();
+  const review = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Reconciliation review",
+        exact: true,
+      }),
+    });
+  await expect(review).toContainText("Resolve the differences");
+  await expect(
+    page.getByRole("button", { name: "Close statement", exact: true }),
+  ).toBeDisabled();
+  await page.getByLabel("Closing balance", { exact: true }).fill("500");
+  await expect(review).toHaveCount(0);
+  await page.getByRole("button", { name: "Preview reconciliation" }).click();
+  await expect(
+    review.getByRole("row").filter({ hasText: "Book balance" }),
+  ).toContainText("$420.00");
+  await expect(review).toContainText("Supplies awaiting bank clearance");
+  await expect(
+    page.getByRole("button", { name: "Close statement", exact: true }),
+  ).toBeEnabled();
+  await page.screenshot({
+    path: "reconciliation-results/reconciliation-review.png",
+    fullPage: true,
+  });
+  page.once("dialog", (d) => d.dismiss());
+  await page
+    .getByRole("button", { name: "Close statement", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Reconciliation review", exact: true }),
+  ).toBeVisible();
+  let interrupted = false;
+  await page.route("**/api/state", async (route) => {
+    if (!interrupted) {
+      interrupted = true;
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: "{}",
+      });
+    } else await route.continue();
+  });
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Close statement", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("could not be completed");
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Close statement", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("period is closed");
+  await page.unroute("**/api/state");
+  const saved = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "Saved reconciliations",
+        exact: true,
+      }),
+    });
+  await expect(saved).toContainText("2026-10-01 to 2026-10-31 · Closed");
+  await saved.getByText("View saved calculation", { exact: true }).click();
+  await expect(saved).toContainText("$420.00");
+  await page.screenshot({
+    path: "reconciliation-results/reconciliation-closed.png",
+    fullPage: true,
+  });
+  const closed = await request
+    .get("/api/state", { headers: auth })
+    .then((r) => r.json());
+  expect(closed.bankReconciliations).toHaveLength(1);
+  expect(closed.ledger).toEqual(before.ledger);
+  expect(closed.trialBalance).toEqual(before.trialBalance);
+  await page
+    .getByRole("button", { name: "Bank matching", exact: true })
+    .click();
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Undo match OCT-1", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("closed period");
+  await page
+    .getByRole("button", { name: "Reconciliation", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Reopen latest statement" }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Reopening reason")
+    .fill("Review the supporting statement");
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Reopen latest statement" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "original calculation is retained",
+  );
+  await expect(saved).toContainText("Reopened");
+  await expect(saved).toContainText("Review the supporting statement");
+  const after = await request
+    .get("/api/state", { headers: auth })
+    .then((r) => r.json());
+  expect(after.bankReconciliations[0].snapshot).toEqual(
+    closed.bankReconciliations[0].snapshot,
+  );
+  expect(after.ledger).toEqual(before.ledger);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "reconciliation-results/mobile-reconciliation.png",
+    fullPage: true,
+  });
+});

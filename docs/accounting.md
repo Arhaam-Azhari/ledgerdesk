@@ -1,6 +1,6 @@
 # Accounting rules
 
-Northline Design Studio is a fictional USD service business. The demo starts with no opening balances or posted transactions. All reports currently include every posted transaction, including future-dated entries; period cutoffs are not implemented yet.
+Northline Design Studio is a fictional USD service business. The demo starts with no opening balances or posted transactions. The overview and trial balance include every posted transaction, including future-dated entries. Bank reconciliation uses a statement end date. Date-based financial statements are not implemented yet.
 
 ## Accounts
 
@@ -71,3 +71,12 @@ Invoice numbers are assigned under the business-row lock and roll back with a fa
 Customer net invoiced totals include posted invoice amounts and exclude voided invoices. Recorded payments and outstanding amounts come from the same invoice snapshot. Drafts contribute zero. For this single-business model, the sum of customer outstanding balances should equal ledger receivables.
 
 A PDF is a current document copy, not a new posting or an immutable historical snapshot. Downloading it never changes the books.
+
+
+## Bank evidence and reconciliation
+
+Imported bank rows are statement evidence, not journal postings. Matching associates one statement row with one eligible posted bank line of exactly the same signed amount. The owner reviews the description and dates; the program never treats equal amounts as automatic proof. Removing a match preserves its event history and changes no money amounts.
+
+Reconciliation checks two equations: opening statement balance plus imported period movement must equal the entered closing balance; closing balance plus outstanding deposits minus outstanding payments must equal the bank book balance through the end date. A payment clearing after that date remains outstanding. A bank row linked to a later book entry is flagged for correction. All bank journal lines, including reversals, are included in the book calculation.
+
+A first close begins from zero and includes the recorded history; later statements carry forward the previous closing balance with contiguous dates. Closing requires both differences to be zero and no unfinished bank rows or future-dated book matches. It saves the calculation and protects journal posting dates through that end. Reopening requires a reason, preserves the original calculation, and proceeds from the latest closed statement backwards. This is an application control, not an external audit opinion. See [statement rules and limitations](bank-reconciliation.md).

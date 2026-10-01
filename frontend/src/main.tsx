@@ -1,7 +1,24 @@
+import {
+  BankReconciliation,
+  type ReconciliationState,
+  type ReconciliationPreview,
+  type Statement,
+} from "./BankReconciliation";
+import {
+  BankMatching,
+  type MatchState,
+  type BankCandidate,
+} from "./BankMatching";
 import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 import { Purchases, type PurchaseState, type Receipt } from "./Purchases";
+import {
+  Bank,
+  type BankState,
+  type BankPreview,
+  type BankRequest,
+} from "./Bank";
 import { cents, dollars, today } from "./money";
 
 type Customer = {
@@ -57,17 +74,20 @@ type Draft = {
   version: number;
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
-type State = PurchaseState & {
-  business: string;
-  currency: string;
-  customers: Customer[];
-  invoices: Invoice[];
-  drafts: Draft[];
-  trialBalance: Trial[];
-  ledger: Line[];
-  audit: Audit[];
-  payments: Payment[];
-};
+type State = PurchaseState &
+  BankState &
+  MatchState &
+  ReconciliationState & {
+    business: string;
+    currency: string;
+    customers: Customer[];
+    invoices: Invoice[];
+    drafts: Draft[];
+    trialBalance: Trial[];
+    ledger: Line[];
+    audit: Audit[];
+    payments: Payment[];
+  };
 
 function App() {
   const [credentials, setCredentials] = useState("");
@@ -137,6 +157,68 @@ function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
       return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function bankCandidates(id: string): Promise<BankCandidate[] | null> {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      return await api(`/api/bank/transactions/${id}/candidates`);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not load recorded entries.",
+      );
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function previewReconciliation(
+    body: Statement,
+  ): Promise<ReconciliationPreview | null> {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api("/api/bank/reconciliations/preview", body);
+      requests.current.delete(
+        "/api/bank/reconciliations/preview" + JSON.stringify(body),
+      );
+      return result;
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not preview the statement.",
+      );
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function previewBank(body: BankRequest): Promise<BankPreview | null> {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api("/api/bank/imports/preview", body);
+      requests.current.delete(
+        "/api/bank/imports/preview" + JSON.stringify(body),
+      );
+      return result;
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Could not preview the CSV.",
+      );
+      return null;
     } finally {
       setBusy(false);
     }
@@ -325,6 +407,9 @@ function App() {
     "Vendors",
     "Bills",
     "Expenses",
+    "Bank imports",
+    "Bank matching",
+    "Reconciliation",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -448,7 +533,7 @@ function App() {
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
-            <span className="demo-tag">Milestone 03 · Fictional business</span>
+            <span className="demo-tag">Milestone 04 · Fictional business</span>
             <button
               className="secondary"
               disabled={busy}
@@ -483,7 +568,8 @@ function App() {
         {page === "Overview" && (
           <>
             <p className="intro">
-              A clear view of recorded sales, purchases, and outstanding balances.
+              A clear view of recorded sales, purchases, and outstanding
+              balances.
             </p>
             <section className="metrics">
               <article>
@@ -1083,6 +1169,34 @@ function App() {
             act={act}
             upload={uploadReceipt}
             download={downloadReceipt}
+          />
+        )}
+        {page === "Bank imports" && (
+          <Bank
+            data={data}
+            busy={busy}
+            preview={previewBank}
+            act={act}
+            reportError={(message) => {
+              setError(message);
+              setNotice("");
+            }}
+          />
+        )}
+        {page === "Bank matching" && (
+          <BankMatching
+            data={data}
+            busy={busy}
+            candidates={bankCandidates}
+            act={act}
+          />
+        )}
+        {page === "Reconciliation" && (
+          <BankReconciliation
+            data={data}
+            busy={busy}
+            preview={previewReconciliation}
+            act={act}
           />
         )}
         {page === "Activity" && (

@@ -51,6 +51,11 @@ public class LedgerService {
         db.queryForObject("SELECT id FROM businesses WHERE id = 1 FOR UPDATE", Long.class);
     }
 
+    void requireOpenDate(LocalDate date) {
+        if (db.queryForObject("SELECT COUNT(*) FROM bank_reconciliations WHERE business_id = 1 AND status = 'CLOSED' AND ends_on >= ?", Integer.class, date) != 0)
+            throw new IllegalArgumentException("This date belongs to a closed period. Reopen the latest reconciliation before changing it.");
+    }
+
     String fingerprint(Object value) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                 .digest(json.writeValueAsBytes(value))); }
@@ -75,6 +80,7 @@ public class LedgerService {
 
     void journal(String source, LocalDate date, String memo, String debitAccount,
                          String creditAccount, BigDecimal amount) {
+        requireOpenDate(date);
         String entry = id();
         db.update("INSERT INTO journal_entries VALUES (?, 1, ?, ?, ?)", entry, date, memo, source);
         db.update("INSERT INTO journal_lines VALUES (?, ?, ?, ?, 0)", id(), entry, debitAccount, amount);
@@ -269,6 +275,9 @@ public class LedgerService {
                 "payments", db.queryForList("SELECT * FROM payments ORDER BY paid_on DESC"),
                 "audit", db.queryForList("SELECT * FROM audit_events ORDER BY occurred_at DESC")));
         result.putAll(PurchaseService.readState(db));
+        result.putAll(BankService.readState(db));
+        result.putAll(BankMatching.readState(db));
+        result.putAll(BankReconciliation.readState(db));
         return result;
     }
 }
