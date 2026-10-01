@@ -24,7 +24,7 @@ The balance sheet uses the same end-date account balances as the trial balance. 
 
 Accumulated earnings include all revenue minus expenses through the end date, including earlier periods and dated reversals. This is independent of the selected profit-and-loss start date. Earnings are calculated from income/expense postings; they are not set to whatever amount would make the sheet balance. A nonzero difference therefore remains visible if the underlying records are inconsistent.
 
-The supported chart currently has bank, receivables and payables, without owner contribution/drawing accounts or year-end closing entries. Posted equity is currently zero; accumulated earnings supply the equity component for the supported zero-opening-balance workflows. Owner funding, drawings, opening balance migration and formal year-end closing need later posting workflows. Negative bank balances and losses remain signed amounts; overdraft reclassification is not implemented.
+The chart includes bank, receivables, payables, owner contributions and owner drawings. Posted equity is contributions minus drawings; accumulated earnings remain a separate component. The owner posting API is described in [owner equity notes](owner-equity.md). Opening balance migration and formal year-end closing need later workflows. Negative bank balances and losses remain signed amounts; overdraft reclassification is not implemented.
 
 In the known example below, assets are $950 ($450 bank plus $500 receivables), liabilities are $400, and accumulated earnings/equity are $550. Both sides equal $950. A later customer payment changes the mix of bank and receivables without recognizing more income or changing the earlier dated balance sheet.
 
