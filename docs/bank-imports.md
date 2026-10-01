@@ -1,6 +1,6 @@
-# Bank import sprint
+# Bank imports and matching
 
-This development branch adds CSV import and matching in the browser and backend. A [read-only statement reconciliation preview](bank-reconciliation.md) is available in the backend. Closing and reopening are also available in the backend; the reconciliation browser interface is still to come. Importing statement rows does not post accounting entries or change the recorded bank balance.
+CSV import and reviewed matching are available in the browser and backend. The [statement reconciliation workflow](bank-reconciliation.md) supports preview, closing, saved calculations, and reopening. Importing statement rows does not post accounting entries or change the recorded bank balance.
 
 ## Accepted format
 
