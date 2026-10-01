@@ -42,4 +42,4 @@ The matching API compares each statement transaction with posted customer paymen
 
 A statement row and a ledger cash line can each have only one active match. Match/unmatch events are retained separately from active associations. Neither operation changes journal entries. A matched direct expense must be unmatched before a bookkeeping correction; corrected expenses and their reversal entries are excluded from candidates.
 
-The matching backend adds ten integration tests. Their results are pending at this checkpoint. The browser matching interface and statement reconciliation are still to come.
+The matching backend adds ten integration tests. All 68 backend tests passed on H2 and all 68 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36919491993](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36919491993), source commit `5f4d970314bbc2ff05783ac83a40ceef3de391a5`. The browser matching interface and statement reconciliation are still to come.
