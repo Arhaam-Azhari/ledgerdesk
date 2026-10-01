@@ -64,6 +64,7 @@ public class BankService {
         for (var row : preview.rows()) {
             if (row.duplicate()) continue;
             var transaction = row.transaction();
+            ledger.requireOpenDate(transaction.date());
             db.update("INSERT INTO bank_transactions VALUES (?, 1, '1000', ?, ?, ?, ?, ?)", ledger.id(), id,
                     transaction.transactionId(), transaction.date(), transaction.description(), transaction.amount());
         }

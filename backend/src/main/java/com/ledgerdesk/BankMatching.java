@@ -82,6 +82,7 @@ public class BankMatching {
         String previous = ledger.retry(key, hash);
         if (previous != null) return previous;
         var bank = transaction(transactionId);
+        ledger.requireOpenDate(((java.sql.Date) bank.get("posted_on")).toLocalDate());
         var lines = db.queryForList(CASH_RECORDS + " AND l.id = ?", lineId);
         if (lines.isEmpty()) throw new IllegalArgumentException("Choose a posted customer payment, bill payment, or direct expense in this bank account.");
         if (((BigDecimal) lines.get(0).get("amount")).compareTo((BigDecimal) bank.get("amount")) != 0)
@@ -104,7 +105,8 @@ public class BankMatching {
         String hash = ledger.fingerprint(List.of("bank-unmatch", transactionId, request));
         String previous = ledger.retry(key, hash);
         if (previous != null) return previous;
-        transaction(transactionId);
+        var bank = transaction(transactionId);
+        ledger.requireOpenDate(((java.sql.Date) bank.get("posted_on")).toLocalDate());
         var matches = db.queryForList("SELECT * FROM bank_matches WHERE transaction_id = ? AND id = ?", transactionId, matchId);
         if (matches.isEmpty()) throw new IllegalArgumentException("The match has changed or was already removed. Reload the workspace.");
         var match = matches.get(0);

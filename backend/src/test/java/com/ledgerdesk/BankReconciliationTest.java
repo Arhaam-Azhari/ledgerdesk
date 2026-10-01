@@ -121,4 +121,114 @@ class BankReconciliationTest {
             .andExpect(status().isOk()).andExpect(jsonPath("$.bookDifference").value("0.00"));
         assertThat(db.queryForObject("SELECT COUNT(*) FROM commands", Integer.class)).isEqualTo(1);
     }
+    private BankReconciliation.Statement statement(String closing) {
+        return new BankReconciliation.Statement(start, end, "0", closing);
+    }
+    @Test void closingSavesSnapshotAndRetriesWithoutDuplicatingRecords() {
+        String source = payment("100", "payment", start);
+        match(row("CLEARED", "100", start), source, "match");
+        var request = statement("100");
+        String id = reconciliation.close(request, "close", "test");
+        assertThat(reconciliation.close(request, "close", "test")).isEqualTo(id);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM bank_reconciliations", Integer.class)).isEqualTo(1);
+        String snapshot = db.queryForObject("SELECT snapshot FROM bank_reconciliations", String.class);
+        assertThat(snapshot).contains("bookBalance", "100.00");
+        assertThat(ledger.state().get("bankReconciliations")).isInstanceOf(java.util.List.class);
+    }
+    @Test void closingRejectsUnmatchedRowsDifferencesAndInvalidOpeningHistory() {
+        row("UNMATCHED", "10", start);
+        assertThatThrownBy(() -> reconciliation.close(statement("10"), "close", "test")).hasMessageContaining("Resolve");
+        assertThatThrownBy(() -> reconciliation.close(statement("11"), "difference", "test")).hasMessageContaining("Resolve");
+        assertThatThrownBy(() -> reconciliation.close(new BankReconciliation.Statement(start, end, "5", "15"), "opening", "test")).hasMessageContaining("zero");
+        assertThatThrownBy(() -> reconciliation.close(new BankReconciliation.Statement(start.plusDays(1), end, "0", "0"), "history", "test")).hasMessageContaining("beginning");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM bank_reconciliations", Integer.class)).isZero();
+    }
+    @Test void closedPeriodsBlockBackdatedPostingsAndAtomicMixedImports() {
+        reconciliation.close(statement("0"), "close", "test");
+        assertThatThrownBy(() -> expense("5", "backdated", end)).hasMessageContaining("closed period");
+        assertThatThrownBy(() -> ledger.postInvoice(new LedgerService.Invoice("demo-customer", "Work", start, end, "10"), "invoice", "test")).hasMessageContaining("closed period");
+        assertThatThrownBy(() -> bank.importCsv(new BankService.Import("Mixed", "transaction_id,date,description,amount\nNEW,2026-11-01,New,5\nOLD,2026-10-31,Old,5"), "mixed", "test")).hasMessageContaining("closed period");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM bank_imports", Integer.class)).isZero();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM expenses", Integer.class)).isZero();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM invoices", Integer.class)).isZero();
+        expense("5", "later", end.plusDays(1));
+    }
+    @Test void closedMatchesAreProtectedButOutstandingPaymentsCanClearNextMonth() {
+        String source = expense("50", "expense", start);
+        String transaction = row("PAID", "-50", start);
+        match(transaction, source, "match");
+        String matchId = db.queryForObject("SELECT id FROM bank_matches", String.class);
+        expense("20", "outstanding", end);
+        reconciliation.close(statement("-50"), "close", "test");
+        assertThatThrownBy(() -> matching.unmatch(transaction, new BankMatching.Unmatch(matchId), "undo", "test")).hasMessageContaining("closed period");
+        String pending = db.queryForObject("SELECT id FROM expenses WHERE amount = 20", String.class);
+        assertThatThrownBy(() -> purchases.reverseExpense(pending, end.plusDays(1), "reverse", "test")).hasMessageContaining("closed period");
+        match(row("LATER", "-20", end.plusDays(1)), pending, "later-match");
+        assertThat(preview("0", "-50").outstandingPayments()).isEqualByComparingTo("20");
+        // An identical export is safe to retry even though its rows are now closed.
+        bank.importCsv(new BankService.Import("Duplicate", "transaction_id,date,description,amount\nPAID,2026-10-01,Statement item,-50"), "duplicate", "test");
+    }
+    @Test void subsequentStatementsCarryBalancesAndOnlyTheLatestCanReopen() {
+        String first = reconciliation.close(statement("0"), "first", "test");
+        var next = new BankReconciliation.Statement(end.plusDays(1), end.plusMonths(1), "0", "0");
+        assertThatThrownBy(() -> reconciliation.close(statement("0"), "overlap", "test")).hasMessageContaining("carry forward");
+        assertThatThrownBy(() -> reconciliation.close(new BankReconciliation.Statement(end.plusDays(2), end.plusMonths(1), "0", "0"), "gap", "test")).hasMessageContaining("carry forward");
+        assertThatThrownBy(() -> reconciliation.close(new BankReconciliation.Statement(end.plusDays(1), end.plusMonths(1), "1", "1"), "balance", "test")).hasMessageContaining("carry forward");
+        String second = reconciliation.close(next, "second", "test");
+        assertThatThrownBy(() -> reconciliation.reopen(first, new BankReconciliation.Reopen(1, "Correction"), "old", "test")).hasMessageContaining("latest");
+        reconciliation.reopen(second, new BankReconciliation.Reopen(1, "Correction"), "reopen-second", "test");
+        assertThatThrownBy(() -> expense("5", "still-closed", end)).hasMessageContaining("closed period");
+        reconciliation.reopen(first, new BankReconciliation.Reopen(1, "Review beginning"), "reopen-first", "test");
+        expense("5", "now-open", end);
+    }
+    @Test void reopeningPreservesSnapshotAndStaleRequestsCannotRemoveAReplacementClose() {
+        String first = reconciliation.close(statement("0"), "close", "test");
+        String snapshot = db.queryForObject("SELECT snapshot FROM bank_reconciliations WHERE id = ?", String.class, first);
+        var request = new BankReconciliation.Reopen(1, "Check source statement");
+        assertThatThrownBy(() -> reconciliation.reopen(first, new BankReconciliation.Reopen(2, "Wrong version"), "stale-version", "test")).hasMessageContaining("latest");
+        assertThatThrownBy(() -> reconciliation.reopen(first, new BankReconciliation.Reopen(1, " "), "blank", "test")).hasMessageContaining("reason");
+        reconciliation.reopen(first, request, "reopen", "test");
+        assertThat(reconciliation.reopen(first, request, "reopen", "test")).isEqualTo(first);
+        String replacement = reconciliation.close(statement("0"), "replacement", "test");
+        assertThatThrownBy(() -> reconciliation.reopen(first, request, "stale", "test")).hasMessageContaining("latest");
+        assertThat(db.queryForObject("SELECT snapshot FROM bank_reconciliations WHERE id = ?", String.class, first)).isEqualTo(snapshot);
+        assertThat(db.queryForObject("SELECT status FROM bank_reconciliations WHERE id = ?", String.class, replacement)).isEqualTo("CLOSED");
+    }
+    @Test void failedCloseAndReopenRollBackRecordsAndCommands() {
+        assertThatThrownBy(() -> reconciliation.close(statement("0"), "bad", "x".repeat(101))).isInstanceOf(org.springframework.dao.DataAccessException.class);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM bank_reconciliations", Integer.class)).isZero();
+        String id = reconciliation.close(statement("0"), "close", "test");
+        assertThatThrownBy(() -> reconciliation.reopen(id, new BankReconciliation.Reopen(1, "Review"), "bad-reopen", "x".repeat(101))).isInstanceOf(org.springframework.dao.DataAccessException.class);
+        assertThat(db.queryForObject("SELECT status FROM bank_reconciliations", String.class)).isEqualTo("CLOSED");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM commands WHERE command_key IN ('bad','bad-reopen')", Integer.class)).isZero();
+    }
+    @Test void competingCloseAndImportCannotChangeAClosedStatement() throws Exception {
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var startSignal = new java.util.concurrent.CountDownLatch(1);
+        try {
+            var close = pool.submit(() -> {
+                startSignal.await();
+                try { reconciliation.close(statement("0"), "close", "test"); return 1; }
+                catch (IllegalArgumentException expected) { return 0; }
+            });
+            var imported = pool.submit(() -> {
+                startSignal.await();
+                try { row("RACE", "10", start); return 1; }
+                catch (IllegalArgumentException expected) { return 0; }
+            });
+            startSignal.countDown();
+            assertThat(close.get() + imported.get()).isEqualTo(1);
+        } finally { pool.shutdownNow(); }
+    }
+    @Test void closeAndReopenEndpointsRequireAuthenticationAndCsrf() throws Exception {
+        String body = "{\"startsOn\":\"2026-10-01\",\"endsOn\":\"2026-10-31\",\"openingBalance\":\"0\",\"closingBalance\":\"0\"}";
+        http.perform(post("/api/bank/reconciliations").with(csrf()).contentType("application/json").content(body).header("Idempotency-Key", "http")).andExpect(status().isUnauthorized());
+        http.perform(post("/api/bank/reconciliations").with(httpBasic("test", "test-only")).contentType("application/json").content(body).header("Idempotency-Key", "http")).andExpect(status().isForbidden());
+        http.perform(post("/api/bank/reconciliations").with(httpBasic("test", "test-only")).with(csrf()).contentType("application/json").content(body).header("Idempotency-Key", "http")).andExpect(status().isOk());
+        String id = db.queryForObject("SELECT id FROM bank_reconciliations", String.class);
+        String reopen = "{\"version\":1,\"reason\":\"Review statement\"}";
+        http.perform(post("/api/bank/reconciliations/" + id + "/reopen").with(httpBasic("test", "test-only")).contentType("application/json").content(reopen).header("Idempotency-Key", "undo")).andExpect(status().isForbidden());
+        http.perform(post("/api/bank/reconciliations/" + id + "/reopen").with(httpBasic("test", "test-only")).with(csrf()).contentType("application/json").content(reopen).header("Idempotency-Key", "undo")).andExpect(status().isOk());
+    }
+
 }

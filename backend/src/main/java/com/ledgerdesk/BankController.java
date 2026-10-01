@@ -18,6 +18,14 @@ public class BankController {
             @RequestBody BankReconciliation.Statement body) {
         return reconciliation.preview(body);
     }
+    @PostMapping("/reconciliations") Map<String, String> close(@RequestBody BankReconciliation.Statement body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", reconciliation.close(body, key, user.getName()));
+    }
+    @PostMapping("/reconciliations/{id}/reopen") Map<String, String> reopen(@PathVariable String id,
+            @RequestBody BankReconciliation.Reopen body, @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", reconciliation.reopen(id, body, key, user.getName()));
+    }
     @PostMapping("/imports/preview") BankService.Preview preview(@RequestBody BankService.Import body) {
         return bank.preview(body);
     }

@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BankReconciliation {
     private final JdbcTemplate db;
+    private final LedgerService ledger;
+    private final com.fasterxml.jackson.databind.ObjectMapper json;
+    public record Reopen(long version, String reason) {}
     public record Statement(LocalDate startsOn, LocalDate endsOn, String openingBalance, String closingBalance) {}
     public record Preview(BigDecimal openingBalance, BigDecimal closingBalance, BigDecimal importedMovement,
             BigDecimal statementDifference, BigDecimal bookBalance, BigDecimal outstandingDeposits,
@@ -19,7 +22,66 @@ public class BankReconciliation {
             List<Map<String, Object>> unmatchedTransactions, List<Map<String, Object>> outstandingEntries,
             List<Map<String, Object>> futureDatedMatches) {}
 
-    public BankReconciliation(JdbcTemplate db) { this.db = db; }
+    public BankReconciliation(JdbcTemplate db, LedgerService ledger, com.fasterxml.jackson.databind.ObjectMapper json) {
+        this.db = db; this.ledger = ledger; this.json = json;
+    }
+
+    @Transactional
+    public String close(Statement statement, String key, String actor) {
+        ledger.lockBusiness();
+        if (statement == null) throw new IllegalArgumentException("Statement details are required.");
+        String hash = ledger.fingerprint(List.of("reconciliation-close", statement));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        // Recalculate under the same lock used by postings, imports and matches.
+        Preview result = preview(statement);
+        var closed = db.queryForList("SELECT * FROM bank_reconciliations WHERE business_id = 1 AND status = 'CLOSED' ORDER BY ends_on DESC");
+        if (closed.isEmpty()) {
+            if (result.openingBalance().signum() != 0)
+                throw new IllegalArgumentException("The first statement must start from zero; opening balance migration is not supported yet.");
+            int earlier = db.queryForObject("SELECT COUNT(*) FROM bank_transactions WHERE business_id = 1 AND posted_on < ?", Integer.class, statement.startsOn())
+                    + db.queryForObject("SELECT COUNT(*) FROM journal_entries WHERE business_id = 1 AND entry_date < ?", Integer.class, statement.startsOn());
+            if (earlier != 0) throw new IllegalArgumentException("The first statement must include the beginning of the recorded books and bank history.");
+        } else {
+            var latest = closed.get(0);
+            LocalDate next = ((java.sql.Date) latest.get("ends_on")).toLocalDate().plusDays(1);
+            if (!statement.startsOn().equals(next) || result.openingBalance().compareTo((BigDecimal) latest.get("closing_balance")) != 0)
+                throw new IllegalArgumentException("Start the day after the latest closed statement and carry forward its closing balance.");
+        }
+        if (result.statementDifference().signum() != 0 || result.bookDifference().signum() != 0
+                || !result.unmatchedTransactions().isEmpty() || !result.futureDatedMatches().isEmpty())
+            throw new IllegalArgumentException("Resolve statement differences, unmatched rows and future-dated matches before closing.");
+        String snapshot;
+        try { snapshot = json.writeValueAsString(result); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException error) { throw new IllegalStateException(error); }
+        String id = ledger.id();
+        db.update("INSERT INTO bank_reconciliations (id, business_id, account_code, starts_on, ends_on, opening_balance, closing_balance, snapshot, status, closed_at, closed_by) VALUES (?, 1, '1000', ?, ?, ?, ?, ?, 'CLOSED', ?, ?)",
+                id, statement.startsOn(), statement.endsOn(), result.openingBalance(), result.closingBalance(), snapshot, java.time.LocalDateTime.now(), actor);
+        ledger.complete(key, hash, id, actor, "BANK_RECONCILIATION_CLOSED");
+        return id;
+    }
+
+    @Transactional
+    public String reopen(String id, Reopen request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("A version and reason are required.");
+        String reason = LedgerService.text(request.reason(), 240, "Reopening reason");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("reconciliation-reopen", id, request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        var closed = db.queryForList("SELECT * FROM bank_reconciliations WHERE business_id = 1 AND status = 'CLOSED' ORDER BY ends_on DESC");
+        if (closed.isEmpty() || !closed.get(0).get("id").equals(id)
+                || ((Number) closed.get(0).get("version")).longValue() != request.version())
+            throw new IllegalArgumentException("Only the latest closed reconciliation can be reopened. Reload the workspace.");
+        db.update("UPDATE bank_reconciliations SET status = 'REOPENED', version = version + 1, reopened_at = ?, reopened_by = ?, reopen_reason = ? WHERE id = ?",
+                java.time.LocalDateTime.now(), actor, reason, id);
+        ledger.complete(key, hash, id, actor, "BANK_RECONCILIATION_REOPENED");
+        return id;
+    }
+
+    static Map<String, Object> readState(JdbcTemplate db) {
+        return Map.of("bankReconciliations", db.queryForList("SELECT * FROM bank_reconciliations WHERE business_id = 1 ORDER BY closed_at DESC, id"));
+    }
 
     private static BigDecimal balance(String value) {
         if (value == null || !value.matches("-?[0-9]{1,12}(\\.[0-9]{1,2})?"))

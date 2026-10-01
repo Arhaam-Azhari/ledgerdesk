@@ -151,6 +151,7 @@ public class PurchaseService {
         var expense = document("expenses", expenseId);
         if (date == null || date.isBefore(((java.sql.Date) expense.get("spent_on")).toLocalDate()))
             throw new IllegalArgumentException("Reversal date must be on or after the expense date.");
+        ledger.requireOpenDate(((java.sql.Date) expense.get("spent_on")).toLocalDate());
         if (!expense.get("status").equals("POSTED")) throw new IllegalArgumentException("This expense is already reversed.");
         if (db.queryForObject("SELECT COUNT(*) FROM bank_matches m JOIN journal_lines l ON l.id = m.line_id JOIN journal_entries e ON e.id = l.entry_id WHERE e.source_id = ?", Integer.class, expenseId) != 0)
             throw new IllegalArgumentException("Unmatch the bank transaction before correcting this expense.");
