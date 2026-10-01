@@ -10,7 +10,14 @@ import org.springframework.web.bind.annotation.*;
 public class BankController {
     private final BankService bank;
     private final BankMatching matching;
-    public BankController(BankService bank, BankMatching matching) { this.bank = bank; this.matching = matching; }
+    private final BankReconciliation reconciliation;
+    public BankController(BankService bank, BankMatching matching, BankReconciliation reconciliation) {
+        this.bank = bank; this.matching = matching; this.reconciliation = reconciliation;
+    }
+    @PostMapping("/reconciliations/preview") BankReconciliation.Preview reconciliationPreview(
+            @RequestBody BankReconciliation.Statement body) {
+        return reconciliation.preview(body);
+    }
     @PostMapping("/imports/preview") BankService.Preview preview(@RequestBody BankService.Import body) {
         return bank.preview(body);
     }
