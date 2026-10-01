@@ -293,7 +293,7 @@ export function Reports({
         </p>
       )}
       {result && (
-        <section className="card">
+        <section className="card report-results">
           <h2>{view}</h2>
           <p>
             <strong>
@@ -415,7 +415,7 @@ export function Reports({
                   ]}
                 />
                 <div className="table-wrap">
-                  <table>
+                  <table className="aging-table">
                     <thead>
                       <tr>
                         <th>Reference</th>
@@ -450,9 +450,8 @@ export function Reports({
               </>
             )}
           <p>
-            CSV exports contain these displayed results and dates. Text that
-            could become a spreadsheet formula is prefixed with an apostrophe;
-            monetary cells remain decimal amounts.
+            Export the displayed results as a CSV file. Report dates are
+            included.
           </p>
         </section>
       )}
