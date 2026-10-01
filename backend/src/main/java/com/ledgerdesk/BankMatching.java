@@ -17,7 +17,7 @@ public class BankMatching {
     private final LedgerService ledger;
     public record Match(String lineId) {}
     public record Unmatch(String matchId) {}
-    private static final String CASH_RECORDS = """
+    static final String CASH_RECORDS = """
         SELECT l.id AS line_id, e.entry_date, e.source_id, l.debit-l.credit AS amount,
             n.number_value AS invoice_number, c.name AS customer_name, i.description AS invoice_description,
             b.reference AS bill_reference, bv.name AS bill_vendor,
@@ -40,7 +40,7 @@ public class BankMatching {
              (x.business_id = 1 AND x.status = 'POSTED'))
         """;
 
-    private static void describe(Map<String, Object> row) {
+    static void describe(Map<String, Object> row) {
         if (row.get("invoice_number") != null)
             row.put("memo", LedgerService.invoiceNumber(((Number) row.get("invoice_number")).longValue()) + " · " + row.get("customer_name") + " · " + row.get("invoice_description"));
         else if (row.get("bill_reference") != null)

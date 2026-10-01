@@ -63,6 +63,7 @@ class BankReconciliationTest {
         assertThat(result.adjustedBankBalance()).isEqualByComparingTo("545");
         assertThat(result.bookDifference()).isEqualByComparingTo("0");
         assertThat(result.outstandingEntries()).hasSize(2);
+        assertThat(result.outstandingEntries()).anySatisfy(entry -> assertThat(entry.get("memo").toString()).contains("INV-", "Design"));
         assertThat(result.unmatchedTransactions()).isEmpty();
         assertThat(db.queryForList("SELECT * FROM journal_lines ORDER BY id")).isEqualTo(before);
     }

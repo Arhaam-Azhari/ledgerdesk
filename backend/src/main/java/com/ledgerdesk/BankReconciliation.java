@@ -102,13 +102,17 @@ public class BankReconciliation {
                 BigDecimal.class, statement.endsOn());
         // A payment cleared next month is still outstanding at this statement's end.
         var outstanding = db.queryForList("""
-            SELECT l.id AS line_id, e.entry_date, e.memo, l.debit-l.credit AS amount
+            SELECT l.id AS line_id, e.entry_date, e.memo, l.debit-l.credit AS amount,
+                cash.invoice_number, cash.customer_name, cash.invoice_description,
+                cash.bill_reference, cash.bill_vendor, cash.expense_description, cash.expense_vendor, cash.kind
             FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
+            LEFT JOIN (%s) cash ON cash.line_id = l.id
             WHERE e.business_id = 1 AND l.account_code = '1000' AND e.entry_date <= ?
               AND NOT EXISTS (SELECT 1 FROM bank_matches m JOIN bank_transactions t ON t.id = m.transaction_id
                   WHERE m.line_id = l.id AND t.posted_on <= ?)
             ORDER BY e.entry_date, l.id
-            """, statement.endsOn(), statement.endsOn());
+            """.formatted(BankMatching.CASH_RECORDS), statement.endsOn(), statement.endsOn());
+        outstanding.forEach(entry -> { if (entry.get("kind") != null) BankMatching.describe(entry); });
         BigDecimal deposits = new BigDecimal("0.00"), payments = new BigDecimal("0.00");
         for (var entry : outstanding) {
             BigDecimal amount = (BigDecimal) entry.get("amount");
