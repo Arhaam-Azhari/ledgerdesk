@@ -15,13 +15,14 @@ This branch is a development checkpoint. The default branch still contains the v
 
 TypeScript checking and the Vite production build passed. Git whitespace checks passed.
 
-The new backend tests and browser workflows have not passed yet. Backend dependency restoration is in progress following a workspace connection interruption. No new screenshots have been published.
+All 45 backend integration tests passed on H2 and all 45 passed on PostgreSQL 17 through Maven on GitHub Actions. The suite consists of the 24 existing invoice tests and 21 purchase tests, with zero failures, errors, or skipped tests in either database run.
+
+Verified source commit: `d03462a792ebf7b92c5d062dbce1ebcb7a2fae3f`. [Backend and browser run](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36913912687). The browser job is still running at this checkpoint. New screenshots have not been published.
 
 ## Remaining before merging
 
-1. Compile and run the backend suite; address failures.
-2. Run all browser workflows and inspect the captured screens.
-3. Update the README, accounting notes, architecture notes, and verification evidence.
-4. Check the PostgreSQL suite on GitHub Actions and merge after all required checks pass.
+1. Run all browser workflows and inspect the captured screens.
+2. Update the README, accounting notes, architecture notes, and verification evidence.
+3. Merge after all required checks pass.
 
 The complete platform still needs bank reconciliation, period reports, roles, and deployment work.
