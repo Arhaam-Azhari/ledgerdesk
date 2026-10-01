@@ -270,6 +270,7 @@ public class LedgerService {
                 "audit", db.queryForList("SELECT * FROM audit_events ORDER BY occurred_at DESC")));
         result.putAll(PurchaseService.readState(db));
         result.putAll(BankService.readState(db));
+        result.putAll(BankMatching.readState(db));
         return result;
     }
 }

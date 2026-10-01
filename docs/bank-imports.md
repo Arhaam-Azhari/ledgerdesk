@@ -33,3 +33,13 @@ Open **Bank imports**, download the fictional example or select a UTF-8 `.csv`, 
 The browser check covers example download, preview without saving, import without changing the ledger, overlapping rows, a changed-ID rejection, broken UTF-8, and use at a 390-pixel width. All seven Chromium workflows and the frontend production build passed in [run 36918096871](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36918096871), source commit `d832b2059b28b03edf3b5560afdbc052bd76be4c`. All 58 backend tests also passed on both databases in that run. The desktop and mobile captures were downloaded and visually inspected.
 
 ![Imported statement transactions and history](screenshots/bank-imports.png)
+
+## Matching backend checkpoint
+
+The matching API compares each statement transaction with posted customer payments, bill payments, or direct expenses in the same business bank account. Amount and direction must agree exactly. Candidates are ordered by date distance; entries within seven days are flagged as nearby. Dates and amounts alone are not proof that two records describe the same event, so matching always requires an explicit selection. Older candidates remain available for reviewed late-clearing transactions.
+
+`GET /api/bank/transactions/{id}/candidates` returns eligible unmatched cash entries. `POST /api/bank/transactions/{id}/match` accepts `lineId`. `POST /api/bank/transactions/{id}/unmatch` accepts the current `matchId`, preventing an old tab from removing a newer match. Writes require authentication, CSRF, and an idempotency key.
+
+A statement row and a ledger cash line can each have only one active match. Match/unmatch events are retained separately from active associations. Neither operation changes journal entries. A matched direct expense must be unmatched before a bookkeeping correction; corrected expenses and their reversal entries are excluded from candidates.
+
+The matching backend adds ten integration tests. Their results are pending at this checkpoint. The browser matching interface and statement reconciliation are still to come.
