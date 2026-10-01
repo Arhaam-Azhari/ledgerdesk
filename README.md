@@ -2,7 +2,7 @@
 
 A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, and statement reconciliation are working milestones. Period reports, additional user roles, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, and dated financial reports are working milestones. Adjustments, additional user roles, and deployment remain on the roadmap.
 
 ## Working now
 
@@ -74,7 +74,7 @@ Continue with the purchase side:
 6. On **Vendors**, Harbor Supply shows $600 billed, $200 paid, and $400 outstanding. The direct software expense is already paid and contributes no payable balance.
 7. If these are the only transactions, the overview shows $450 bank, $500 receivables, $400 payables, $1,200 revenue, and $650 expenses. Trial balance totals are $1,600 on each side.
 
-The figures include all recorded dates, including future dates. The overview and trial balance are all-time ledger balances. Reconciliation uses the chosen statement end date; opening balance migration and period financial reports are later milestones. Spending from an empty demo ledger can produce a negative recorded bank balance. This program records transactions; it does not move money.
+The figures include all recorded dates, including future dates. The overview and trial balance are all-time ledger balances. Reconciliation uses the chosen statement end date; opening balance migration remains a later milestone. The Reports screen provides a separate dated view. Spending from an empty demo ledger can produce a negative recorded bank balance. This program records transactions; it does not move money.
 
 ## Import, match, and reconcile the statement
 
@@ -179,11 +179,11 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 86 backend integration tests passed on each of H2 and PostgreSQL 17, and all nine Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 101 backend integration tests passed on each of H2 and PostgreSQL 17, and all ten Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
-1. Date-based financial statements, aging reports, adjustments, and a broader accounting period workflow.
+1. Journal adjustments, owner contributions and drawings, and a broader accounting period workflow.
 2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
 The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
@@ -195,3 +195,9 @@ The useful problem here is tracing a sale or purchase from its document through 
 The implementation demonstrates exact monetary calculations, SQL relationships and constraints, transaction boundaries and rollback, concurrency control, request idempotency, optimistic draft version checks, database migrations, PDF generation, file validation, protected API writes, statement cutoffs, reconciliation snapshots, closed-period controls, and browser testing. The accounting notes explain each posting; the architecture notes explain why these techniques were chosen.
 
 Further milestones will extend those foundations into a complete service-business accounting product.
+
+## Financial reports
+
+Open **Reports**, choose an inclusive start/end date, and run the reports. The five views cover profit and loss, balance sheet, trial balance, customer aging and vendor aging. Export CSV downloads the displayed view with its dates and currency. Changing a date clears the result so an old report cannot be exported with new dates.
+
+Profit and loss covers the selected period; balance sheet, trial balance and aging include earlier records through the end date. A payment recorded after that date does not erase the historical outstanding balance. Reports read the posted books without changing them. See [report calculations, instructions and screenshots](docs/reports.md) for worked figures, scope and verification.
