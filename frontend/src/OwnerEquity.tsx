@@ -51,7 +51,7 @@ export function OwnerEquity({ data, busy, act }: Props) {
           <small>Contributions less withdrawals, excluding earnings</small>
         </article>
       </section>
-      <section className="panel">
+      <section className="card">
         <h2>Record an owner transfer</h2>
         <p>
           Record a transfer that has already happened. This does not move money.
@@ -118,13 +118,13 @@ export function OwnerEquity({ data, busy, act }: Props) {
           </fieldset>
         </form>
       </section>
-      <section className="panel">
+      <section className="card">
         <h2>Owner transfer history</h2>
         {data.equityTransactions.length === 0 ? (
           <p>No owner transfers recorded yet.</p>
         ) : (
           <div className="table-wrap">
-            <table>
+            <table className="owner-history">
               <thead>
                 <tr>
                   <th>Date</th>
