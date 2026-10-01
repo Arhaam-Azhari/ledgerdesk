@@ -42,7 +42,7 @@ The matching API compares each statement transaction with posted customer paymen
 
 A statement row and a ledger cash line can each have only one active match. Match/unmatch events are retained separately from active associations. Neither operation changes journal entries. A matched direct expense must be unmatched before a bookkeeping correction; corrected expenses and their reversal entries are excluded from candidates.
 
-The matching backend adds ten integration tests. All 68 backend tests passed on H2 and all 68 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36919491993](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36919491993), source commit `5f4d970314bbc2ff05783ac83a40ceef3de391a5`. The browser matching interface is implemented; its new workflow checks are pending. Statement reconciliation is still to come.
+The matching backend adds ten integration tests. All 68 backend tests passed on H2 and all 68 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36919491993](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36919491993), source commit `5f4d970314bbc2ff05783ac83a40ceef3de391a5`. The browser matching interface and its checks are complete. Statement reconciliation is still to come.
 
 ## Browser matching workflow
 
@@ -51,3 +51,7 @@ Open **Bank matching** after importing a statement. **Review entries** shows unm
 **Undo match** keeps the original payment or expense and adds a removal event to match history. If a refresh fails after confirming, retry the same selection; the original request key prevents a second matching event. A missing candidate means the amount/direction does not match an eligible entry, the entry has already been matched, or the bookkeeping record needs correction.
 
 The added browser workflow prepares fictional cash movements, matches all three supported types, checks the no-candidate state, cancels and confirms undo, retries after an interrupted refresh, compares ledger balances before and after, and checks narrow-screen layout.
+
+The matching screen passed all eight Chromium workflows and the frontend production build in [run 36921390798](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36921390798), source commit `79713ea92bd24ad70ea617beccb37ba1e4177f32`. All 68 backend tests also passed on H2 and PostgreSQL 17. Screenshots were visually inspected; review caught an internal payment ID being displayed, which was replaced with the invoice number, customer, and description before this successful rerun.
+
+![Matched transactions and retained undo history](screenshots/bank-matching.png)
