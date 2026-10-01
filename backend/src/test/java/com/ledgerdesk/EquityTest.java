@@ -110,6 +110,7 @@ class EquityTest {
         assertThat(preview.outstandingDeposits()).isEqualByComparingTo("1000");
         assertThat(preview.bookDifference()).isEqualByComparingTo("0");
         assertThat(preview.outstandingEntries()).hasSize(1);
+        assertThat(preview.outstandingEntries().get(0).get("memo").toString()).contains("Owner contribution", "Personal savings");
     }
     @Test void endpointRequiresAuthenticationCsrfAndARequestKey() throws Exception {
         String body = "{\"kind\":\"CONTRIBUTION\",\"postedOn\":\"2026-10-01\",\"memo\":\"Personal savings\",\"amount\":\"100\"}";
