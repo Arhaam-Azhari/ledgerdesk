@@ -231,4 +231,22 @@ class BankReconciliationTest {
         http.perform(post("/api/bank/reconciliations/" + id + "/reopen").with(httpBasic("test", "test-only")).with(csrf()).contentType("application/json").content(reopen).header("Idempotency-Key", "undo")).andExpect(status().isOk());
     }
 
+    @Test void closedDatesRollBackCustomerPaymentsBillPaymentsAndDraftPosting() {
+        var invoice = new LedgerService.Invoice("demo-customer", "Design", start, end, "100");
+        String invoiceId = ledger.postInvoice(invoice, "invoice", "test");
+        String draft = ledger.createDraft(invoice, "draft", "test");
+        var bill = new PurchaseService.Bill(vendor, "SUP-1", "Supplies", start, end, "5000", "80");
+        String billId = purchases.postBill(bill, "bill", "test");
+        reconciliation.close(statement("0"), "close", "test");
+        assertThatThrownBy(() -> ledger.recordPayment(invoiceId, new LedgerService.Payment(end, "10"), "customer-pay", "test")).hasMessageContaining("closed period");
+        assertThatThrownBy(() -> purchases.payBill(billId, new LedgerService.Payment(end, "10"), "bill-pay", "test")).hasMessageContaining("closed period");
+        assertThatThrownBy(() -> ledger.postDraft(draft, 0, "post-draft", "test")).hasMessageContaining("closed period");
+        assertThatThrownBy(() -> purchases.voidBill(billId, end, "void-bill", "test")).hasMessageContaining("closed period");
+        assertThat(db.queryForObject("SELECT paid FROM invoices WHERE id = ?", java.math.BigDecimal.class, invoiceId)).isEqualByComparingTo("0");
+        assertThat(db.queryForObject("SELECT paid FROM bills WHERE id = ?", java.math.BigDecimal.class, billId)).isEqualByComparingTo("0");
+        assertThat(db.queryForObject("SELECT posted_invoice_id FROM invoice_drafts WHERE id = ?", String.class, draft)).isNull();
+        ledger.recordPayment(invoiceId, new LedgerService.Payment(end.plusDays(1), "10"), "later-pay", "test");
+        purchases.payBill(billId, new LedgerService.Payment(end.plusDays(1), "10"), "later-bill-pay", "test");
+    }
+
 }
