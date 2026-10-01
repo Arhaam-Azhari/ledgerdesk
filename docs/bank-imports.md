@@ -30,4 +30,6 @@ The backend checks cover parsing, signed amounts, duplicate and overlapping expo
 
 Open **Bank imports**, download the fictional example or select a UTF-8 `.csv`, and enter an import label. **Preview import** validates the complete file and shows which rows are new and which will be skipped. **Confirm import** saves the validated request and refreshes the statement transactions and import history. Changing the selected file or label clears the preview. Invalid UTF-8 is rejected before sending the file to the backend.
 
-The browser check covers example download, preview without saving, import without changing the ledger, overlapping rows, a changed-ID rejection, broken UTF-8, and use at a 390-pixel width. That check is pending at this checkpoint.
+The browser check covers example download, preview without saving, import without changing the ledger, overlapping rows, a changed-ID rejection, broken UTF-8, and use at a 390-pixel width. All seven Chromium workflows and the frontend production build passed in [run 36918096871](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36918096871), source commit `d832b2059b28b03edf3b5560afdbc052bd76be4c`. All 58 backend tests also passed on both databases in that run. The desktop and mobile captures were downloaded and visually inspected.
+
+![Imported statement transactions and history](screenshots/bank-imports.png)
