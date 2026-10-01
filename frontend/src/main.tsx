@@ -1,3 +1,4 @@
+import { OwnerEquity, type EquityState } from "./OwnerEquity";
 import { Reports, type ReportData } from "./Reports";
 import {
   BankReconciliation,
@@ -75,7 +76,8 @@ type Draft = {
   version: number;
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
-type State = PurchaseState &
+type State = EquityState &
+  PurchaseState &
   BankState &
   MatchState &
   ReconciliationState & {
@@ -433,6 +435,7 @@ function App() {
     "Bank matching",
     "Reconciliation",
     "Reports",
+    "Owner transfers",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -556,7 +559,7 @@ function App() {
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
-            <span className="demo-tag">Milestone 04 · Fictional business</span>
+            <span className="demo-tag">Milestone 06 · Fictional business</span>
             <button
               className="secondary"
               disabled={busy}
@@ -599,7 +602,7 @@ function App() {
                 <span>Recorded bank balance</span>
                 <h2>{dollars(balance("1000"))}</h2>
                 <small>
-                  Customer receipts less bill payments and direct expenses
+                  Customer receipts and owner transfers, less recorded spending
                 </small>
               </article>
               <article>
@@ -1193,6 +1196,9 @@ function App() {
             upload={uploadReceipt}
             download={downloadReceipt}
           />
+        )}
+        {page === "Owner transfers" && (
+          <OwnerEquity data={data} busy={busy} act={act} />
         )}
         {page === "Bank imports" && (
           <Bank
