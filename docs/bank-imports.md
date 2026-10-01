@@ -1,6 +1,6 @@
 # Bank import sprint
 
-This development branch adds CSV import and matching in the browser and backend. A [read-only statement reconciliation preview](bank-reconciliation.md) is available in the backend. Its browser interface and close/reopen workflow are still to come. Importing statement rows does not post accounting entries or change the recorded bank balance.
+This development branch adds CSV import and matching in the browser and backend. A [read-only statement reconciliation preview](bank-reconciliation.md) is available in the backend. Closing and reopening are also available in the backend; the reconciliation browser interface is still to come. Importing statement rows does not post accounting entries or change the recorded bank balance.
 
 ## Accepted format
 
@@ -42,7 +42,7 @@ The matching API compares each statement transaction with posted customer paymen
 
 A statement row and a ledger cash line can each have only one active match. Match/unmatch events are retained separately from active associations. Neither operation changes journal entries. A matched direct expense must be unmatched before a bookkeeping correction; corrected expenses and their reversal entries are excluded from candidates.
 
-The matching backend adds ten integration tests. All 68 backend tests passed on H2 and all 68 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36919491993](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36919491993), source commit `5f4d970314bbc2ff05783ac83a40ceef3de391a5`. The browser matching interface and its checks are complete. The statement preview is documented separately; saving and closing a reconciliation is still to come.
+The matching backend adds ten integration tests. All 68 backend tests passed on H2 and all 68 passed on PostgreSQL 17, with zero failures, errors, or skipped tests in [run 36919491993](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36919491993), source commit `5f4d970314bbc2ff05783ac83a40ceef3de391a5`. The browser matching interface and its checks are complete. The statement preview is documented separately; saving, closing, and reopening are now available in the backend.
 
 ## Browser matching workflow
 
