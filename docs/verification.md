@@ -72,4 +72,4 @@ The [first milestone GitHub run](https://github.com/Arhaam-Azhari/ledgerdesk/act
 
 ## Release scope
 
-The purchases milestone is currently on the development branch. The default branch remains the verified invoice milestone until the documentation and screenshot follow-up are complete. There is no hosted application deployment. Bank reconciliation, period reports, separate roles, backups, and deployment hardening remain on the roadmap. The tests cover the workflows described here; they are not a guarantee for every possible edge case or production security.
+This is the verified local invoicing and purchases milestone, published as source code. There is no hosted application deployment. Bank reconciliation, period reports, separate roles, backups, and deployment hardening remain on the roadmap. The tests cover the workflows described here; they are not a guarantee for every possible edge case or production security.
