@@ -1,3 +1,4 @@
+import { BankReconciliation, type ReconciliationState, type ReconciliationPreview, type Statement } from "./BankReconciliation";
 import {
   BankMatching,
   type MatchState,
@@ -69,7 +70,7 @@ type Draft = {
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
 type State = PurchaseState &
-  BankState & MatchState & {
+  BankState & MatchState & ReconciliationState & {
     business: string;
     currency: string;
     customers: Customer[];
@@ -170,6 +171,18 @@ function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function previewReconciliation(body: Statement): Promise<ReconciliationPreview | null> {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const result = await api("/api/bank/reconciliations/preview", body);
+      requests.current.delete("/api/bank/reconciliations/preview" + JSON.stringify(body));
+      return result;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not preview the statement.");
+      return null;
+    } finally { setBusy(false); }
   }
 
   async function previewBank(body: BankRequest): Promise<BankPreview | null> {
@@ -377,6 +390,7 @@ function App() {
     "Expenses",
     "Bank imports",
     "Bank matching",
+    "Reconciliation",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -1158,6 +1172,7 @@ function App() {
             act={act}
           />
         )}
+        {page === "Reconciliation" && <BankReconciliation data={data} busy={busy} preview={previewReconciliation} act={act} />}
         {page === "Activity" && (
           <section className="card">
             <h2>Recorded actions</h2>
