@@ -1,0 +1,84 @@
+import React, { useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import './style.css';
+
+type Customer = { id: string; name: string; email: string };
+type Invoice = { id: string; customer_name: string; description: string; issued_on: string; due_on: string; amount: string; paid: string; status: string };
+type Trial = { code: string; name: string; debits: string; credits: string };
+type Line = { entry_id: string; entry_date: string; memo: string; name: string; debit: string; credit: string };
+type Audit = { id: string; occurred_at: string; actor: string; action: string; record_id: string };
+type Payment = { id: string; invoice_id: string; paid_on: string; amount: string };
+type State = { business: string; currency: string; customers: Customer[]; invoices: Invoice[]; trialBalance: Trial[]; ledger: Line[]; audit: Audit[]; payments: Payment[] };
+const today = () => new Date().toLocaleDateString('en-CA');
+function cents(value: string): bigint {
+  const [whole, fraction = ''] = String(value).split('.');
+  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));
+}
+function dollars(value: bigint): string {
+  const n = value < 0n ? -value : value;
+  return `${value < 0n ? '-' : ''}$${(n / 100n).toLocaleString('en-US')}.${String(n % 100n).padStart(2, '0')}`;
+}
+
+function App() {
+  const [credentials, setCredentials] = useState('');
+  const [data, setData] = useState<State | null>(null);
+  const [page, setPage] = useState('Overview');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false);
+  const requests = useRef(new Map<string, string>());
+
+  async function api(path: string, body?: object, auth = credentials) {
+    const headers: Record<string, string> = { Authorization: `Basic ${auth}` };
+    if (body) {
+      const csrfResponse = await fetch('/api/csrf', { credentials: 'same-origin' });
+      if (!csrfResponse.ok) throw new Error('Could not obtain a request token. Try again.');
+      const csrf = await csrfResponse.json();
+      headers[csrf.headerName] = csrf.token;
+      headers['Content-Type'] = 'application/json';
+      const signature = path + JSON.stringify(body);
+      // Keep the same key after a connection failure, when posting may have succeeded.
+      if (!requests.current.has(signature)) requests.current.set(signature, crypto.randomUUID());
+      headers['Idempotency-Key'] = requests.current.get(signature)!;
+    }
+    const response = await fetch(path, { method: body ? 'POST' : 'GET', headers, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined });
+    if (!response.ok) {
+      const details = await response.json().catch(() => ({}));
+      throw new Error(response.status === 401 ? 'Check your username and password.' : details.message || 'The request could not be completed.');
+    }
+    const result = await response.json();
+    if (body) requests.current.delete(path + JSON.stringify(body));
+    return result;
+  }
+
+  async function refresh(auth = credentials) { setData(await api('/api/state', undefined, auth)); }
+  async function act(path: string, body: object, success: string, form?: HTMLFormElement) {
+    setBusy(true); setError(''); setNotice('');
+    try { await api(path, body); await refresh(); setNotice(success); form?.reset(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong.'); }
+    finally { setBusy(false); }
+  }
+
+  if (!data) return <main className="login"><div className="login-card"><div className="logo">L<span>Ledgerdesk</span></div><p className="eyebrow">FIRST WORKING MILESTONE</p><h1>Books that explain<br/>where the money went.</h1><p>Invoices, payments, and the entries behind every balance.</p><form onSubmit={async e => {
+    e.preventDefault(); setBusy(true); setError(''); const f = new FormData(e.currentTarget);
+    const auth = btoa(`${f.get('username')}:${f.get('password')}`);
+    try { await refresh(auth); setCredentials(auth); } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
+  }}><label>Username<input name="username" autoComplete="username" required /></label><label>Password<input name="password" type="password" autoComplete="current-password" required /></label><button disabled={busy}>{busy ? 'Opening workspace…' : 'Open workspace →'}</button></form>{error && <p role="alert" className="error">{error}</p>}<small>Local demo: demo / demo-local-only. Use fictional data.</small></div></main>;
+
+  const balance = (code: string) => { const a = data.trialBalance.find(a => a.code === code); return a ? cents(a.debits) - cents(a.credits) : 0n; };
+  const nav = ['Overview', 'Invoices', 'Customers', 'General ledger', 'Trial balance', 'Activity'];
+  const unpaid = data.invoices.filter(i => i.status === 'POSTED' && cents(i.amount) > cents(i.paid));
+  function invoiceTable(items: Invoice[]) {
+    return <div className="table-wrap"><table><thead><tr><th>Customer / work</th><th>Due</th><th>Amount</th><th>Outstanding</th><th>Status</th></tr></thead><tbody>{items.map(i => <tr key={i.id}><td><strong>{i.customer_name}</strong><small>{i.description}</small></td><td>{i.due_on}</td><td>{dollars(cents(i.amount))}</td><td>{dollars(i.status === 'VOID' ? 0n : cents(i.amount) - cents(i.paid))}</td><td><span className={`badge ${i.status === 'VOID' ? 'muted' : ''}`}>{i.status === 'VOID' ? 'Void' : cents(i.paid) === cents(i.amount) ? 'Paid' : cents(i.paid) > 0n ? 'Part paid' : 'Unpaid'}</span></td></tr>)}</tbody></table>{!items.length && <p className="empty">No invoices yet. Post your first invoice to begin.</p>}</div>;
+  }
+
+  return <div className="shell"><aside><div className="logo">L<span>Ledgerdesk</span></div><p className="workspace">NORTHLINE DESIGN STUDIO</p><nav>{nav.map(n => <button key={n} className={page === n ? 'active' : ''} onClick={() => { setPage(n); setNotice(''); setError(''); }}>{n}</button>)}</nav><div className="sidebar-bottom"><span className="dot"/>Local workspace<br/><small>USD · Accrual accounting</small><button onClick={() => { setData(null); setCredentials(''); requests.current.clear(); }}>Lock workspace</button></div></aside><main><header><div><p className="eyebrow">NORTHLINE / ACCOUNTING</p><h1>{page}</h1></div><span className="demo-tag">Milestone 01 · Fictional business</span></header>{error && <div className="error" role="alert">{error}</div>}{notice && <div className="notice" role="status">{notice}</div>}
+    {page === 'Overview' && <><p className="intro">A clear view of the invoices and payments recorded so far.</p><section className="metrics"><article><span>Recorded bank balance</span><h2>{dollars(balance('1000'))}</h2><small>Payments recorded in this workspace</small></article><article><span>Accounts receivable</span><h2>{dollars(balance('1100'))}</h2><small>{unpaid.length} {unpaid.length === 1 ? 'invoice' : 'invoices'} with an open balance</small></article><article><span>Recorded service revenue</span><h2>{dollars(-balance('4000'))}</h2><small>All posted invoices, less reversals</small></article></section><section className="card"><div className="section-heading"><div><h2>Waiting for payment</h2><p>Follow the balance from invoice to payment.</p></div><button onClick={() => setPage('Invoices')}>Manage invoices →</button></div>{invoiceTable(unpaid)}</section><section className="note"><h3>Cash and revenue tell different stories.</h3><p>Post a $1,200 invoice and record a $700 payment: revenue is $1,200, bank increases by $700, and the customer still owes $500. These are all-time ledger balances, not bank-statement reconciliation or period financial statements.</p></section></>}
+    {page === 'Invoices' && <><div className="two-columns"><section className="card"><h2>Post an invoice</h2><p>Posting records receivables and service revenue.</p><form onSubmit={e => { e.preventDefault(); const form = e.currentTarget; const f = new FormData(form); void act('/api/invoices', Object.fromEntries(f), 'Invoice posted. The ledger is updated.', form); }}><label>Customer<select name="customerId" required>{data.customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Description<input name="description" maxLength={240} placeholder="Brand identity design" required /></label><div className="form-row"><label>Invoice date<input type="date" name="issuedOn" defaultValue={today()} required /></label><label>Due date<input type="date" name="dueOn" defaultValue={today()} required /></label></div><label>Amount (USD)<input name="amount" inputMode="decimal" placeholder="1200.00" pattern="[0-9]+(\.[0-9]{1,2})?" required /></label><button disabled={busy}>Post invoice</button></form></section><section className="card"><h2>Record a payment</h2><p>A payment reduces receivables; it does not earn revenue twice.</p><form onSubmit={e => { e.preventDefault(); const form = e.currentTarget; const f = new FormData(form); void act(`/api/invoices/${f.get('invoiceId')}/payments`, { amount: f.get('amount'), paidOn: f.get('paidOn') }, 'Payment recorded.', form); }}><label>Open invoice<select name="invoiceId" required>{unpaid.map(i => <option key={i.id} value={i.id}>{i.customer_name} · {i.description} · {dollars(cents(i.amount) - cents(i.paid))}</option>)}</select></label><label>Payment date<input name="paidOn" type="date" defaultValue={today()} required /></label><label>Amount (USD)<input name="amount" inputMode="decimal" placeholder="700.00" pattern="[0-9]+(\.[0-9]{1,2})?" required /></label><button disabled={busy || !unpaid.length}>Record payment</button></form></section></div><section className="card"><h2>All invoices</h2>{invoiceTable(data.invoices)}</section><section className="card"><h2>Correct an unpaid invoice</h2><p>Voiding keeps the original entry and posts a reversal. Paid invoices require a future credit/refund workflow.</p><form className="inline-form" onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); if (window.confirm('Void this invoice and post a reversal?')) void act(`/api/invoices/${f.get('invoiceId')}/void`, { date: f.get('date') }, 'Invoice voided. Original entries remain in the ledger.'); }}><label>Unpaid invoice<select name="invoiceId" required>{unpaid.filter(i => cents(i.paid) === 0n).map(i => <option key={i.id} value={i.id}>{i.customer_name} · {i.description}</option>)}</select></label><label>Reversal date<input name="date" type="date" defaultValue={today()} required /></label><button className="secondary" disabled={busy || !unpaid.some(i => cents(i.paid) === 0n)}>Void invoice</button></form></section><section className="card"><h2>Payment history</h2><table><thead><tr><th>Date</th><th>Invoice</th><th>Amount</th></tr></thead><tbody>{data.payments.map(p => <tr key={p.id}><td>{p.paid_on}</td><td>{data.invoices.find(i => i.id === p.invoice_id)?.description}</td><td>{dollars(cents(p.amount))}</td></tr>)}</tbody></table></section></>}
+    {page === 'Customers' && <><section className="card"><h2>Add a customer</h2><form className="inline-form" onSubmit={e => { e.preventDefault(); const form = e.currentTarget; void act('/api/customers', Object.fromEntries(new FormData(form)), 'Customer added.', form); }}><label>Name<input name="name" maxLength={120} required /></label><label>Email<input name="email" type="email" maxLength={200} required /></label><button disabled={busy}>Add customer</button></form></section><section className="card"><table><thead><tr><th>Customer</th><th>Email</th></tr></thead><tbody>{data.customers.map(c => <tr key={c.id}><td>{c.name}</td><td>{c.email}</td></tr>)}</tbody></table></section></>}
+    {page === 'General ledger' && <section className="card"><h2>Posted entries</h2><p>Every invoice, payment, and reversal has equal debits and credits.</p><div className="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Account</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{data.ledger.map((l, index) => <tr key={`${l.entry_id}-${index}`}><td>{l.entry_date}</td><td>{l.memo}</td><td>{l.name}</td><td>{dollars(cents(l.debit))}</td><td>{dollars(cents(l.credit))}</td></tr>)}</tbody></table></div>{!data.ledger.length && <p className="empty">Post an invoice to create the first journal entry.</p>}</section>}
+    {page === 'Trial balance' && <section className="card"><h2>All-time trial balance</h2><p>Net account balances from every posted entry in this workspace.</p><table><thead><tr><th>Account</th><th>Debit balance</th><th>Credit balance</th></tr></thead><tbody>{data.trialBalance.map(a => { const net = cents(a.debits) - cents(a.credits); return <tr key={a.code}><td>{a.code} · {a.name}</td><td>{dollars(net > 0n ? net : 0n)}</td><td>{dollars(net < 0n ? -net : 0n)}</td></tr>; })}</tbody><tfoot><tr><th>Total</th><th>{dollars(data.trialBalance.reduce((s, a) => s + (cents(a.debits) > cents(a.credits) ? cents(a.debits) - cents(a.credits) : 0n), 0n))}</th><th>{dollars(data.trialBalance.reduce((s, a) => s + (cents(a.credits) > cents(a.debits) ? cents(a.credits) - cents(a.debits) : 0n), 0n))}</th></tr></tfoot></table></section>}
+    {page === 'Activity' && <section className="card"><h2>Recorded actions</h2><p>Created within the same transaction as the accounting change.</p><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Record</th></tr></thead><tbody>{data.audit.map(a => <tr key={a.id}><td>{a.occurred_at.replace('T', ' ').slice(0, 19)}</td><td>{a.actor}</td><td>{a.action.toLowerCase().replaceAll('_', ' ')}</td><td><code>{a.record_id.slice(0, 8)}</code></td></tr>)}</tbody></table></section>}
+  </main></div>;
+}
+createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

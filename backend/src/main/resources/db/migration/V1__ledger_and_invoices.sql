@@ -1,0 +1,14 @@
+CREATE TABLE businesses (id BIGINT PRIMARY KEY, name VARCHAR(120) NOT NULL, currency CHAR(3) NOT NULL);
+INSERT INTO businesses VALUES (1, 'Northline Design Studio', 'USD');
+CREATE TABLE accounts (code VARCHAR(4) PRIMARY KEY, name VARCHAR(80) NOT NULL, kind VARCHAR(12) NOT NULL);
+INSERT INTO accounts VALUES ('1000', 'Business bank', 'ASSET'), ('1100', 'Accounts receivable', 'ASSET'), ('4000', 'Service revenue', 'REVENUE');
+CREATE TABLE customers (id VARCHAR(36) PRIMARY KEY, business_id BIGINT NOT NULL REFERENCES businesses(id), name VARCHAR(120) NOT NULL, email VARCHAR(200) NOT NULL);
+CREATE TABLE invoices (id VARCHAR(36) PRIMARY KEY, business_id BIGINT NOT NULL REFERENCES businesses(id), customer_id VARCHAR(36) NOT NULL REFERENCES customers(id), description VARCHAR(240) NOT NULL, issued_on DATE NOT NULL, due_on DATE NOT NULL, amount NUMERIC(14,2) NOT NULL CHECK (amount > 0), paid NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (paid >= 0 AND paid <= amount), status VARCHAR(12) NOT NULL CHECK (status IN ('POSTED', 'VOID')), CHECK (due_on >= issued_on));
+CREATE TABLE journal_entries (id VARCHAR(36) PRIMARY KEY, business_id BIGINT NOT NULL REFERENCES businesses(id), entry_date DATE NOT NULL, memo VARCHAR(300) NOT NULL, source_id VARCHAR(36) NOT NULL);
+CREATE TABLE journal_lines (id VARCHAR(36) PRIMARY KEY, entry_id VARCHAR(36) NOT NULL REFERENCES journal_entries(id), account_code VARCHAR(4) NOT NULL REFERENCES accounts(code), debit NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (debit >= 0), credit NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (credit >= 0), CHECK ((debit > 0 AND credit = 0) OR (credit > 0 AND debit = 0)));
+CREATE TABLE payments (id VARCHAR(36) PRIMARY KEY, invoice_id VARCHAR(36) NOT NULL REFERENCES invoices(id), paid_on DATE NOT NULL, amount NUMERIC(14,2) NOT NULL CHECK (amount > 0));
+CREATE TABLE commands (command_key VARCHAR(100) PRIMARY KEY, fingerprint VARCHAR(64) NOT NULL, result_id VARCHAR(36) NOT NULL);
+CREATE TABLE audit_events (id VARCHAR(36) PRIMARY KEY, occurred_at TIMESTAMP NOT NULL, actor VARCHAR(100) NOT NULL, action VARCHAR(40) NOT NULL, record_id VARCHAR(36) NOT NULL);
+CREATE INDEX journal_lines_entry_idx ON journal_lines(entry_id);
+CREATE INDEX invoices_customer_idx ON invoices(customer_id);
+INSERT INTO customers VALUES ('demo-customer', 1, 'Maple Coffee Co.', 'accounts@example.com');

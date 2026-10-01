@@ -1,0 +1,38 @@
+import { test, expect } from '@playwright/test';
+
+test('post an invoice, record a partial payment, and inspect balanced entries', async ({ page, request }) => {
+  await expect.poll(async () => request.get('/api/csrf').then(r => r.status()).catch(() => 0), { timeout: 20000 }).toBe(200);
+  await page.goto('/');
+  await page.getByLabel('Username').fill('demo');
+  await page.getByLabel('Password', { exact: true }).fill('demo-local-only');
+  await page.getByRole('button', { name: 'Open workspace' }).click();
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Invoices', exact: true }).click();
+  const invoiceForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Post invoice', exact: true }) });
+  const description = `Brand identity ${Date.now()}`;
+  await invoiceForm.getByLabel('Description').fill(description);
+  await invoiceForm.getByLabel('Invoice date').fill('2026-09-01');
+  await invoiceForm.getByLabel('Due date').fill('2026-09-30');
+  await invoiceForm.getByLabel('Amount (USD)').fill('1200');
+  await invoiceForm.getByRole('button', { name: 'Post invoice', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Invoice posted');
+  const row = page.locator('section').filter({ has: page.getByRole('heading', { name: 'All invoices', exact: true }) }).getByRole('row').filter({ hasText: description });
+  await expect(row).toContainText('$1,200.00');
+  const paymentForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Record payment', exact: true }) });
+  const option = await paymentForm.getByLabel('Open invoice').locator('option').filter({ hasText: description }).getAttribute('value');
+  await paymentForm.getByLabel('Open invoice').selectOption(option!);
+  await paymentForm.getByLabel('Payment date').fill('2026-09-03');
+  await paymentForm.getByLabel('Amount (USD)').fill('700');
+  await paymentForm.getByRole('button', { name: 'Record payment', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Payment recorded');
+  await expect(row).toContainText('$500.00');
+  await expect(row).toContainText('Part paid');
+  await page.getByRole('button', { name: 'General ledger', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: description })).toHaveCount(2);
+  await page.getByRole('button', { name: 'Trial balance', exact: true }).click();
+  const totals = page.locator('tfoot th');
+  await expect(totals.nth(1)).toHaveText(await totals.nth(2).innerText());
+  await page.screenshot({ path: 'test-results/trial-balance.png', fullPage: true });
+  await page.getByRole('button', { name: 'Overview', exact: true }).click();
+  await page.screenshot({ path: 'test-results/overview.png', fullPage: true });
+});
