@@ -82,4 +82,10 @@ The [first milestone GitHub run](https://github.com/Arhaam-Azhari/ledgerdesk/act
 
 ## Release scope
 
-This is the verified local invoicing, purchases and bank reconciliation milestone, published as source code. There is no hosted application deployment. Period financial reports, separate roles, backups, and deployment hardening remain on the roadmap. The tests cover the workflows described here; they are not a guarantee for every possible edge case or production security.
+This is the verified local invoicing, purchases and bank reconciliation milestone, published as source code. There is no hosted application deployment. Separate roles, backups, and deployment hardening remain on the roadmap. The later financial reporting checkpoint is recorded below. The tests cover the workflows described here; they are not a guarantee for every possible edge case or production security.
+
+## Financial reporting checkpoint
+
+[Run 36939023042](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36939023042), source `be64096a897e080169c5fe38f583cbfc371601ee`, passed 101 integration tests on each of H2 and PostgreSQL 17, the frontend production build, and ten Chromium workflows. The additional backend checks cover dated statements, historical aging and balance-sheet consistency. The isolated reporting browser workflow checks all five views and CSV downloads, historical payments, request failure/retry, stale-result clearing and mobile layout.
+
+The desktop and mobile captures were downloaded from that run and reviewed. [Reporting notes](reports.md) include those captures and reproduction instructions. These reporting checks extend the bank checkpoint above; adjustments, roles, backups and deployment remain future work.

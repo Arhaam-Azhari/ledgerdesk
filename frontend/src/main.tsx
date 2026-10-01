@@ -1,3 +1,4 @@
+import { Reports, type ReportData } from "./Reports";
 import {
   BankReconciliation,
   type ReconciliationState,
@@ -173,6 +174,27 @@ function App() {
         error instanceof Error
           ? error.message
           : "Could not load recorded entries.",
+      );
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadReports(
+    start: string,
+    end: string,
+  ): Promise<ReportData | null> {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      return await api(
+        `/api/reports?startsOn=${encodeURIComponent(start)}&endsOn=${encodeURIComponent(end)}`,
+      );
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Could not load reports.",
       );
       return null;
     } finally {
@@ -410,6 +432,7 @@ function App() {
     "Bank imports",
     "Bank matching",
     "Reconciliation",
+    "Reports",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -1198,6 +1221,9 @@ function App() {
             preview={previewReconciliation}
             act={act}
           />
+        )}
+        {page === "Reports" && (
+          <Reports busy={busy} load={loadReports} workspace={data} />
         )}
         {page === "Activity" && (
           <section className="card">

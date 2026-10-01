@@ -471,3 +471,9 @@ td code {
   width: auto;
   margin: 0;
 }
+
+.report-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.report-tabs button[aria-pressed="true"] { background: #125b50; color: white; }
+
+.aging-table { min-width: 720px; }
+.report-results h3 { margin-top: 20px; }
