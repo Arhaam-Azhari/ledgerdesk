@@ -225,6 +225,11 @@ header {
   background: #edf5f1;
   color: #126452;
 }
+.section-heading button:hover,
+.secondary:hover {
+  background: #dcebe4;
+  color: #0d4c3e;
+}
 .two-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;

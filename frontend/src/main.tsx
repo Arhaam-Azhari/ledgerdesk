@@ -483,7 +483,7 @@ function App() {
         {page === "Overview" && (
           <>
             <p className="intro">
-              A clear view of the invoices and payments recorded so far.
+              A clear view of recorded sales, purchases, and outstanding balances.
             </p>
             <section className="metrics">
               <article>
