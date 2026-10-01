@@ -269,6 +269,7 @@ public class LedgerService {
                 "payments", db.queryForList("SELECT * FROM payments ORDER BY paid_on DESC"),
                 "audit", db.queryForList("SELECT * FROM audit_events ORDER BY occurred_at DESC")));
         result.putAll(PurchaseService.readState(db));
+        result.putAll(BankService.readState(db));
         return result;
     }
 }
