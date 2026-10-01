@@ -22,7 +22,7 @@ The invoice milestone adds checks for:
 
 **Local H2: all 24 passed.** Maven compiled the source and tests; the JUnit Platform console runner executed the compiled tests because this workspace cannot download Maven Surefire runner dependencies through its Java network configuration. GitHub Actions uses the regular Maven runner.
 
-**Invoice milestone PostgreSQL: awaiting its GitHub Actions run.** The workflow runs the same suite against a fresh PostgreSQL 17 service, including the version 1 upgrade check.
+**GitHub Actions: all 24 passed on H2 and all 24 passed on PostgreSQL 17 using Maven Surefire.** The [invoice milestone run](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36831707974) also passed the frontend build and four Chromium workflows. The PostgreSQL suite includes the version 1 database upgrade check.
 
 ## Browser and build
 
@@ -31,7 +31,7 @@ TypeScript checking and the Vite production build passed. **All four Playwright 
 1. Post a $1,200 invoice, record $700 payment, inspect balanced entries, and check the trial balance.
 2. Save a $1,250 draft without changing the ledger, edit it to $1,500, post it, record $500 payment, download its PDF, and inspect the customer's $1,000 outstanding balance.
 3. Discard a draft, reload, and use the workspace at a 390-pixel width. Check that wide customer tables can scroll and the page itself does not overflow.
-4. Interrupt the refresh after a successful invoice posting, retry, and verify only one invoice exists.
+4. Interrupt the refresh after a successful invoice posting, retry, and verify only one invoice exists. Check that locking is disabled during posting and returns to the login screen after requests finish.
 
 The tests use an initially empty demo database and fictional customers. Captures are taken at different workflow steps: the overview/trial-balance images show the first invoice; the customer and mobile captures also include the second invoice. The later retry test creates another invoice after those screenshots.
 

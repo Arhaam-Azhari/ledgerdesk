@@ -345,6 +345,7 @@ function App() {
           <br />
           <small>USD · Accrual accounting</small>
           <button
+            disabled={busy}
             onClick={() => {
               setData(null);
               setCredentials("");

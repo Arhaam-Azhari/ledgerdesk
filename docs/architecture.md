@@ -27,7 +27,7 @@ The state endpoint reads in a repeatable-read transaction so invoices and ledger
 
 ## Security boundaries
 
-The default development servers bind to loopback. The demo has public local credentials and fictional data. The other profile requires credentials from the environment. SQL values use bound parameters, and React renders user text as text rather than HTML. CSRF protection stays enabled. Credentials are held in component memory and cleared by Lock workspace; this is not a full server-session logout implementation.
+The default development servers bind to loopback. The demo has public local credentials and fictional data. The other profile requires credentials from the environment. SQL values use bound parameters, and React renders user text as text rather than HTML. CSRF protection stays enabled. Credentials are held in component memory and cleared by Lock workspace, which is disabled while requests are in progress; this is not a full server-session logout implementation.
 
 The prototype has one configured owner. Persistent accounts, role separation, business-scoped authorization, rate limits, reviewed HTTPS hosting, backups, dependency review, and tamper-resistant audit storage remain release requirements.
 

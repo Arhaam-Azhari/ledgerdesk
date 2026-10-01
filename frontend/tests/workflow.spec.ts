@@ -270,6 +270,12 @@ test("retry after a failed refresh does not post the invoice twice", async ({
   const description = "Connection retry check";
   await form.getByLabel("Description").fill(description);
   await form.getByLabel("Amount (USD)").fill("45");
+  let releasePosting!: () => void;
+  const postingGate = new Promise<void>(resolve => { releasePosting = resolve; });
+  await page.route("**/api/invoices", async route => {
+    await postingGate;
+    await route.continue();
+  });
   let failNextRefresh = true;
   await page.route("**/api/state", (route) => {
     if (failNextRefresh) {
@@ -279,6 +285,8 @@ test("retry after a failed refresh does not post the invoice twice", async ({
     return route.continue();
   });
   await form.getByRole("button", { name: "Post invoice", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Lock workspace", exact: true })).toBeDisabled();
+  releasePosting();
   await expect(page.getByRole("alert")).toBeVisible();
   await expect(form.getByLabel("Description")).toHaveValue(description);
   await form.getByRole("button", { name: "Post invoice", exact: true }).click();
@@ -295,4 +303,7 @@ test("retry after a failed refresh does not post the invoice twice", async ({
       (i: { description: string }) => i.description === description,
     ),
   ).toHaveLength(1);
+  await expect(page.getByRole("button", { name: "Lock workspace", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Lock workspace", exact: true }).click();
+  await expect(page.getByLabel("Username")).toBeVisible();
 });
