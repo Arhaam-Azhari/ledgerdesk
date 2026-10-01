@@ -439,3 +439,11 @@ tfoot th {
 td code {
   white-space: nowrap;
 }
+.purchases-metrics {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (max-width: 1050px) {
+  .purchases-metrics {
+    grid-template-columns: 1fr;
+  }
+}

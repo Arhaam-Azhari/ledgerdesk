@@ -38,20 +38,20 @@ public class LedgerService {
         }
     }
 
-    private static String text(String value, int max, String field) {
+    static String text(String value, int max, String field) {
         if (value == null || value.isBlank() || value.trim().length() > max)
             throw new IllegalArgumentException(field + " is required and must be at most " + max + " characters.");
         return value.trim();
     }
 
-    private String id() { return UUID.randomUUID().toString(); }
+    String id() { return UUID.randomUUID().toString(); }
 
-    private void lockBusiness() {
+    void lockBusiness() {
         // One local business for this milestone. Serialize posting and retries together.
         db.queryForObject("SELECT id FROM businesses WHERE id = 1 FOR UPDATE", Long.class);
     }
 
-    private String fingerprint(Object value) {
+    String fingerprint(Object value) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                 .digest(json.writeValueAsBytes(value))); }
         catch (java.security.NoSuchAlgorithmException | com.fasterxml.jackson.core.JsonProcessingException e) {
@@ -59,7 +59,7 @@ public class LedgerService {
         }
     }
 
-    private String retry(String key, String fingerprint) {
+    String retry(String key, String fingerprint) {
         text(key, 100, "Request key");
         List<Map<String, Object>> found = db.queryForList("SELECT * FROM commands WHERE command_key = ?", key);
         if (found.isEmpty()) return null;
@@ -68,12 +68,12 @@ public class LedgerService {
         return (String) found.get(0).get("result_id");
     }
 
-    private void complete(String key, String fingerprint, String result, String actor, String action) {
+    void complete(String key, String fingerprint, String result, String actor, String action) {
         db.update("INSERT INTO commands VALUES (?, ?, ?)", key, fingerprint, result);
         db.update("INSERT INTO audit_events VALUES (?, ?, ?, ?, ?)", id(), LocalDateTime.now(), actor, action, result);
     }
 
-    private void journal(String source, LocalDate date, String memo, String debitAccount,
+    void journal(String source, LocalDate date, String memo, String debitAccount,
                          String creditAccount, BigDecimal amount) {
         String entry = id();
         db.update("INSERT INTO journal_entries VALUES (?, 1, ?, ?, ?)", entry, date, memo, source);
@@ -261,12 +261,14 @@ public class LedgerService {
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Map<String, Object> state() {
         List<Map<String, Object>> trial = db.queryForList("SELECT a.code, a.name, a.kind, COALESCE(SUM(l.debit), 0) AS debits, COALESCE(SUM(l.credit), 0) AS credits FROM accounts a LEFT JOIN journal_lines l ON l.account_code = a.code GROUP BY a.code, a.name, a.kind ORDER BY a.code");
-        return Map.of("business", "Northline Design Studio", "currency", "USD", "customers",
+        Map<String, Object> result = new java.util.LinkedHashMap<>(Map.of("business", "Northline Design Studio", "currency", "USD", "customers",
                 db.queryForList("SELECT c.*, COALESCE(SUM(CASE WHEN i.status = 'POSTED' THEN i.amount ELSE 0 END), 0) AS invoiced, COALESCE(SUM(i.paid), 0) AS paid, COALESCE(SUM(CASE WHEN i.status = 'POSTED' THEN i.amount - i.paid ELSE 0 END), 0) AS outstanding FROM customers c LEFT JOIN invoices i ON i.customer_id = c.id GROUP BY c.id, c.business_id, c.name, c.email ORDER BY c.name, c.id"), "invoices",
                 db.queryForList("SELECT i.*, n.number_value, c.name AS customer_name FROM invoices i JOIN invoice_numbers n ON n.invoice_id = i.id JOIN customers c ON c.id = i.customer_id ORDER BY issued_on DESC, id"),
                 "drafts", db.queryForList("SELECT d.*, c.name AS customer_name FROM invoice_drafts d JOIN customers c ON c.id = d.customer_id WHERE d.cancelled = FALSE AND d.posted_invoice_id IS NULL ORDER BY d.issued_on DESC, d.id"),
                 "trialBalance", trial, "ledger", db.queryForList("SELECT e.entry_date, e.memo, e.source_id, e.id AS entry_id, a.code, a.name, l.debit, l.credit FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id JOIN accounts a ON a.code = l.account_code ORDER BY e.entry_date, e.id, l.credit"),
                 "payments", db.queryForList("SELECT * FROM payments ORDER BY paid_on DESC"),
-                "audit", db.queryForList("SELECT * FROM audit_events ORDER BY occurred_at DESC"));
+                "audit", db.queryForList("SELECT * FROM audit_events ORDER BY occurred_at DESC")));
+        result.putAll(PurchaseService.readState(db));
+        return result;
     }
 }
