@@ -10,7 +10,7 @@ The business lock, exact decimal journal helper, request-key check and activity 
 
 Owner cash entries appear as bank matching candidates with their direction and memo. The same one-to-one amount checks apply. Pending funding is an outstanding deposit and pending drawings are outstanding payments during reconciliation. Importing or matching a statement does not post the owner transfer again.
 
-Migration V7 adds the two accounts and transfer table without changing earlier migration files. General adjustments, reversals and reviewed browser proof are still pending; posted owner records currently have no edit/delete endpoint. This checkpoint should remain a draft until corrections and browser verification are complete.
+Migration V7 adds the two accounts and transfer table without changing earlier migration files. General adjustments and reversals are still pending; posted owner records currently have no edit/delete endpoint. This checkpoint should remain a draft until the correction workflow is complete.
 
 Eight integration tests cover exact contributions/drawings and equity reports, historical cutoff, request retries/conflicts, input validation, transaction rollback, matching/reconciliation with closed-date protection, outstanding funding, and endpoint authentication/CSRF/request keys. All 109 backend integration tests passed on H2 and all 109 passed on PostgreSQL 17, with zero failures, errors or skipped tests in [run 36941728558](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36941728558), source `38b9202ce48d2ab38f730bfdcc0b0c78a14bacd8`. The production frontend build and all ten existing Chromium workflows also passed. Those browser checks cover existing screens; an owner form and its browser proof remain pending.
 
@@ -20,4 +20,8 @@ Open **Owner transfers**. Choose Contribution to business or Withdrawal for owne
 
 After an uncertain refresh, the form retains its details and request key so retrying the same transfer does not record it twice. Editing the details starts a different command; reload and inspect history first if the result is uncertain.
 
-Build the backend JAR as described in the reporting notes, install frontend dependencies and Chromium, then run `npm run test:equity` in `frontend`. The isolated check uses ports 8083 and 5176. It checks both directions, historical equity without profit, invalid decimal precision, an interrupted refresh and exact-once retry, retained history, and a 390-pixel layout. CI verification and captured examples for this new screen are pending.
+Build the backend JAR as described in the reporting notes, install frontend dependencies and Chromium, then run `npm run test:equity` in `frontend`. The isolated check uses ports 8083 and 5176. It checks both directions, historical equity without profit, invalid decimal precision, an interrupted refresh and exact-once retry, retained history, and a 390-pixel layout. The final screen passed all 109 backend tests on each of H2 and PostgreSQL 17, the production frontend build, and all eleven Chromium workflows in [run 36942772413](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36942772413), source `7cdd41c80931aff69706b25921ea37187749402a`. The new owner workflow confirmed that a failed refresh followed by a retry creates one transfer, and that a November withdrawal leaves the October balance sheet unchanged. Desktop and mobile captures were downloaded and visually reviewed. The mobile history scrolls horizontally to keep dates readable.
+
+![Owner funding and withdrawal history](screenshots/owner-transfers.png)
+
+[Mobile owner transfer screen](screenshots/mobile-owner-transfers.png)
