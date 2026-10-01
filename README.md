@@ -97,7 +97,7 @@ npm run test:e2e
 
 The browser test needs the demo backend running on port 8080. Playwright starts the frontend if needed. It posts a $1,200 invoice and $700 payment, checks the remaining balance and ledger, and captures the overview and trial balance.
 
-GitHub Actions is configured to test H2 and PostgreSQL plus the browser workflow when this project is published. No GitHub Actions result is claimed yet.
+GitHub Actions passed the 12 backend tests against both H2 and PostgreSQL, the frontend production build, and the Chromium workflow. See the [first milestone run](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36828185923) and [verification notes](docs/verification.md).
 
 ## Next milestones
 

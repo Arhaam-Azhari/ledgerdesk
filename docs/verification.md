@@ -21,7 +21,7 @@ Verification is recorded per milestone; planned checks are not treated as passin
 
 **H2: all 12 passed.** Java source and tests compiled with Maven. A network restriction prevented Maven's Surefire runner dependency from downloading, so the same compiled tests were executed with the JUnit Platform console runner instead. No mocked accounting service was used.
 
-**PostgreSQL: CI configuration prepared; not yet executed.** H2 compatibility mode is not a substitute for verifying the production database. The workflow includes a separate PostgreSQL service and reruns the integration suite against it.
+**GitHub Actions: all 12 passed on H2 and all 12 passed on PostgreSQL 17 using Maven Surefire.** The [first milestone run](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36828185923) also passed the frontend build and Chromium workflow. The PostgreSQL run uses a fresh database and the same Flyway migration and integration suite.
 
 ## Frontend
 
@@ -35,4 +35,4 @@ Actual browser captures:
 
 ## Release status
 
-This is a local first milestone. There is no hosted deployment or published GitHub Actions run yet. The complete product roadmap is in the README.
+This is the first milestone, published on GitHub with a passing automated workflow. There is no hosted application deployment. The complete product roadmap is in the README.
