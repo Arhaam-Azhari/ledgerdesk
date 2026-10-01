@@ -128,6 +128,10 @@ test("review and match recorded cash movements, undo, and retry after a failed r
       page.getByRole("button", { name: "Confirm match", exact: true }),
     ).toBeDisabled();
     await page.getByLabel("Select entry 1", { exact: true }).check();
+    if (id === "MATCH-IN") {
+      await expect(review).toContainText("October consulting");
+      await expect(review).toContainText("INV-");
+    }
     if (id === "MATCH-IN")
       await page.screenshot({
         path: "test-results/bank-match-review.png",

@@ -18,20 +18,35 @@ public class BankMatching {
     public record Match(String lineId) {}
     public record Unmatch(String matchId) {}
     private static final String CASH_RECORDS = """
-        SELECT l.id AS line_id, e.entry_date, e.memo, e.source_id, l.debit-l.credit AS amount,
+        SELECT l.id AS line_id, e.entry_date, e.source_id, l.debit-l.credit AS amount,
+            n.number_value AS invoice_number, c.name AS customer_name, i.description AS invoice_description,
+            b.reference AS bill_reference, bv.name AS bill_vendor,
+            x.description AS expense_description, xv.name AS expense_vendor,
             CASE WHEN p.id IS NOT NULL THEN 'Customer payment'
                  WHEN bp.id IS NOT NULL THEN 'Bill payment' ELSE 'Direct expense' END AS kind
         FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
         LEFT JOIN payments p ON p.id = e.source_id
         LEFT JOIN invoices i ON i.id = p.invoice_id
+        LEFT JOIN invoice_numbers n ON n.invoice_id = i.id
+        LEFT JOIN customers c ON c.id = i.customer_id
         LEFT JOIN bill_payments bp ON bp.id = e.source_id
         LEFT JOIN bills b ON b.id = bp.bill_id
+        LEFT JOIN vendors bv ON bv.id = b.vendor_id
         LEFT JOIN expenses x ON x.id = e.source_id
+        LEFT JOIN vendors xv ON xv.id = x.vendor_id
         WHERE l.account_code = '1000' AND e.business_id = 1 AND
             ((i.business_id = 1 AND i.status = 'POSTED') OR
              (b.business_id = 1 AND b.status = 'POSTED') OR
              (x.business_id = 1 AND x.status = 'POSTED'))
         """;
+
+    private static void describe(Map<String, Object> row) {
+        if (row.get("invoice_number") != null)
+            row.put("memo", LedgerService.invoiceNumber(((Number) row.get("invoice_number")).longValue()) + " · " + row.get("customer_name") + " · " + row.get("invoice_description"));
+        else if (row.get("bill_reference") != null)
+            row.put("memo", row.get("bill_vendor") + " · Bill " + row.get("bill_reference"));
+        else row.put("memo", row.get("expense_vendor") + " · " + row.get("expense_description"));
+    }
 
     public BankMatching(JdbcTemplate db, LedgerService ledger) { this.db = db; this.ledger = ledger; }
 
@@ -49,6 +64,7 @@ public class BankMatching {
         var rows = db.queryForList(CASH_RECORDS + " AND l.debit-l.credit = ? AND NOT EXISTS (SELECT 1 FROM bank_matches m WHERE m.line_id = l.id)", bank.get("amount"));
         LocalDate posted = ((java.sql.Date) bank.get("posted_on")).toLocalDate();
         for (var row : rows) {
+            describe(row);
             long days = Math.abs(ChronoUnit.DAYS.between(((java.sql.Date) row.get("entry_date")).toLocalDate(), posted));
             row.put("days_apart", days); row.put("near_date", days <= 7);
         }
@@ -99,7 +115,9 @@ public class BankMatching {
     }
 
     static Map<String, Object> readState(JdbcTemplate db) {
-        return Map.of("bankMatches", db.queryForList("SELECT m.*, e.entry_date, e.memo, l.debit-l.credit AS amount FROM bank_matches m JOIN bank_transactions t ON t.id = m.transaction_id JOIN journal_lines l ON l.id = m.line_id JOIN journal_entries e ON e.id = l.entry_id WHERE t.business_id = 1 ORDER BY m.matched_at, m.id"),
+        var matches = db.queryForList("SELECT m.*, cash.* FROM bank_matches m JOIN bank_transactions t ON t.id = m.transaction_id JOIN (" + CASH_RECORDS + ") cash ON cash.line_id = m.line_id WHERE t.business_id = 1 ORDER BY m.matched_at, m.id");
+        matches.forEach(BankMatching::describe);
+        return Map.of("bankMatches", matches,
                 "bankMatchEvents", db.queryForList("SELECT h.* FROM bank_match_events h JOIN bank_transactions t ON t.id = h.transaction_id WHERE t.business_id = 1 ORDER BY h.occurred_at, h.id"));
     }
 }
