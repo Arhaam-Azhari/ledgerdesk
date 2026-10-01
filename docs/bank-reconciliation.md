@@ -1,6 +1,6 @@
 # Statement reconciliation
 
-The backend compares an imported statement with the bank ledger as of a chosen end date. Preview is read-only. Closing saves the checked calculation and protects the period; reopening retains that snapshot and records a reason. The browser reconciliation screen is still to be built.
+The backend compares an imported statement with the bank ledger as of a chosen end date. Preview is read-only. Closing saves the checked calculation and protects the period; reopening retains that snapshot and records a reason. The browser screen supports preview, closing, saved calculations, and reopening the latest closed statement.
 
 ## What the numbers mean
 
@@ -59,3 +59,25 @@ Eight integration tests cover cleared and outstanding items, missing statement m
 
 
 The close/reopen sprint adds ten more integration tests for saved snapshots, retries, opening continuity, gaps/overlaps, reopening order, stale requests, posting/payment rollback, closed-period imports and matches, later clearing, write rollback, endpoint security, and a competing close/import. All 86 tests passed on H2 and all 86 passed on PostgreSQL 17 with zero failures, errors, or skipped tests in [run 36925530887](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36925530887), source commit `61e65541c0b97aad9b5256585fc07286da88adb8`. The frontend production build and all eight existing Chromium workflows also passed. These browser checks cover the existing invoice, purchase, import, and matching screens; reconciliation browser tests will follow its interface.
+
+
+## Browser workflow
+
+Open **Reconciliation** after recording the books, importing the statement, and reviewing bank matches. The form starts with the earliest recorded date for a first statement, or the next day and carried balance after a closed statement. Enter the dates and balances from the actual statement, then choose **Preview reconciliation**. Editing a field clears the old preview.
+
+Review both differences and the outstanding book entries. The screen also lists unmatched bank rows and warns about matches to future-dated book entries. **Close statement** is enabled only when the preview balances and matching is complete. Closing requires confirmation and rechecks statement continuity and the current books on the server. A failed refresh can be retried without creating a second saved reconciliation.
+
+**Saved reconciliations** shows period dates, status, the closing balance, and who closed it. Expand **View saved calculation** to see the preserved numbers. The latest closed statement has a reopening form: enter a reason and confirm **Reopen latest statement**. The original snapshot remains in history with the reopening reason. Older periods must be reopened in reverse order.
+
+### Run the browser check
+
+Build the backend JAR with `mvn -f backend/pom.xml package -DskipTests`. Then run `npm ci` in `frontend`, install Chromium with `npx playwright install chromium`, and run `npm run test:reconciliation`. This starts a separate demo backend on port 8081 with an in-memory database and a frontend on port 5174; both stop when the test finishes. Keep these two ports free. The existing invoice/purchase/import/matching tests use the normal demo backend and `npm run test:e2e`.
+
+The isolated workflow prepares a fictional $500 customer payment and an $80 expense awaiting bank clearance, checks an incorrect closing balance, clears an obsolete preview after editing, previews the balanced statement, cancels and confirms closing, retries after an interrupted refresh, checks saved history and unchanged journal balances, attempts a protected match change, reopens with a reason, compares snapshots, and checks a 390-pixel layout. All nine Chromium workflows (eight existing plus the isolated reconciliation check), the frontend production build, and all 86 backend tests on each database passed in [run 36928181272](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36928181272), source commit `76558dc5be2f1cab430665ad31ae51aca1314780`. The desktop review, saved close, and mobile reopening captures were downloaded and visually inspected.
+
+
+![Balanced statement with an outstanding payment](screenshots/reconciliation-review.png)
+
+![Saved reconciliation and carried-forward opening balance](screenshots/reconciliation-closed.png)
+
+[Mobile reopening view](screenshots/mobile-reconciliation.png)
