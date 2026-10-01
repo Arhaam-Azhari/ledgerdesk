@@ -118,7 +118,7 @@ class BankReconciliationTest {
         http.perform(post("/api/bank/reconciliations/preview").with(csrf()).contentType("application/json").content(body)).andExpect(status().isUnauthorized());
         http.perform(post("/api/bank/reconciliations/preview").with(httpBasic("test", "test-only")).contentType("application/json").content(body)).andExpect(status().isForbidden());
         http.perform(post("/api/bank/reconciliations/preview").with(httpBasic("test", "test-only")).with(csrf()).contentType("application/json").content(body))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.bookDifference").value(0));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.bookDifference").value("0.00"));
         assertThat(db.queryForObject("SELECT COUNT(*) FROM commands", Integer.class)).isEqualTo(1);
     }
 }
