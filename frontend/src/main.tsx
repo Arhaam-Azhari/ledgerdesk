@@ -1,6 +1,8 @@
 import React, { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
+import { Purchases, type PurchaseState, type Receipt } from "./Purchases";
+import { cents, dollars, today } from "./money";
 
 type Customer = {
   id: string;
@@ -55,7 +57,7 @@ type Draft = {
   version: number;
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
-type State = {
+type State = PurchaseState & {
   business: string;
   currency: string;
   customers: Customer[];
@@ -66,15 +68,6 @@ type State = {
   audit: Audit[];
   payments: Payment[];
 };
-const today = () => new Date().toLocaleDateString("en-CA");
-function cents(value: string): bigint {
-  const [whole, fraction = ""] = String(value).split(".");
-  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
-}
-function dollars(value: bigint): string {
-  const n = value < 0n ? -value : value;
-  return `${value < 0n ? "-" : ""}$${(n / 100n).toLocaleString("en-US")}.${String(n % 100n).padStart(2, "0")}`;
-}
 
 function App() {
   const [credentials, setCredentials] = useState("");
@@ -149,6 +142,93 @@ function App() {
     }
   }
 
+  async function uploadReceipt(
+    type: string,
+    id: string,
+    file: File,
+    form: HTMLFormElement,
+  ) {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      if (file.size === 0 || file.size > 2 * 1024 * 1024)
+        throw new Error("Choose a nonempty receipt no larger than 2 MiB.");
+      const hash = Array.from(
+        new Uint8Array(
+          await crypto.subtle.digest("SHA-256", await file.arrayBuffer()),
+        ),
+        (n) => n.toString(16).padStart(2, "0"),
+      ).join("");
+      const path = `/api/${type}/${id}/receipts`;
+      const signature = path + file.name + file.type + hash;
+      if (!requests.current.has(signature))
+        requests.current.set(signature, crypto.randomUUID());
+      const csrf = await fetch("/api/csrf", {
+        credentials: "same-origin",
+      }).then((response) => {
+        if (!response.ok) throw new Error("Could not obtain a request token.");
+        return response.json();
+      });
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch(path, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          [csrf.headerName]: csrf.token,
+          "Idempotency-Key": requests.current.get(signature)!,
+        },
+        body,
+      });
+      if (!response.ok) {
+        const details = await response.json().catch(() => ({}));
+        throw new Error(
+          details.message || "The receipt could not be uploaded.",
+        );
+      }
+      await refresh();
+      requests.current.delete(signature);
+      setNotice("Receipt attached. The ledger is unchanged.");
+      form.reset();
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function downloadReceipt(receipt: Receipt) {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/receipts/${receipt.id}`, {
+        headers: { Authorization: `Basic ${credentials}` },
+        credentials: "same-origin",
+      });
+      if (!response.ok) throw new Error("The receipt could not be downloaded.");
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      const extension =
+        receipt.media_type === "application/pdf"
+          ? "pdf"
+          : receipt.media_type === "image/png"
+            ? "png"
+            : "jpg";
+      link.download = `receipt-${receipt.id}.${extension}`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function downloadInvoice(invoice: Invoice) {
     setBusy(true);
     setError("");
@@ -183,7 +263,7 @@ function App() {
           <div className="logo">
             L<span>Ledgerdesk</span>
           </div>
-          <p className="eyebrow">INVOICE WORKSPACE</p>
+          <p className="eyebrow">BUSINESS WORKSPACE</p>
           <h1>
             Books that explain
             <br />
@@ -242,6 +322,9 @@ function App() {
     "Overview",
     "Invoices",
     "Customers",
+    "Vendors",
+    "Bills",
+    "Expenses",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -365,7 +448,7 @@ function App() {
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
-            <span className="demo-tag">Milestone 02 · Fictional business</span>
+            <span className="demo-tag">Milestone 03 · Fictional business</span>
             <button
               className="secondary"
               disabled={busy}
@@ -400,13 +483,15 @@ function App() {
         {page === "Overview" && (
           <>
             <p className="intro">
-              A clear view of the invoices and payments recorded so far.
+              A clear view of recorded sales, purchases, and outstanding balances.
             </p>
             <section className="metrics">
               <article>
                 <span>Recorded bank balance</span>
                 <h2>{dollars(balance("1000"))}</h2>
-                <small>Payments recorded in this workspace</small>
+                <small>
+                  Customer receipts less bill payments and direct expenses
+                </small>
               </article>
               <article>
                 <span>Accounts receivable</span>
@@ -420,6 +505,29 @@ function App() {
                 <span>Recorded service revenue</span>
                 <h2>{dollars(-balance("4000"))}</h2>
                 <small>All posted invoices, less reversals</small>
+              </article>
+            </section>
+            <section className="metrics purchases-metrics">
+              <article>
+                <span>Accounts payable</span>
+                <h2>{dollars(-balance("2000"))}</h2>
+                <small>Unpaid vendor bills</small>
+              </article>
+              <article>
+                <span>Recorded operating expenses</span>
+                <h2>
+                  {dollars(
+                    data.trialBalance
+                      .filter((a) =>
+                        data.expenseCategories.some((c) => c.code === a.code),
+                      )
+                      .reduce(
+                        (sum, a) => sum + cents(a.debits) - cents(a.credits),
+                        0n,
+                      ),
+                  )}
+                </h2>
+                <small>Bills and direct expenses, less reversals</small>
               </article>
             </section>
             <section className="card">
@@ -873,7 +981,8 @@ function App() {
           <section className="card">
             <h2>Posted entries</h2>
             <p>
-              Every invoice, payment, and reversal has equal debits and credits.
+              Invoices, bills, payments, expenses, and reversals have equal
+              debits and credits.
             </p>
             <div className="table-wrap">
               <table>
@@ -965,6 +1074,16 @@ function App() {
               </tfoot>
             </table>
           </section>
+        )}
+        {["Vendors", "Bills", "Expenses"].includes(page) && (
+          <Purchases
+            page={page}
+            data={data}
+            busy={busy}
+            act={act}
+            upload={uploadReceipt}
+            download={downloadReceipt}
+          />
         )}
         {page === "Activity" && (
           <section className="card">

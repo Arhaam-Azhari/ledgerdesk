@@ -1,0 +1,14 @@
+package com.ledgerdesk;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+
+final class DatabaseFixture {
+    private DatabaseFixture() {}
+    static void reset(JdbcTemplate db) {
+        for (String table : new String[]{"receipts", "bill_payments", "bills", "expenses", "vendors", "invoice_drafts", "invoice_numbers", "payments", "journal_lines", "journal_entries", "invoices", "commands", "audit_events"})
+            db.update("DELETE FROM " + table);
+        db.update("DELETE FROM customers WHERE id <> 'demo-customer'");
+        db.update("DELETE FROM businesses WHERE id <> 1");
+        db.update("UPDATE businesses SET next_invoice_number = 1 WHERE id = 1");
+    }
+}

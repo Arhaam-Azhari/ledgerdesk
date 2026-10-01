@@ -27,11 +27,7 @@ class LedgerWorkflowTest {
     @Autowired InvoicePdf pdf;
     private final LocalDate date = LocalDate.of(2026, 9, 1);
 
-    @BeforeEach void clean() {
-        for (String table : new String[]{"invoice_drafts", "invoice_numbers", "payments", "journal_lines", "journal_entries", "invoices", "commands", "audit_events"})
-            db.update("DELETE FROM " + table);
-        db.update("UPDATE businesses SET next_invoice_number = 1 WHERE id = 1");
-    }
+    @BeforeEach void clean() { DatabaseFixture.reset(db); }
 
     private LedgerService.Invoice invoice(String amount) {
         return new LedgerService.Invoice("demo-customer", "Brand design", date, date.plusDays(30), amount);
