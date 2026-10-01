@@ -1,8 +1,8 @@
 # Ledgerdesk
 
-A small-business accounting application for freelancers and service agencies. It connects customer invoicing and vendor purchases to a double-entry ledger, so the amount earned, the money received or spent, and the balances still owed stay separate.
+A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing and purchases are working milestones. Bank reconciliation, period reports, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, and statement reconciliation are working milestones. Period reports, additional user roles, and deployment remain on the roadmap.
 
 ## Working now
 
@@ -22,6 +22,12 @@ The sample business is **Northline Design Studio**, a fictional agency using USD
 - Void an unpaid bill or reverse a mistaken direct expense, retaining the original.
 - Attach and download validated PDF, PNG, or JPEG receipts.
 - View all-time bank, receivables, payables, revenue, and operating expense balances.
+- Preview and import a bank CSV, skip identical duplicate rows, and reject conflicting IDs.
+- Review exact-amount candidates and explicitly match recorded payments or expenses.
+- Undo a match while retaining its history and leaving journal entries unchanged.
+- Reconcile statement balances with the books and outstanding deposits/payments.
+- Close a balanced statement, retain its calculation, and protect the closed period.
+- Reopen the latest closed statement with a reason and preserve the original snapshot.
 - Keep local demo records between restarts.
 
 ## Run locally
@@ -68,7 +74,25 @@ Continue with the purchase side:
 6. On **Vendors**, Harbor Supply shows $600 billed, $200 paid, and $400 outstanding. The direct software expense is already paid and contributes no payable balance.
 7. If these are the only transactions, the overview shows $450 bank, $500 receivables, $400 payables, $1,200 revenue, and $650 expenses. Trial balance totals are $1,600 on each side.
 
-The figures include all recorded dates, including future dates. They are ledger balances; bank-statement reconciliation, opening balances, and period reports are later milestones. Spending from an empty demo ledger can produce a negative recorded bank balance. This program records transactions; it does not move money.
+The figures include all recorded dates, including future dates. The overview and trial balance are all-time ledger balances. Reconciliation uses the chosen statement end date; opening balance migration and period financial reports are later milestones. Spending from an empty demo ledger can produce a negative recorded bank balance. This program records transactions; it does not move money.
+
+## Import, match, and reconcile the statement
+
+Continue from the otherwise empty walkthrough above:
+
+1. Open **Bank imports** and download the example CSV, also available at [docs/examples/bank-statement.csv](docs/examples/bank-statement.csv). It contains the $700 customer payment, $200 bill payment, and $50 software expense from the walkthrough.
+2. Select the file, label it `September–October statement`, and choose **Preview import**. Check the three rows, then **Confirm import**. The journal balances stay unchanged. Importing the same file again skips those rows.
+3. Open **Bank matching**. For each of the three rows, choose **Review entries**, inspect the document description/date/amount, select the correct recorded entry, and **Confirm match**. An equal amount is a candidate, not proof of a match.
+4. Open **Reconciliation**. Set the statement start to `2026-09-01`, end to `2026-10-31`, opening balance to `0.00`, and closing balance to `450.00`. These are fictional statement figures for this example.
+5. Choose **Preview reconciliation**. Imported movement is $450, book balance is $450, outstanding deposits/payments are zero, and both differences are zero.
+6. Confirm **Close statement**. The saved calculation appears in history. New journal postings dated through `2026-10-31`, new bank rows through that date, and changes to its bank matches are protected. The next statement starts `2026-11-01` with $450 carried forward.
+7. To correct the closed books, enter a reason and confirm **Reopen latest statement**. Its original calculation remains in history. After corrections and reviewed matching, closing again creates a new record.
+
+Closing rechecks the books on the server. A statement difference means the imported movement does not explain the entered balances; a book difference means the closing balance adjusted for outstanding entries does not agree with the ledger. Unmatched rows and bank matches to future-dated book entries must also be resolved. Outstanding payments may clear next month and remain outstanding in the earlier statement.
+
+The first close starts from zero and includes the recorded history. Subsequent statements must follow without gaps or overlaps. Existing opening balance migration, live bank feeds, arbitrary export columns, split matches, and matching reversal entries are not implemented. The accepted CSV format and full rules are in [Bank imports](docs/bank-imports.md) and [Statement reconciliation](docs/bank-reconciliation.md).
+
+Actual captures: [imported rows](docs/screenshots/bank-imports.png), [reviewed matches](docs/screenshots/bank-matching.png), [reconciliation review](docs/screenshots/reconciliation-review.png), [saved close](docs/screenshots/reconciliation-closed.png), and [mobile reopening](docs/screenshots/mobile-reconciliation.png). Captures use separate fictional test scenarios; their amounts may differ from this walkthrough.
 
 ## Drafts, invoice numbers, and PDFs
 
@@ -143,22 +167,31 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-The browser suite needs the demo backend running on port 8080 with a fresh database. Stop the backend and clear `backend/demo-data/` before running the suite against a disposable local demo. The tests create fictional records and do not clean them up afterward. Playwright starts the frontend if needed. The suite covers purchases and receipts, invoices and drafts, balances, corrections, downloads, narrow screens, and request retries.
+The browser suite needs the demo backend running on port 8080 with a fresh database. Stop the backend and clear `backend/demo-data/` before running the suite against a disposable local demo. The tests create fictional records and do not clean them up afterward. Playwright starts the frontend if needed. The eight workflows cover purchases and receipts, invoices and drafts, imports and matching, balances, corrections, downloads, narrow screens, and request retries.
 
-All 45 backend integration tests passed on H2 and PostgreSQL 17, and all six Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+The ninth browser workflow runs with an isolated in-memory database so closing a period cannot affect the other tests. In a new terminal at the project root, build the JAR, then run the check from the frontend folder:
+
+```sh
+mvn -f backend/pom.xml package -DskipTests
+cd frontend
+npm run test:reconciliation
+```
+
+Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
+
+All 86 backend integration tests passed on each of H2 and PostgreSQL 17, and all nine Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
-1. CSV bank imports, duplicate detection, matching, and reconciliation.
-2. Date-based financial statements, aging reports, adjustments, and period close.
-3. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
+1. Date-based financial statements, aging reports, adjustments, and a broader accounting period workflow.
+2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
 The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
 
 ## What this project demonstrates
 
-The useful problem here is tracing a sale or purchase from its document through payment to the ledger. An invoice creates revenue before cash arrives; a bill creates an expense before cash leaves. The tests check those differences and show that retries, concurrent payments, or failed writes do not silently change the books.
+The useful problem here is tracing a sale or purchase from its document through payment to the ledger and bank statement. An invoice creates revenue before cash arrives; a bill creates an expense before cash leaves. Matching connects the bank evidence to the recorded cash movement, and reconciliation explains why the bank statement and books may differ. The tests check those differences and show that retries, concurrent payments, or failed writes do not silently change the books.
 
-The implementation demonstrates exact monetary calculations, SQL relationships and constraints, transaction boundaries and rollback, concurrency control, request idempotency, optimistic draft version checks, database migrations, PDF generation, file validation, protected API writes, and browser testing. The accounting notes explain each posting; the architecture notes explain why these techniques were chosen.
+The implementation demonstrates exact monetary calculations, SQL relationships and constraints, transaction boundaries and rollback, concurrency control, request idempotency, optimistic draft version checks, database migrations, PDF generation, file validation, protected API writes, statement cutoffs, reconciliation snapshots, closed-period controls, and browser testing. The accounting notes explain each posting; the architecture notes explain why these techniques were chosen.
 
 Further milestones will extend those foundations into a complete service-business accounting product.

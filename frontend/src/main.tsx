@@ -533,7 +533,7 @@ function App() {
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
-            <span className="demo-tag">Milestone 03 · Fictional business</span>
+            <span className="demo-tag">Milestone 04 · Fictional business</span>
             <button
               className="secondary"
               disabled={busy}

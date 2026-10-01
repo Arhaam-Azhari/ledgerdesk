@@ -1,6 +1,6 @@
 # Architecture
 
-The browser calls `/api` through Vite's local proxy. Spring Security authenticates requests and checks CSRF tokens on writes. Controllers translate requests into accounting commands. `LedgerService` handles invoicing; `PurchaseService` handles bills and expenses. They share journal and retry helpers and use Spring JDBC inside a transaction. SQL is explicit so the accounting relationships and write order are easy to inspect.
+The browser calls `/api` through Vite's local proxy. Spring Security authenticates requests and checks CSRF tokens on writes. Controllers translate requests into accounting commands. `LedgerService` handles invoicing; `PurchaseService` handles bills and expenses. `BankService` parses/imports statement evidence, `BankMatching` manages associations, and `BankReconciliation` checks and closes statements. They share journal and retry helpers and use Spring JDBC inside a transaction. SQL is explicit so the accounting relationships and write order are easy to inspect.
 
 ## Data model
 
@@ -16,6 +16,9 @@ The browser calls `/api` through Vite's local proxy. Spring Security authenticat
 - `expenses`: purchases paid immediately, separate from bills.
 - `receipts`: file bytes, content hashes, and metadata attached to exactly one bill or expense.
 - `journal_entries` and `journal_lines`: the accounting record.
+- `bank_imports` and `bank_transactions`: import summaries and deduplicated statement rows.
+- `bank_matches` and `bank_match_events`: current one-to-one associations and retained match/undo events.
+- `bank_reconciliations`: closed/reopened statement records, saved calculations, and owner/reason metadata.
 - `commands`: successful request keys and payload fingerprints.
 - `audit_events`: actor, action, time, and affected record.
 
@@ -56,3 +59,16 @@ The server limits files to 2 MiB, five files per purchase, and a 3 MiB multipart
 Content hashes detect duplicate attachments within a purchase. Uploads use CSRF and request keys, and commit the bytes, metadata, request result, and activity event together. Download names use generated UUIDs, with attachment disposition, `nosniff`, and `Cache-Control: no-store`. User filenames are display metadata, never filesystem paths or response header values.
 
 The frontend keeps the original upload request key until a successful workspace refresh, as it does for other writes. Its upload fingerprint includes the file contents, so a different selection becomes a different request. Receipt uploads and downloads do not post to the journal.
+
+
+## Bank matching and closed periods
+
+Flyway versions 4–6 add bank imports, matching, and reconciliation without rewriting the earlier migrations. A bounded UTF-8 CSV parser accepts one documented layout. Stable bank transaction IDs identify duplicates; changed details reject an entire import. Statement rows remain separate from the journal so an import cannot accidentally recognize revenue or expense again.
+
+Unique constraints protect both sides of a match. Candidate queries restrict amount, direction, account, business, and supported posted sources. Match history is separate from the active association so undo never erases it. A current match ID prevents a stale tab from undoing a replacement match.
+
+Preview reads a consistent snapshot. Close takes the same business lock as imports, matches and postings, recalculates, checks continuity and unresolved items, then saves the snapshot, request result and activity together. Journal posting checks the closed end date centrally; import and matching services apply the corresponding bank-row guards. Outstanding historical payments can clear against later statement rows without changing the earlier calculation.
+
+Reopening checks the latest closed record and its version under that lock, retains the snapshot, and records the reason and owner. A replacement close creates a new record. This trades concurrency throughput for a simple, testable single-business correctness model.
+
+The browser uses decimal strings/integer cents, invalidates previews after editing or refreshing, requires explicit close/reopen confirmation, and retains command keys after an uncertain refresh. A separate Playwright configuration starts an in-memory demo backend and frontend for reconciliation, preventing its closed periods from affecting other workflows.

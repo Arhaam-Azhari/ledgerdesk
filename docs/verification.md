@@ -2,6 +2,16 @@
 
 Checks are recorded per milestone. Prepared checks are not counted as passing checks.
 
+## Bank reconciliation milestone
+
+The bank milestone passed **86 integration tests on H2**, **86 on PostgreSQL 17**, the frontend production build, and **nine Chromium workflows** in [run 36928181272](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36928181272), source `76558dc5be2f1cab430665ad31ae51aca1314780`. Backend totals had zero failures, errors or skipped tests. The browser results comprise the eight shared-demo workflows plus one isolated reconciliation workflow.
+
+The 41 added backend tests cover CSV parsing and deduplication (13), reviewed one-to-one matching and undo (10), and reconciliation preview/close/reopen (18). They test exact amounts and cutoffs, period continuity, retained snapshots, stale commands, rollback, closed-period protections, security filters, and competing writes. The earlier 45 invoice/purchase tests also pass.
+
+The three added browser workflows cover CSV import, matching and undo, and statement reconciliation. They verify unchanged journal balances, explicit selection/confirmation, failure recovery, saved history, protected bank matches, reopening and narrow-screen layout. The reconciliation workflow uses a separate in-memory database and ports 8081/5174.
+
+The [import/matching notes](bank-imports.md) and [reconciliation notes](bank-reconciliation.md) link the exact runs and reviewed captures. Desktop and mobile images were downloaded from passing browser artifacts and visually checked. The reconciliation example shows a $500 statement balance, $80 outstanding payment, and $420 book balance. These are fictional test records, distinct from the README walkthrough.
+
 ## Purchases milestone
 
 The purchase source checkpoint passed **45 backend integration tests on H2**, **45 on PostgreSQL 17**, and **six Chromium workflows** on [GitHub Actions](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36914631754). The source commit was `3880cc732a7bbaaaca0bda7694ce36e4dae0514d`. All backend tests had zero failures, errors, and skipped tests. The browser suite completed in 15.0 seconds.
@@ -72,4 +82,4 @@ The [first milestone GitHub run](https://github.com/Arhaam-Azhari/ledgerdesk/act
 
 ## Release scope
 
-This is the verified local invoicing and purchases milestone, published as source code. There is no hosted application deployment. Bank reconciliation, period reports, separate roles, backups, and deployment hardening remain on the roadmap. The tests cover the workflows described here; they are not a guarantee for every possible edge case or production security.
+This is the verified local invoicing, purchases and bank reconciliation milestone, published as source code. There is no hosted application deployment. Period financial reports, separate roles, backups, and deployment hardening remain on the roadmap. The tests cover the workflows described here; they are not a guarantee for every possible edge case or production security.
