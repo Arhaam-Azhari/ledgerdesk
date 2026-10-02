@@ -36,7 +36,7 @@ public class AccrualService {
         String memo = LedgerService.text(request.memo(), 240, "Accrual memo");
         String account = LedgerService.text(request.accountCode(), 4, "Expense account");
         if (!account.equals(request.accountCode()) || db.queryForObject(
-                "SELECT COUNT(*) FROM accounts WHERE code = ? AND kind = 'EXPENSE'", Integer.class, account) != 1)
+                "SELECT COUNT(*) FROM accounts WHERE code = ? AND kind = 'EXPENSE' AND code NOT IN ('5600', '5700')", Integer.class, account) != 1)
             throw new IllegalArgumentException("Choose an operating expense category for the accrual.");
         BigDecimal amount = LedgerService.money(request.amount());
         ledger.lockBusiness();

@@ -31,7 +31,7 @@ public class PurchaseService {
     }
 
     private void category(String code) {
-        if (db.queryForObject("SELECT COUNT(*) FROM accounts WHERE code = ? AND kind = 'EXPENSE'", Integer.class, code) != 1)
+        if (db.queryForObject("SELECT COUNT(*) FROM accounts WHERE code = ? AND kind = 'EXPENSE' AND code NOT IN ('5600', '5700')", Integer.class, code) != 1)
             throw new IllegalArgumentException("Choose an operating expense category.");
     }
 
@@ -167,6 +167,8 @@ public class PurchaseService {
         var expense = document("expenses", expenseId);
         if (db.queryForObject("SELECT COUNT(*) FROM prepaid_plans p WHERE p.expense_id = ? AND NOT EXISTS (SELECT 1 FROM prepaid_corrections c WHERE c.plan_id = p.id)", Integer.class, expenseId) != 0)
             throw new IllegalArgumentException("This expense funds a prepaid plan. Review that plan before correcting the payment.");
+        if (db.queryForObject("SELECT COUNT(*) FROM fixed_assets a WHERE a.expense_id = ? AND NOT EXISTS (SELECT 1 FROM asset_corrections c WHERE c.asset_id = a.id)", Integer.class, expenseId) != 0)
+            throw new IllegalArgumentException("This purchase funds a fixed asset. Review the asset before correcting its payment.");
         if (date == null || date.isBefore(((java.sql.Date) expense.get("spent_on")).toLocalDate()))
             throw new IllegalArgumentException("Reversal date must be on or after the expense date.");
         ledger.requireOpenDate(((java.sql.Date) expense.get("spent_on")).toLocalDate());
@@ -214,7 +216,7 @@ public class PurchaseService {
                 "bills", db.queryForList("SELECT b.*, v.name AS vendor_name, a.name AS category FROM bills b JOIN vendors v ON v.id = b.vendor_id JOIN accounts a ON a.code = b.account_code WHERE b.business_id = 1 ORDER BY b.issued_on DESC, b.id"),
                 "expenses", db.queryForList("SELECT e.*, v.name AS vendor_name, a.name AS category FROM expenses e JOIN vendors v ON v.id = e.vendor_id JOIN accounts a ON a.code = e.account_code WHERE e.business_id = 1 ORDER BY e.spent_on DESC, e.id"),
                 "billPayments", db.queryForList("SELECT p.*, b.reference, v.name AS vendor_name FROM bill_payments p JOIN bills b ON b.id = p.bill_id JOIN vendors v ON v.id = b.vendor_id WHERE b.business_id = 1 ORDER BY p.paid_on DESC, p.id"),
-                "expenseCategories", db.queryForList("SELECT code, name FROM accounts WHERE kind = 'EXPENSE' ORDER BY code"),
+                "expenseCategories", db.queryForList("SELECT code, name FROM accounts WHERE kind = 'EXPENSE' AND code NOT IN ('5600', '5700') ORDER BY code"),
                 "receipts", db.queryForList("SELECT r.id, r.bill_id, r.expense_id, r.filename, r.media_type, r.size_bytes, r.uploaded_at FROM receipts r LEFT JOIN bills b ON b.id = r.bill_id LEFT JOIN expenses e ON e.id = r.expense_id WHERE b.business_id = 1 OR e.business_id = 1 ORDER BY r.uploaded_at, r.id"));
     }
 }

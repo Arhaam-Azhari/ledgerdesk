@@ -277,6 +277,7 @@ public class LedgerService {
         result.putAll(AdjustmentService.readState(db));
         result.putAll(AccrualService.readState(db));
         result.putAll(PrepaidService.readState(db));
+        result.putAll(FixedAssetService.readState(db));
         result.putAll(EquityService.readState(db));
         result.putAll(PurchaseService.readState(db));
         result.putAll(BankService.readState(db));
