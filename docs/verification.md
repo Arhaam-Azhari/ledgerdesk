@@ -105,4 +105,14 @@ The desktop and mobile captures were downloaded from that run and reviewed. [Rep
 
 ## Accrued expense screen checkpoint
 
-[Run 36950384165](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36950384165), source `fa49a0586143e8c6b015e5b79638ab00b4b820d0`, passed 143 integration tests on each of H2 and PostgreSQL 17, the production frontend build and all thirteen Chromium workflows. The new workflow verifies input precision, exact posting/reversal retries after interrupted refreshes, closed-period rejection, historical reports, unchanged cash and vendor aging, retained history and mobile layout. Five downloaded captures were reviewed and added to [accrual notes](accruals.md). The feature remains in draft PR #6 pending final review; linked bill handoff remains future work.
+[Run 36950384165](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36950384165), source `fa49a0586143e8c6b015e5b79638ab00b4b820d0`, passed 143 integration tests on each of H2 and PostgreSQL 17, the production frontend build and all thirteen Chromium workflows. The new workflow verifies input precision, exact posting/reversal retries after interrupted refreshes, closed-period rejection, historical reports, unchanged cash and vendor aging, retained history and mobile layout. Five downloaded captures were reviewed and added to [accrual notes](accruals.md). The accrual milestone was subsequently merged in PR #6.
+
+
+## Accrual-to-bill backend checkpoint
+
+[Run 36952050080](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36952050080), source `4dde31f8a61e0e052caa6154e64c8a26b92c9ef2`, passed 155 integration tests on each of H2 and PostgreSQL 17, the production frontend build and all thirteen existing Chromium workflows. Twelve new tests verify the atomic estimate reversal/bill/link, equal and different amounts, preserved closed history, retries, full rollback, normal payments and voiding, endpoint security and competing submissions. [Handoff notes](accrual-bill-handoff.md) explain the figures and API. This checkpoint verified the API before the handoff form was added.
+
+
+## Accrual-to-bill screen checkpoint
+
+[Run 36953376746](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36953376746), source `c62e9983f41b4db753409bde96e23a10bcefba26`, passed 155 integration tests on each of H2 and PostgreSQL 17, the production frontend build and all fourteen Chromium workflows. The new isolated handoff workflow covers supplier setup guidance, invalid amounts, closed dates, draft retention and interrupted-refresh retries, historical reports, the amount difference, linked bill navigation, partial payment, retained void status and mobile layout. Four reviewed captures and reproduction instructions are in [handoff notes](accrual-bill-handoff.md). Final milestone review and merge remain pending in PR #7.

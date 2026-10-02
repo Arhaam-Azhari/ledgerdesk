@@ -20,6 +20,11 @@ public class AccrualController {
             @RequestHeader("Idempotency-Key") String key, Principal user) {
         return Map.of("id", accruals.reverse(id, body, key, user.getName()));
     }
+    @PostMapping("/{id}/bill")
+    Map<String, String> receiveBill(@PathVariable String id, @RequestBody AccrualService.BillArrival body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", accruals.receiveBill(id, body, key, user.getName()));
+    }
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) { return Map.of("message", error.getMessage()); }

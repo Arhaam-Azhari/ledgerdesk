@@ -49,7 +49,7 @@ jobs:
         working-directory: backend
       - run: java -jar target/ledgerdesk-0.1.0.jar --spring.profiles.active=demo > backend.log 2>&1 &
         working-directory: backend
-      - run: npm ci && npm run build && npx playwright install --with-deps chromium && npm run test:e2e && npm run test:reconciliation && npm run test:reports && npm run test:equity && npm run test:adjustments && npm run test:accruals
+      - run: npm ci && npm run build && npx playwright install --with-deps chromium && npm run test:e2e && npm run test:reconciliation && npm run test:reports && npm run test:equity && npm run test:adjustments && npm run test:accruals && npm run test:handoff
         working-directory: frontend
       - uses: actions/upload-artifact@v4
         if: always()
@@ -62,3 +62,4 @@ jobs:
             frontend/equity-results/
             frontend/adjustment-results/
             frontend/accrual-results/
+            frontend/handoff-results/

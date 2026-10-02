@@ -565,7 +565,7 @@ function App() {
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
-            <span className="demo-tag">Milestone 08 · Fictional business</span>
+            <span className="demo-tag">Milestone 09 · Fictional business</span>
             <button
               className="secondary"
               disabled={busy}
@@ -1203,7 +1203,14 @@ function App() {
             download={downloadReceipt}
           />
         )}
-        {page === "Accruals" && <Accruals data={data} busy={busy} act={act} />}
+        {page === "Accruals" && (
+          <Accruals
+            data={data}
+            busy={busy}
+            act={act}
+            openBills={() => setPage("Bills")}
+          />
+        )}
         {page === "Adjustments" && (
           <Adjustments data={data} busy={busy} act={act} />
         )}

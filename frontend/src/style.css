@@ -493,3 +493,6 @@ td code {
 .adjustment-history { min-width: 600px; }
 .adjustment-history td:first-child, .adjustment-history td:nth-child(3), .adjustment-history td:nth-child(4) { white-space: nowrap; }
 @media (max-width: 700px) { .adjustment-line { grid-template-columns: 1fr; } .adjustment-line button { justify-self: start; } }
+
+.handoff-preview { border-top: 1px solid #e2e9e8; margin-top: 24px; padding-top: 12px; }
+.linked-bill { margin-top: 16px; }

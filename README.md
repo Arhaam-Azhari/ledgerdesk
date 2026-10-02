@@ -179,11 +179,11 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 143 backend integration tests passed on each of H2 and PostgreSQL 17, and all thirteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 155 backend integration tests passed on each of H2 and PostgreSQL 17, and all fourteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
-1. Additional adjustment types, including prepayments and depreciation, plus a linked accrual-to-bill handoff, and a broader accounting period workflow.
+1. Additional adjustment types, including prepayments and depreciation, and a broader accounting period workflow.
 2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
 The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
@@ -222,6 +222,10 @@ Run the isolated browser check with `npm run test:adjustments` in `frontend`, af
 
 Open **Accruals** to record an operating expense already incurred before its supplier bill arrives. Enter its date, category, memo and USD amount, then inspect the balanced preview. Posting debits the expense and credits a separate accrued-expenses liability. Cash and vendor aging stay unchanged.
 
-Choose **Reverse accrued expense** to offset the estimate on an open date, with a reason. Original details remain visible, and a later reversal preserves earlier reports. If a refresh fails, retry the same form details. The eventual bill is entered separately; review its entry and the reversal together to avoid counting the expense twice. A linked bill handoff is still future work. See [the accounting example, API contract, screenshots and checks](docs/accruals.md).
+When the bill arrives, choose **Receive supplier bill**, enter its actual details and inspect the preview. Posting reverses the estimate and records the bill on the same date. History shows the linked bill, including a later void, and **View bills and payments** opens Bills for payment. Different amounts recognize the difference on the bill date while preserving earlier reports. See [handoff accounting, screenshots and instructions](docs/accrual-bill-handoff.md).
+
+For an estimate that needs correction without a bill, choose **Reverse accrued expense** and enter an open date and reason. Original details remain visible. Posting, reversal and bill handoff retain their form details after an unsuccessful refresh so the same request can be retried. See [the accrual example, API contract, screenshots and checks](docs/accruals.md).
 
 Run the isolated browser check with `npm run test:accruals` in `frontend`, after building the backend JAR and installing Chromium. Keep ports 8085 and 5178 free.
+
+The isolated bill-handoff browser workflow runs with `npm run test:handoff` in `frontend` after building the backend JAR and installing Chromium. Keep ports 8086 and 5179 free.
