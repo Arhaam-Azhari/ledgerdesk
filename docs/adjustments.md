@@ -1,0 +1,15 @@
+# Expense category adjustments
+
+This first adjustment checkpoint supports balanced reclassification between the operating expense categories. It does not yet support arbitrary journals, accruals, prepaid assets, depreciation, opening balances, tax entries or year-end closing. The posting API is implemented; the browser editor and retained reversal workflow remain next.
+
+`POST /api/adjustments` requires the workspace login, CSRF token and `Idempotency-Key`. Supply `postedOn`, a memo up to 300 characters and between two and twenty lines. Each line has `accountCode`, `debit` and `credit` as decimal strings. Use zero on the unused side and a positive amount on the other. Select each account once. Every account must be an existing operating expense category, and total debits must equal total credits exactly.
+
+For example, a $150 setup purchase initially recorded as Office supplies can be split with a $100.01 debit to Software subscriptions (5100), a $49.99 debit to Professional services (5200), and a $150 credit to Office supplies (5000). The expense total, profit, cash, and customer/vendor outstanding balances stay the same; the category totals change. The original purchase metadata and journal remain intact. Include a clear memo linking the adjustment to the purchase or business reason; this API does not rewrite the original bill/expense category label.
+
+The adjustment appears on its own posting date. A November reclassification preserves October reports and can show a negative category amount in November. Reports use journal balances, while purchase screens retain original document details. Do not use category adjustments to record a new purchase or payment. They do not create bank matching candidates because they never touch the bank account.
+
+Only expense accounts are accepted in this checkpoint. Allowing manual bank, receivable or payable lines would bypass payment records, statement evidence and aging allocations. Owner equity also retains its dedicated transfer workflow. Additional adjustment types need their own supported accounts and accounting rules before being exposed.
+
+Migration V9 retains adjustment headers; their lines are the journal lines linked by the header's source ID. The workspace state includes `adjustments` and `adjustmentLines`. The business lock serializes posting and command retries, the closed-date guard protects reconciled periods, and the header, all lines, activity and command commit together. Exact retries return the existing adjustment ID, including after closing the period; changed details cannot reuse the key. There is no edit/delete endpoint or adjustment reversal workflow yet. This branch remains a draft while the editor and corrections are completed.
+
+Eight integration tests cover exact multi-line allocation, unchanged profit/cash/aging and retained purchases, earlier/later periods, invalid money or unbalanced sides, restricted/duplicate accounts, invalid dates/memos/line counts, request retries and closed dates, rollback and endpoint access controls. Verification results will be recorded after CI finishes.

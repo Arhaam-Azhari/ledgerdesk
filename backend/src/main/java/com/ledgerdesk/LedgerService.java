@@ -274,6 +274,7 @@ public class LedgerService {
                 "trialBalance", trial, "ledger", db.queryForList("SELECT e.entry_date, e.memo, e.source_id, e.id AS entry_id, a.code, a.name, l.debit, l.credit FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id JOIN accounts a ON a.code = l.account_code ORDER BY e.entry_date, e.id, l.credit"),
                 "payments", db.queryForList("SELECT * FROM payments ORDER BY paid_on DESC"),
                 "audit", db.queryForList("SELECT * FROM audit_events ORDER BY occurred_at DESC")));
+        result.putAll(AdjustmentService.readState(db));
         result.putAll(EquityService.readState(db));
         result.putAll(PurchaseService.readState(db));
         result.putAll(BankService.readState(db));
