@@ -171,6 +171,67 @@ test("stored logins, roles and business data survive a real backend restart", as
       path: "persistent-results/owner-data-after-restart.png",
       fullPage: true,
     });
+    await stop();
+    const recoveredPassword = "offline-recovered-password";
+    const recoveryProcess = spawn(
+      "java",
+      [
+        "-jar",
+        "target/ledgerdesk-0.1.0.jar",
+        "--spring.profiles.active=demo",
+        "--spring.main.web-application-type=none",
+        "--app.accounts.persistent=true",
+        "--app.recovery.enabled=true",
+        `--spring.datasource.url=jdbc:h2:file:${join(folder, "accounts")};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE`,
+      ],
+      {
+        cwd: backend,
+        env: { ...process.env },
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    );
+    server = recoveryProcess;
+    let recoveryLog = "";
+    for (const stream of [recoveryProcess.stdout, recoveryProcess.stderr])
+      stream?.on("data", (chunk) => {
+        recoveryLog += chunk.toString();
+      });
+    const recoveryExit = new Promise<number | null>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        recoveryProcess.kill("SIGKILL");
+        reject(new Error("Recovery command timed out."));
+      }, 60000);
+      recoveryProcess.once("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      recoveryProcess.once("exit", (code) => {
+        clearTimeout(timer);
+        resolve(code);
+      });
+    });
+    recoveryProcess.stdin!.end(
+      `${owner}\n${recoveredPassword}\nForgotten owner password in isolated test\n`,
+    );
+    expect(await recoveryExit, recoveryLog).toBe(0);
+    expect(recoveryLog).toContain("Owner access recovered");
+    expect(recoveryLog).not.toContain(recoveredPassword);
+    await start("changed-owner-password", "changed-reviewer-password");
+    expect((await identity(owner, ownerPassword)).status()).toBe(401);
+    const recovered = await identity(owner, recoveredPassword);
+    expect(recovered.ok()).toBe(true);
+    expect((await recovered.json()).canWrite).toBe(true);
+    const recoveredState = await request
+      .get("/api/state", { headers: auth(owner, recoveredPassword) })
+      .then((r) => r.json());
+    expect(
+      recoveredState.vendors.some((v: { id: string }) => v.id === vendorId),
+    ).toBe(true);
+    expect(
+      recoveredState.audit.some(
+        (a: { action: string }) => a.action === "ACCOUNT_OWNER_RECOVERED",
+      ),
+    ).toBe(true);
   } finally {
     await stop();
     await rm(folder, { recursive: true, force: true });
