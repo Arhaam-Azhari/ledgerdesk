@@ -1,4 +1,4 @@
-# Account management backend checkpoint
+# Owner account management
 
 In persistent-account mode, owners can list accounts, create an OWNER or REVIEWER, change a role/enabled state, and reset a password. Reviewers cannot read or write account administration routes. All mutations require owner authorization and CSRF; the service also rechecks the actor's current enabled owner membership under the business lock.
 
@@ -8,12 +8,20 @@ In persistent-account mode, owners can list accounts, create an OWNER or REVIEWE
 
 Each actual mutation records an account action and account ID in application activity, without credentials. Account, membership and audit writes share a transaction. A failed audit write rolls back creation. This local installation still selects business 1, and disabled state belongs to the user globally; multi-business account administration is not implemented. Configured-login mode rejects account management.
 
-Eight integration tests cover hash-free lists, creation/duplicates/roles, last-owner protection, real authentication after disabling/promoting/resetting, self-change verification, CSRF/reviewer denial, business-target/actor guards and audit rollback. Source `0481b0ac30147795eeb26c1633c2b7b15d7412a2` passed [Actions run 37070911322](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37070911322): 223 integration tests on each of H2 and PostgreSQL 17, zero failures/errors/skips, production frontend build and all 19 existing Chromium workflows, including the real persistent-account restart. These browser workflows check regression behavior; administration-specific screens and browser proof remain pending. The screen and dedicated workflow are documented below. Screenshot review remains before milestone review; the [offline recovery workflow](account-recovery.md) is now documented separately. Basic authentication remains a local development setup.
+Eight integration tests cover hash-free lists, creation/duplicates/roles, last-owner protection, real authentication after disabling/promoting/resetting, self-change verification, CSRF/reviewer denial, business-target/actor guards and audit rollback. The final account milestone passed 229 integration tests on each of H2 and PostgreSQL 17 and all 20 Chromium workflows in [run 37075785948](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37075785948). Basic authentication remains a local development setup; [offline recovery](account-recovery.md) is documented separately.
 
-## Owner workspace checkpoint
+## Owner workspace
 
 The Accounts page appears only for owners in persistent-account mode. It creates accounts, changes another account's role/enabled state, and changes passwords. An owner uses another enabled owner to change their own access state through the UI. Password changes require the current password for the signed-in account and lock that workspace after saving; sign in with the replacement password. Password fields clear after success or cancellation, and account requests bypass the frontend ledger retry-key cache. A known successful write is reported separately from a failed workspace refresh, so it is not presented as an unconfirmed write.
 
 Source `acd5dfa11be00c1462819eff9502c24985f63e26` passed [Actions run 37072366730](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37072366730): 223 integration tests on each database, no failures/errors/skips, production frontend build and all 20 Chromium workflows. The dedicated administration workflow creates a reviewer, disables and re-enables it, resets its password, promotes and demotes its role, checks last-owner protection through the API, changes the owner's password and signs back in. The replacement owner password includes a non-ASCII character, verifying UTF-8 frontend login encoding. It also checks phone width and captures the editor, mobile view and post-password-change account list.
 
-Run `npm run test:accounts` after building the backend JAR and installing Chromium; ports 8092 and 5185 must be free. Captures are retained in the passing artifact; visual review and selected documentation screenshots remain the next checkpoint.
+Run `npm run test:accounts` after building the backend JAR and installing Chromium; ports 8092 and 5185 must be free. The original captures below were downloaded from the final passing run and visually reviewed. The header still shows the earlier milestone label used at capture time.
+
+![Owner account creation and access controls](screenshots/account-editor.png)
+
+![Accounts at phone width](screenshots/mobile-accounts.png)
+
+After changing the owner password, the workflow signs back in with the replacement (including a non-ASCII character).
+
+![Owner accounts after signing in with the replacement password](screenshots/account-password-changed.png)
