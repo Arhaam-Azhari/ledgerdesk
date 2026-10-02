@@ -270,3 +270,12 @@ Set `APP_ACCOUNTS_PERSISTENT=true` before starting the backend to enable stored 
 Owners use **Accounts** to create users, change another account’s role/access and reset passwords. The last enabled owner cannot be disabled or demoted. Changing your own password requires the current password and locks the workspace; sign in with the replacement. Only password hashes are stored, and account changes appear in Activity.
 
 If owner access is lost, the operator can stop the backend and run the [offline recovery command](docs/account-recovery.md) against the existing database. It recovers an existing business-1 account and records the reason without exposing an HTTP recovery route. See [account management](docs/account-management.md) for reviewed desktop/mobile screenshots and [persistent accounts](docs/persistent-accounts.md) for setup, restart proof and limitations. This work demonstrates database-backed authentication, role constraints, transactional administration, recovery and testing across real process boundaries.
+
+## Local backup and restore
+
+The [H2 backup guide](docs/local-backups.md) explains how to stop the backend, create a checksummed database copy and restore it into a separate location without overwriting the original. It includes stored accounts and receipt data. The extended process workflow verifies restored accounting records and retained request keys; see the guide for the current verification status. PostgreSQL backup/restore remains a separate milestone.
+
+
+## Development history
+
+The [development history](docs/development-history.md) links the pull requests for each milestone. Each PR contains its changes and verification notes; the linked feature guides include accounting examples, instructions and screenshots. Earlier PRs describe the scope at the time they were merged. Later milestones extend that scope.

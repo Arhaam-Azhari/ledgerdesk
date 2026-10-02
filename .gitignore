@@ -24,3 +24,7 @@ frontend/cash-results/
 frontend/reviewer-results/
 frontend/persistent-results/
 frontend/account-results/
+
+__pycache__/
+*.mv.db
+*.lock.db
