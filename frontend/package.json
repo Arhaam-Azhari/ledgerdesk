@@ -12,7 +12,8 @@
     "test:equity": "playwright test --config playwright.equity.config.ts",
     "test:adjustments": "playwright test --config playwright.adjustments.config.ts",
     "test:accruals": "playwright test --config playwright.accruals.config.ts",
-    "test:handoff": "playwright test --config playwright.handoff.config.ts"
+    "test:handoff": "playwright test --config playwright.handoff.config.ts",
+    "test:prepaid": "playwright test --config playwright.prepaid.config.ts"
   },
   "dependencies": {
     "react": "^19.1.1",

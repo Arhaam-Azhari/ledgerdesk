@@ -2,7 +2,7 @@
 
 A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, expense category adjustments, and accrued expenses are working milestones. Additional adjustment types, user roles, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, expense category adjustments, accrued expenses, and prepaid expenses are working milestones. Additional adjustment types, user roles, and deployment remain on the roadmap.
 
 ## Working now
 
@@ -179,11 +179,11 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 155 backend integration tests passed on each of H2 and PostgreSQL 17, and all fourteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 178 backend integration tests passed on each of H2 and PostgreSQL 17, and all fifteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
-1. Additional adjustment types, including prepayments and depreciation, and a broader accounting period workflow.
+1. Additional adjustment types, including depreciation, and a broader accounting period workflow.
 2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
 The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
@@ -229,3 +229,11 @@ For an estimate that needs correction without a bill, choose **Reverse accrued e
 Run the isolated browser check with `npm run test:accruals` in `frontend`, after building the backend JAR and installing Chromium. Keep ports 8085 and 5178 free.
 
 The isolated bill-handoff browser workflow runs with `npm run test:handoff` in `frontend` after building the backend JAR and installing Chromium. Keep ports 8086 and 5179 free.
+
+## Prepaid expenses
+
+Record a purchase paid upfront in Expenses, then open **Prepaid expenses**. Choose that purchase, a first-of-month benefit start, one to sixty months and a memo. The preview shows each monthly amount; the final month receives the rounding remainder. Setup reclassifies the cost to a prepaid asset on the original open payment date and retains the bank payment and receipts.
+
+Recognize the next scheduled month as its benefit is consumed. **End remaining benefit** expenses the unused balance on a chosen open date without changing earlier reports or recording a refund. **Correct accidental plan** restores an untouched plan to a direct expense on its original open date. History retains the plan, schedule and reasons. One plan per purchase, whole months and explicit postings are supported; replacement schedules, partial-month proration and supplier refunds remain future work. See [the prepaid example, screenshots, API and verification](docs/prepaid-expenses.md).
+
+Run `npm run test:prepaid` in `frontend` after building the backend JAR and installing Chromium. Keep ports 8087 and 5180 free. The isolated workflow checks exact allocations, desktop/mobile layout, recognition, cancellation and correction.

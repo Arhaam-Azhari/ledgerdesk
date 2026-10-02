@@ -1,3 +1,4 @@
+import { Prepaids, type PrepaidState } from "./Prepaids";
 import { Accruals, type AccrualState } from "./Accruals";
 import { Adjustments, type AdjustmentState } from "./Adjustments";
 import { OwnerEquity, type EquityState } from "./OwnerEquity";
@@ -78,7 +79,8 @@ type Draft = {
   version: number;
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
-type State = AccrualState &
+type State = PrepaidState &
+  AccrualState &
   AdjustmentState &
   EquityState &
   PurchaseState &
@@ -442,6 +444,7 @@ function App() {
     "Owner transfers",
     "Adjustments",
     "Accruals",
+    "Prepaid expenses",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -1201,6 +1204,14 @@ function App() {
             act={act}
             upload={uploadReceipt}
             download={downloadReceipt}
+          />
+        )}
+        {page === "Prepaid expenses" && (
+          <Prepaids
+            data={data}
+            busy={busy}
+            act={act}
+            openExpenses={() => setPage("Expenses")}
           />
         )}
         {page === "Accruals" && (
