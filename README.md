@@ -179,12 +179,12 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 229 backend integration tests passed on each of H2 and PostgreSQL 17, and all twenty Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 229 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
 1. A broader accounting period workflow and additional adjustment types.
-2. Bookkeeper permissions, business isolation, hardened deployment, backups, and restore testing.
+2. Bookkeeper permissions, business isolation, hardened deployment, encrypted backup storage, scheduled retention and broader restore fixtures.
 
 The current version has one business, owner/reviewer roles and optional database-backed account management. Bookkeeper roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
 
@@ -273,7 +273,7 @@ If owner access is lost, the operator can stop the backend and run the [offline 
 
 ## Local backup and restore
 
-The [H2 backup guide](docs/local-backups.md) explains how to stop the backend, create a checksummed database copy and restore it into a separate location without overwriting the original. It includes stored accounts and receipt data. The extended process workflow verifies restored accounting records and retained request keys; see the guide for the current verification status. PostgreSQL backup/restore remains a separate milestone.
+The [H2 backup guide](docs/local-backups.md) explains how to stop the backend, create a checksummed database copy and restore it into a separate location without overwriting the original. It includes stored accounts and receipt data. The extended process workflow verifies restored accounting records and retained request keys; see the guide for the current verification status. PostgreSQL has a separate [native backup and restore workflow](docs/postgres-backups.md).
 
 
 ## Development history

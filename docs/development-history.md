@@ -4,7 +4,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 
 | Pull request | Milestone |
 | --- | --- |
-+| [#1](https://github.com/Arhaam-Azhari/ledgerdesk/pull/1) | Add vendor bills, expenses, and receipt attachments |
+| [#1](https://github.com/Arhaam-Azhari/ledgerdesk/pull/1) | Add vendor bills, expenses, and receipt attachments |
 | [#2](https://github.com/Arhaam-Azhari/ledgerdesk/pull/2) | Add bank imports, reviewed matching and statement reconciliation |
 | [#3](https://github.com/Arhaam-Azhari/ledgerdesk/pull/3) | Add dated financial reports and CSV exports |
 | [#4](https://github.com/Arhaam-Azhari/ledgerdesk/pull/4) | Add owner funding, withdrawals and retained corrections |
@@ -23,4 +23,4 @@ The descriptions record the supported scope and remaining work at that milestone
 
 Feature guides under `docs/` explain the accounting entries, worked figures, supported limits and reproduction steps. `verification.md` links the test runs and reviewed screenshots. Screenshots show particular tested workflows; the tests provide broader evidence about rollback, authorization and retries.
 
-This is still a local, single-business USD application. A public repository and passing checks do not mean it is ready to host real business records. Hosted sessions, broader roles, business isolation remain separate milestones.
+This is still a local, single-business USD application. A public repository and passing checks do not mean it is ready to host real business records. Hosted sessions, broader roles and business isolation remain separate milestones.
