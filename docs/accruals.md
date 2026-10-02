@@ -6,7 +6,7 @@ This workflow records an operating expense that has been incurred but has no sup
 
 On October 31, record $125.37 for work already received. October expenses increase by $125.37, accumulated earnings fall by the same amount, and accrued liabilities increase by $125.37. The trial balance and balance sheet still balance.
 
-A November 1 reversal debits accrued expenses and credits the original expense category. October reports retain the estimate; November shows its offset. The reversal can be in an open period even when October is closed. Entering the eventual supplier bill remains a separate step. Until a linked bill handoff is added, review the estimate and reversal together to avoid counting the expense twice. A reversal does not mark the supplier as paid or automatically create a bill.
+A November 1 reversal debits accrued expenses and credits the original expense category. October reports retain the estimate; November shows its offset. The reversal can be in an open period even when October is closed. When the supplier bill arrives, use [Receive supplier bill](accrual-bill-handoff.md) to reverse the estimate and post the actual bill together. If an estimate was already reversed manually, review that history before entering its bill separately. A reversal does not mark the supplier as paid or automatically create a bill.
 
 ## Using the screen
 
@@ -77,4 +77,4 @@ The browser configuration starts an isolated in-memory demo on backend port 8085
 
 ## Remaining work
 
-The [linked bill handoff API](accrual-bill-handoff.md) is implemented as a separate backend checkpoint; its screen and browser proof are still in progress. Partial settlement and scheduled reversals remain future work. Prepaid expenses and depreciation require separate workflows. The current feature records one expense estimate and one full dated reversal; it does not automate settlement.
+The [linked bill handoff](accrual-bill-handoff.md) records one actual bill against one unreversed estimate. Partial replacements by multiple bills and scheduled reversals remain future work. Prepaid expenses and depreciation require separate workflows. The current feature records one expense estimate and one full dated reversal. Linked bills use the normal bill-payment workflow.
