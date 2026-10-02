@@ -107,3 +107,9 @@ Cancellation expenses the remaining benefit on a later open date and blocks futu
 A fixed asset references one retained paid purchase. Setup reclassifies its original expense into equipment cost on the original payment date, preserving cash, receipts and bank matches. Whole-month schedules allocate cost less residual value using exact decimals; the final row takes the rounding remainder. Unposted rows do not affect reports. Depreciation debits expense and credits accumulated depreciation, a contra-asset kept separate from cost.
 
 Before any depreciation, correction offsets setup on the original open date. Zero-proceeds retirement validates the setup and posted depreciation journals, removes cost and accumulated depreciation and records remaining book value as a loss. Earlier scheduled months must be posted first. Retirement on a later open date preserves closed historical balances. Source locks, transaction boundaries, audit entries and idempotency records keep retries atomic. Purchase eligibility prevents active prepaid and fixed-asset allocations on the same payment.
+
+## Cash activity
+
+The cash activity report reads bank-account journal lines in a repeatable-read transaction. Opening and closing balances use independent ledger sums; period cash lines retain gross receipts and payments, including reversals. A grouped counterpart query avoids multiplying cash lines when an entry has several noncash lines. A single known counterpart supplies the original posting group; mixed or unknown entries remain in Other. Later noncash capitalization does not rewrite an original cash group.
+
+The response keeps entry, source and cash-line IDs for traceability. No report request writes accounting or audit records. The screen invalidates results on date/workspace changes, and CSV exports use displayed report dates, escaped text and validated monetary values. Formal cash-flow classification is outside this report's scope.
