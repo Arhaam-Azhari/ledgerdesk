@@ -1,3 +1,4 @@
+import { BillHandoff } from "./BillHandoff";
 import React, { useState } from "react";
 import { cents, dollars, today } from "./money";
 
@@ -10,24 +11,31 @@ type Accrual = {
   reversal_id: string | null;
   reversed_on: string | null;
   reversal_reason: string | null;
+  bill_id: string | null;
+  bill_reference: string | null;
+  bill_amount: string | null;
+  bill_status: "POSTED" | "VOID" | null;
 };
 export type AccrualState = {
   accruals: Accrual[];
+  vendors: { id: string; name: string }[];
   expenseCategories: { code: string; name: string }[];
 };
 type Props = {
   data: AccrualState;
   busy: boolean;
+  openBills: () => void;
   act: (path: string, body: object, success: string) => Promise<boolean>;
 };
 
-export function Accruals({ data, busy, act }: Props) {
+export function Accruals({ data, busy, act, openBills }: Props) {
   const [date, setDate] = useState(today());
   const [memo, setMemo] = useState("");
   const [account, setAccount] = useState(data.expenseCategories[0]?.code ?? "");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
   const [correcting, setCorrecting] = useState<Accrual | null>(null);
+  const [receiving, setReceiving] = useState<Accrual | null>(null);
   const category = (code: string) =>
     `${code} · ${data.expenseCategories.find((a) => a.code === code)?.name ?? "Expense category"}`;
   let preview = "Enter a positive amount";
@@ -161,19 +169,76 @@ export function Accruals({ data, busy, act }: Props) {
                 </p>
               </>
             ) : (
-              <button
-                type="button"
-                className="secondary"
-                disabled={busy}
-                aria-label={`Reverse accrual ${record.memo}`}
-                onClick={() => setCorrecting(record)}
-              >
-                Reverse accrued expense
-              </button>
+              <>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={busy || data.vendors.length === 0}
+                    aria-label={`Receive bill for ${record.memo}`}
+                    onClick={() => {
+                      setCorrecting(null);
+                      setReceiving(record);
+                    }}
+                  >
+                    Receive supplier bill
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={busy}
+                    aria-label={`Reverse accrual ${record.memo}`}
+                    onClick={() => {
+                      setReceiving(null);
+                      setCorrecting(record);
+                    }}
+                  >
+                    Reverse accrued expense
+                  </button>
+                </div>
+                {data.vendors.length === 0 && (
+                  <p>Add a vendor in Vendors before receiving its bill.</p>
+                )}
+              </>
+            )}
+            {record.bill_id && (
+              <div className="linked-bill">
+                <p>
+                  <strong>Linked bill {record.bill_reference}</strong> ·{" "}
+                  {dollars(cents(record.bill_amount!))} ·{" "}
+                  {record.bill_status === "VOID" ? "Voided" : "Posted"}
+                </p>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busy}
+                  onClick={openBills}
+                >
+                  View bills and payments
+                </button>
+                {record.bill_status === "VOID" && (
+                  <p>
+                    The bill was voided; the estimate reversal remains in
+                    history. Review the obligation before recording a
+                    replacement.
+                  </p>
+                )}
+              </div>
             )}
           </article>
         ))}
       </section>
+      {receiving && (
+        <BillHandoff
+          key={receiving.id}
+          accrual={receiving}
+          category={category(receiving.account_code)}
+          vendors={data.vendors}
+          busy={busy}
+          act={act}
+          close={() => setReceiving(null)}
+        />
+      )}
       {correcting && (
         <section className="card">
           <h2>Reverse an accrued expense</h2>
@@ -187,9 +252,9 @@ export function Accruals({ data, busy, act }: Props) {
             later reversal preserves earlier reports.
           </p>
           <p>
-            If the bill has arrived, review this reversal together with the bill
-            entry to avoid counting the expense twice. This action does not
-            create a bill or record a payment.
+            If the bill has arrived and has not been entered, cancel this
+            reversal and choose Receive supplier bill instead. A manual reversal
+            does not create a bill or record a payment.
           </p>
           <form
             onSubmit={async (event) => {
