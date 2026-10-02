@@ -116,3 +116,9 @@ The desktop and mobile captures were downloaded from that run and reviewed. [Rep
 ## Accrual-to-bill screen checkpoint
 
 [Run 36953376746](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36953376746), source `c62e9983f41b4db753409bde96e23a10bcefba26`, passed 155 integration tests on each of H2 and PostgreSQL 17, the production frontend build and all fourteen Chromium workflows. The new isolated handoff workflow covers supplier setup guidance, invalid amounts, closed dates, draft retention and interrupted-refresh retries, historical reports, the amount difference, linked bill navigation, partial payment, retained void status and mobile layout. Four reviewed captures and reproduction instructions are in [handoff notes](accrual-bill-handoff.md). Final milestone review and merge remain pending in PR #7.
+
+## Prepaid expenses: final workflow review
+
+Source `6ba4805688bc04a589d80638ebd70a6545dc88e5` passed [run 36976006689](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36976006689): 178 integration tests on each database, the production frontend build and all fifteen Chromium workflows. The prepaid workflow verifies exact allocations, invalid dates/year overflow, creation and cancellation retries after deliberately interrupted refreshes, one retained result, closed October reports unchanged by November cancellation, recognition, correction and phone-width layout. Five original captures were downloaded, visually reviewed and added to [prepaid notes](prepaid-expenses.md).
+
+The retained plan supports whole calendar months, explicit scheduled postings, remaining-benefit cancellation and correction before recognition. Replacement schedules on the same purchase, supplier refunds and partial-month allocations remain outside this milestone. Final review covers those limits and the unchanged source cash/bank-matching behavior.
