@@ -24,6 +24,7 @@ jobs:
           java-version: '17'
           cache: maven
           cache-dependency-path: backend/pom.xml
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - run: mvn -B test
         working-directory: backend
       - run: mvn -B test

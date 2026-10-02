@@ -1,16 +1,17 @@
 import { test, expect } from "@playwright/test";
-import { spawn, type ChildProcess } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-test("stored logins, roles and business data survive a real backend restart", async ({
+test("stored accounts and accounting data survive restart, recovery and backup restore", async ({
   page,
   request,
 }) => {
-  test.setTimeout(180000);
+  test.setTimeout(240000);
   const folder = await mkdtemp(join(tmpdir(), "ledgerdesk-accounts-"));
   const backend = resolve("../backend");
+  let database = join(folder, "accounts");
   let server: ChildProcess | null = null;
   let logs = "";
   let spawnError: Error | null = null;
@@ -47,7 +48,7 @@ test("stored logins, roles and business data survive a real backend restart", as
         "target/ledgerdesk-0.1.0.jar",
         "--spring.profiles.active=demo",
         "--server.port=8091",
-        `--spring.datasource.url=jdbc:h2:file:${join(folder, "accounts")};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE`,
+        `--spring.datasource.url=jdbc:h2:file:${database};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE`,
       ],
       {
         cwd: backend,
@@ -111,6 +112,21 @@ test("stored logins, roles and business data survive a real backend restart", as
     });
     expect(vendor.ok()).toBe(true);
     const vendorId = (await vendor.json()).id;
+    const transfer = await request.post("/api/equity", {
+      headers: {
+        ...auth(owner, ownerPassword),
+        [csrf.headerName]: csrf.token,
+        "Idempotency-Key": "backup-owner-funding",
+      },
+      data: {
+        kind: "CONTRIBUTION",
+        postedOn: "2026-10-01",
+        memo: "Funds retained in backup",
+        amount: "125.37",
+      },
+    });
+    expect(transfer.ok()).toBe(true);
+
     await stop();
     await start("changed-owner-password", "changed-reviewer-password");
     expect((await identity(owner, "changed-owner-password")).status()).toBe(
@@ -182,7 +198,7 @@ test("stored logins, roles and business data survive a real backend restart", as
         "--spring.main.web-application-type=none",
         "--app.accounts.persistent=true",
         "--app.recovery.enabled=true",
-        `--spring.datasource.url=jdbc:h2:file:${join(folder, "accounts")};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE`,
+        `--spring.datasource.url=jdbc:h2:file:${database};MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE`,
       ],
       {
         cwd: backend,
@@ -232,6 +248,59 @@ test("stored logins, roles and business data survive a real backend restart", as
         (a: { action: string }) => a.action === "ACCOUNT_OWNER_RECOVERED",
       ),
     ).toBe(true);
+    expect(recoveredState.equityTransactions).toHaveLength(1);
+    expect(recoveredState.ledger).toHaveLength(2);
+    await stop();
+    const backupTool = resolve("../scripts/local_backup.py");
+    const backupFolder = join(folder, "saved-backup");
+    execFileSync("python3", [
+      backupTool,
+      "backup",
+      `${database}.mv.db`,
+      backupFolder,
+      "--confirm-stopped",
+    ]);
+    database = join(folder, "restored");
+    execFileSync("python3", [
+      backupTool,
+      "restore",
+      backupFolder,
+      `${database}.mv.db`,
+      "--confirm-stopped",
+    ]);
+    // Opening a separate restored file proves more than reopening the original.
+    await start("changed-owner-password", "changed-reviewer-password");
+    expect((await identity(owner, ownerPassword)).status()).toBe(401);
+    expect((await identity(owner, recoveredPassword)).ok()).toBe(true);
+    const restoredReviewer = await identity(reviewer, reviewerPassword);
+    expect(restoredReviewer.ok()).toBe(true);
+    expect((await restoredReviewer.json()).canWrite).toBe(false);
+    const restoredState = await request
+      .get("/api/state", { headers: auth(owner, recoveredPassword) })
+      .then((r) => r.json());
+    expect(restoredState).toEqual(recoveredState);
+    const restoredCsrf = await request.get("/api/csrf").then((r) => r.json());
+    const retry = await request.post("/api/equity", {
+      headers: {
+        ...auth(owner, recoveredPassword),
+        [restoredCsrf.headerName]: restoredCsrf.token,
+        "Idempotency-Key": "backup-owner-funding",
+      },
+      data: {
+        kind: "CONTRIBUTION",
+        postedOn: "2026-10-01",
+        memo: "Funds retained in backup",
+        amount: "125.37",
+      },
+    });
+    expect(retry.ok()).toBe(true);
+    expect(
+      (
+        await request
+          .get("/api/state", { headers: auth(owner, recoveredPassword) })
+          .then((r) => r.json())
+      ).equityTransactions,
+    ).toHaveLength(1);
   } finally {
     await stop();
     await rm(folder, { recursive: true, force: true });
