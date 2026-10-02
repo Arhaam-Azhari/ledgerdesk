@@ -28,6 +28,6 @@ Dates must have a year between 1 and 9999; memo/reason must be nonblank and at m
 
 ## Current scope and checks
 
-This is an API milestone, with ten new integration checks for exact reports, cutoff history, closed periods, retries, input validation, transaction rollback, inconsistent journals and endpoint security. CI runs the full suite against H2 and PostgreSQL 17. Run `mvn test` from `backend`; PostgreSQL reproduction settings are in the main README. Test results for this checkpoint are pending until CI completes.
+This is an API milestone, with ten new integration checks for exact reports, cutoff history, closed periods, retries, input validation, transaction rollback, inconsistent journals and endpoint security. CI runs the full suite against H2 and PostgreSQL 17. Run `mvn test` from `backend`; PostgreSQL reproduction settings are in the main README. Source checkpoint `c261a2f851368f30bfde3f21c44931b19ffc7e1f` passed all 143 integration tests on each database, the production frontend build and all twelve existing Chromium workflows in [CI run 36949307897](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36949307897). The browser checks cover existing workflows; accrual browser coverage will accompany its entry screen.
 
 The entry screen, browser proof, linked bill handoff, partial settlement and scheduled reversals are not included yet. Prepaid expenses and depreciation remain separate future workflows.

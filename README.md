@@ -2,7 +2,7 @@
 
 A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, and expense category adjustments are working milestones. Adjustments, additional user roles, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, and expense category adjustments are working milestones. Additional adjustment types, user roles, and deployment remain on the roadmap.
 
 ## Working now
 
@@ -217,3 +217,7 @@ Open **Adjustments** to reclassify an existing expense between categories. Enter
 History shows original lines and any dated reversal separately. A reversal in a later open period preserves earlier reports. Both posting and reversal can be retried after an unsuccessful refresh without duplicating their journal entries. See [calculations, correction rules, screenshots and test instructions](docs/adjustments.md). This workflow supports expense reclassification; arbitrary journals and additional noncash adjustment types are still future work.
 
 Run the isolated browser check with `npm run test:adjustments` in `frontend`, after building the backend JAR and installing Chromium. Keep ports 8084 and 5177 free.
+
+## Accrued expenses: backend checkpoint
+
+The accrual API recognizes operating expenses before a supplier bill arrives, using a separate accrued-expenses liability. It supports dated reversals, exact retries and closed-period protection. Its entry screen and linked bill handoff are still in progress. See [the accounting example, API contract and verified backend checks](docs/accruals.md). This branch checkpoint adds ten integration tests; all 143 passed on each of H2 and PostgreSQL, along with the twelve existing browser workflows.
