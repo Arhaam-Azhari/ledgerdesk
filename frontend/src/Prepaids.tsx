@@ -150,6 +150,7 @@ export function Prepaids({ data, busy, act, openExpenses }: Props) {
             <label>
               Paid purchase
               <select
+                aria-label="Paid purchase"
                 value={expenseId}
                 onChange={(e) => {
                   setExpenseId(e.target.value);
