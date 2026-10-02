@@ -134,3 +134,9 @@ The dedicated browser workflow checks first-of-month/year bounds, three $30 depr
 Source `ff5a43d3298574ecdb021e5e43fe62445ea6de15` passed [run 37054373203](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37054373203): 204 integration tests on each of H2 and PostgreSQL 17, no failures/errors/skips, production frontend build and all seventeen Chromium workflows. Eight backend tests cover cash boundaries, negative balances, document payments versus accrual profit, owner reversals, noncash postings, mixed counterpart groups, business filtering and authenticated read-only access.
 
 The cash browser workflow checks opening $100, payment $25, closing $75, CSV totals and escaped formula-like memo text, clearing stale results, an empty later period and mobile width. Two original captures were downloaded and visually reviewed; see [cash-activity notes](cash-activity.md).
+
+## Read-only reviewer access
+
+Source `353af6d17402a28942e9d54743dc1eff0448e64a` passed [run 37061714636](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37061714636): 209 integration tests on each database with no failures/errors/skips, production frontend build and all eighteen Chromium workflows. Five backend tests verify real reviewer credentials, state/report reads, valid-CSRF blocked writes across modules, PATCH/DELETE/future-route denial, owner CSRF and invalid/anonymous access.
+
+The dedicated browser workflow verifies read-only navigation, report/CSV access, cash activity, phone width, a direct write returning 403, locking and returning to the owner workspace. Its first run caught the mobile-hidden sidebar lock; moving the control to the header resolved it, and the full suite passed afterward. Two original captures were downloaded and visually reviewed; see [reviewer access notes](reviewer-access.md). Persistent users, memberships and hosted sessions remain outside this checkpoint.

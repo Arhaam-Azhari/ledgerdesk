@@ -14,4 +14,25 @@ Source `353af6d17402a28942e9d54743dc1eff0448e64a` passed [Actions run 3706171463
 
 The first browser run found that the sidebar lock button was hidden on mobile. It was moved to the header for both roles, and the full suite passed after that fix. Locking clears frontend credentials, permission state and workspace data. This remains local Basic authentication, not a hosted session logout system.
 
-Run `npm run test:reviewer` after building the backend JAR and installing Chromium; ports 8090 and 5183 must be free. The isolated test enables fictional reviewer credentials without changing the default demo. Desktop/mobile captures are retained in the passing run artifact; screenshot review and final milestone documentation remain before merge.
+Run `npm run test:reviewer` after building the backend JAR and installing Chromium; ports 8090 and 5183 must be free. The isolated test enables fictional reviewer credentials without changing the default demo. Desktop/mobile captures from the passing run were downloaded and visually reviewed; both are included below. The notice, report controls and header lock fit their viewports.
+
+## Setup and permissions
+
+The owner login uses the existing configuration. Set both reviewer environment variables before starting the backend and restart to apply account changes. A missing reviewer value or duplicate owner username stops startup with a configuration error. There is no account administration screen or database user record yet.
+
+| Capability | Owner | Reviewer |
+| --- | --- | --- |
+| Read authenticated reports and ledger data | Yes | Yes |
+| Download displayed report CSVs | Yes | Yes |
+| Post, edit, reverse, match or close records | Yes, with CSRF | No |
+| Manage user accounts in the app | Not implemented | Not implemented |
+
+Reviewer permissions apply to authenticated GET/HEAD routes on this local single-business installation. UI navigation is deliberately limited to report and ledger views. The security filter requires the owner role for every other method, including future write routes. Basic authentication remains a development setup; frontend locking is not a hosted-session logout.
+
+## Browser proof
+
+These original screenshots use an empty fictional business to show permission controls. Backend and browser tests supply the evidence that reads succeed and writes receive 403. The application badge reflects the label at capture time.
+
+![Reviewer report access and restricted navigation](screenshots/reviewer-reports.png)
+
+![Phone reviewer workspace with accessible lock control](screenshots/mobile-reviewer.png)
