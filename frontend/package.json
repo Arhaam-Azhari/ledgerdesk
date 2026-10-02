@@ -13,6 +13,8 @@
     "test:adjustments": "playwright test --config playwright.adjustments.config.ts",
     "test:accruals": "playwright test --config playwright.accruals.config.ts",
     "test:handoff": "playwright test --config playwright.handoff.config.ts",
+    "test:accounts": "playwright test --config playwright.accounts.config.ts",
+    "test:persistent": "playwright test --config playwright.persistent.config.ts",
     "test:reviewer": "playwright test --config playwright.reviewer.config.ts",
     "test:cash": "playwright test --config playwright.cash.config.ts",
     "test:assets": "playwright test --config playwright.assets.config.ts",

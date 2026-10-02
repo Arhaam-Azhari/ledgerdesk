@@ -1,0 +1,27 @@
+# Owner account management
+
+In persistent-account mode, owners can list accounts, create an OWNER or REVIEWER, change a role/enabled state, and reset a password. Reviewers cannot read or write account administration routes. All mutations require owner authorization and CSRF; the service also rechecks the actor's current enabled owner membership under the business lock.
+
+`GET /api/accounts` returns IDs, usernames, roles and enabled state with no-store caching. It never returns hashes. `POST /api/accounts` accepts username, password and role. Duplicate usernames are rejected rather than overwritten or attached to a new business. `POST /api/accounts/{id}/access` accepts role and enabled. The last enabled owner cannot be demoted or disabled. Repeating the same access state makes no extra audit entry.
+
+`POST /api/accounts/{id}/password` accepts password and, for an owner's own change, currentPassword. Another enabled owner can reset an account without its old password. Passwords retain the bootstrap validation limits and are stored only as BCrypt hashes. These administration routes do not use ledger idempotency keys or store password fingerprints. A repeated reset sets the same requested password again; duplicate account creation returns an error.
+
+Each actual mutation records an account action and account ID in application activity, without credentials. Account, membership and audit writes share a transaction. A failed audit write rolls back creation. This local installation still selects business 1, and disabled state belongs to the user globally; multi-business account administration is not implemented. Configured-login mode rejects account management.
+
+Eight integration tests cover hash-free lists, creation/duplicates/roles, last-owner protection, real authentication after disabling/promoting/resetting, self-change verification, CSRF/reviewer denial, business-target/actor guards and audit rollback. The final account milestone passed 229 integration tests on each of H2 and PostgreSQL 17 and all 20 Chromium workflows in [run 37075785948](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37075785948). Basic authentication remains a local development setup; [offline recovery](account-recovery.md) is documented separately.
+
+## Owner workspace
+
+The Accounts page appears only for owners in persistent-account mode. It creates accounts, changes another account's role/enabled state, and changes passwords. An owner uses another enabled owner to change their own access state through the UI. Password changes require the current password for the signed-in account and lock that workspace after saving; sign in with the replacement password. Password fields clear after success or cancellation, and account requests bypass the frontend ledger retry-key cache. A known successful write is reported separately from a failed workspace refresh, so it is not presented as an unconfirmed write.
+
+Source `acd5dfa11be00c1462819eff9502c24985f63e26` passed [Actions run 37072366730](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37072366730): 223 integration tests on each database, no failures/errors/skips, production frontend build and all 20 Chromium workflows. The dedicated administration workflow creates a reviewer, disables and re-enables it, resets its password, promotes and demotes its role, checks last-owner protection through the API, changes the owner's password and signs back in. The replacement owner password includes a non-ASCII character, verifying UTF-8 frontend login encoding. It also checks phone width and captures the editor, mobile view and post-password-change account list.
+
+Run `npm run test:accounts` after building the backend JAR and installing Chromium; ports 8092 and 5185 must be free. The original captures below were downloaded from the final passing run and visually reviewed. The header still shows the earlier milestone label used at capture time.
+
+![Owner account creation and access controls](screenshots/account-editor.png)
+
+![Accounts at phone width](screenshots/mobile-accounts.png)
+
+After changing the owner password, the workflow signs back in with the replacement (including a non-ASCII character).
+
+![Owner accounts after signing in with the replacement password](screenshots/account-password-changed.png)

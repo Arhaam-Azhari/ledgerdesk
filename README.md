@@ -179,14 +179,14 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 209 backend integration tests passed on each of H2 and PostgreSQL 17, and all eighteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 229 backend integration tests passed on each of H2 and PostgreSQL 17, and all twenty Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
 1. A broader accounting period workflow and additional adjustment types.
-2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
+2. Bookkeeper permissions, business isolation, hardened deployment, backups, and restore testing.
 
-The current version has one business, one configured owner login and an optional configured read-only reviewer. Persistent user management, bookkeeper roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
+The current version has one business, owner/reviewer roles and optional database-backed account management. Bookkeeper roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
 
 ## What this project demonstrates
 
@@ -258,6 +258,15 @@ Run `npm run test:cash` in `frontend` after building the backend JAR and install
 
 Configure a reviewer account to let someone inspect reports and ledger activity without posting or editing. Set `APP_REVIEWER_USERNAME` and `APP_REVIEWER_PASSWORD` together in the backend environment, using a username different from the owner. Leave both unset for the default owner-only setup. Use fictional credentials locally and keep real secrets outside the repository.
 
-Reviewers see Reports, Cash activity, General ledger, Trial balance and Activity, with a visible read-only notice. The server rejects reviewer write methods even with a valid CSRF token; owner writes still require CSRF. **Lock workspace** clears frontend credentials and data and remains available on phones. This demonstrates role-based authorization at the API boundary and permission-aware navigation. Accounts are still configured in memory at startup; persistent users, memberships and hosted sessions remain future work.
+Reviewers see Reports, Cash activity, General ledger, Trial balance and Activity, with a visible read-only notice. The server rejects reviewer write methods even with a valid CSRF token; owner writes still require CSRF. **Lock workspace** clears frontend credentials and data and remains available on phones. This demonstrates role-based authorization at the API boundary and permission-aware navigation. Configured-login mode remains available; optional database-backed accounts now retain passwords and permissions across restarts. Hosted sessions and multi-business access remain future work.
 
 See [setup details, screenshots and verification](docs/reviewer-access.md). Run `npm run test:reviewer` in `frontend` after building the backend JAR and installing Chromium; keep ports 8090 and 5183 free. The test enables a fictional reviewer in its isolated backend only.
+
+
+## Persistent accounts and recovery
+
+Set `APP_ACCOUNTS_PERSISTENT=true` before starting the backend to enable stored accounts. On the first startup with an empty user table, the configured owner and optional reviewer are seeded. Passwords need at least 12 characters and at most 72 UTF-8 bytes. Subsequent startups keep stored passwords and permissions; changing bootstrap environment values does not reset them. The default configured-login mode remains available.
+
+Owners use **Accounts** to create users, change another account’s role/access and reset passwords. The last enabled owner cannot be disabled or demoted. Changing your own password requires the current password and locks the workspace; sign in with the replacement. Only password hashes are stored, and account changes appear in Activity.
+
+If owner access is lost, the operator can stop the backend and run the [offline recovery command](docs/account-recovery.md) against the existing database. It recovers an existing business-1 account and records the reason without exposing an HTTP recovery route. See [account management](docs/account-management.md) for reviewed desktop/mobile screenshots and [persistent accounts](docs/persistent-accounts.md) for setup, restart proof and limitations. This work demonstrates database-backed authentication, role constraints, transactional administration, recovery and testing across real process boundaries.
