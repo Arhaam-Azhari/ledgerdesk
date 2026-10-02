@@ -1,3 +1,4 @@
+import { Accounts, type ManagedAccount } from "./Accounts";
 import { FixedAssets, type AssetState } from "./FixedAssets";
 import { Prepaids, type PrepaidState } from "./Prepaids";
 import { Accruals, type AccrualState } from "./Accruals";
@@ -107,6 +108,7 @@ function App() {
     username: string;
     role: string;
     canWrite: boolean;
+    persistentAccounts: boolean;
   } | null>(null);
   const [data, setData] = useState<State | null>(null);
   const [page, setPage] = useState("Overview");
@@ -128,11 +130,13 @@ function App() {
       const csrf = await csrfResponse.json();
       headers[csrf.headerName] = csrf.token;
       headers["Content-Type"] = "application/json";
-      const signature = path + JSON.stringify(body);
-      // Keep the same key after a connection failure, when posting may have succeeded.
-      if (!requests.current.has(signature))
-        requests.current.set(signature, crypto.randomUUID());
-      headers["Idempotency-Key"] = requests.current.get(signature)!;
+      if (!path.startsWith("/api/accounts")) {
+        const signature = path + JSON.stringify(body);
+        // Keep the same key after a connection failure, when posting may have succeeded.
+        if (!requests.current.has(signature))
+          requests.current.set(signature, crypto.randomUUID());
+        headers["Idempotency-Key"] = requests.current.get(signature)!;
+      }
     }
     const response = await fetch(path, {
       method: body ? "POST" : "GET",
@@ -211,6 +215,62 @@ function App() {
           : "Could not load recorded entries.",
       );
       return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadAccounts(): Promise<ManagedAccount[] | null> {
+    setBusy(true);
+    setError("");
+    try {
+      return await api("/api/accounts");
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Could not load accounts.",
+      );
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function manageAccount(
+    path: string,
+    body: object,
+    success: string,
+    lockAfter = false,
+  ) {
+    if (!access?.canWrite || !access.persistentAccounts) return false;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api(path, body);
+      if (lockAfter) {
+        setData(null);
+        setCredentials("");
+        setAccess(null);
+        setPage("Overview");
+        requests.current.clear();
+        setNotice("Password changed. Sign in with your new password.");
+      } else {
+        setNotice(success);
+        try {
+          await refresh();
+        } catch {
+          setError(
+            "The account change was saved, but the workspace refresh failed. Reload to see it.",
+          );
+        }
+      }
+      return true;
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not change the account.",
+      );
+      return false;
     } finally {
       setBusy(false);
     }
@@ -464,6 +524,7 @@ function App() {
               {busy ? "Opening workspace…" : "Open workspace →"}
             </button>
           </form>
+          {notice && <p role="status">{notice}</p>}
           {error && (
             <p role="alert" className="error">
               {error}
@@ -498,6 +559,7 @@ function App() {
     "General ledger",
     "Trial balance",
     "Activity",
+    ...(access?.canWrite && access.persistentAccounts ? ["Accounts"] : []),
   ];
   const unpaid = data.invoices.filter(
     (i) => i.status === "POSTED" && cents(i.amount) > cents(i.paid),
@@ -1341,6 +1403,17 @@ function App() {
         {page === "Cash activity" && (
           <CashActivity busy={busy} load={loadCashActivity} workspace={data} />
         )}
+        {page === "Accounts" &&
+          access?.canWrite &&
+          access.persistentAccounts && (
+            <Accounts
+              busy={busy}
+              username={access.username}
+              workspace={data}
+              load={loadAccounts}
+              command={manageAccount}
+            />
+          )}
         {page === "Reports" && (
           <Reports busy={busy} load={loadReports} workspace={data} />
         )}
