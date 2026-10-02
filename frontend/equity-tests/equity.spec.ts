@@ -72,6 +72,7 @@ test("record owner transfers, retry an uncertain refresh and check dated equity"
   await expect(
     page.getByRole("button", { name: "Record transfer", exact: true }),
   ).toBeVisible();
+  expect(await page.locator(".owner-history tbody tr").first().locator("td").first().evaluate((cell) => getComputedStyle(cell).whiteSpace)).toBe("nowrap");
   await page.screenshot({
     path: "equity-results/mobile-owner-transfers.png",
     fullPage: true,

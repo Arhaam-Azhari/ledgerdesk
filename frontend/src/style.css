@@ -482,4 +482,6 @@ td code {
 .owner-fields button { justify-self: start; }
 @media (max-width: 700px) { .owner-fields { grid-template-columns: 1fr; } }
 
-.owner-history { min-width: 640px; }
+.owner-history { min-width: 800px; }
+
+.owner-history td:first-child, .owner-history td:nth-child(4) { white-space: nowrap; }
