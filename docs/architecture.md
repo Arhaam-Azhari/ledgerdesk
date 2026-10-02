@@ -95,3 +95,9 @@ An expense estimate debits its operating category and credits a separate accrued
 The estimate keeps its original date. The reversal and bill share the new bill date and original category, so a report at an earlier cutoff remains unchanged while the later period records only the amount difference. Cash changes through the existing bill-payment workflow. Ordinary bill posting and handoff share bill creation rules. Current bill status is shown alongside the retained link, including a later void, without silently restoring the estimate.
 
 The browser uses integer cents for the preview and keeps its open draft after an interrupted refresh. Retrying the same details retrieves the original bill. A manual reversal remains available for correcting an estimate without a bill; one unreversed estimate can instead be handed off to one new actual bill.
+
+## Prepaid expense schedules
+
+A paid purchase retains its original cash journal and receipts. A dated setup entry debits the prepaid asset and credits the purchase's expense category. Monthly schedule rows carry exact amounts but affect reports only when recognized. Recognition reverses part of the asset into the original category; integer-cent previews and decimal backend calculations assign the rounding remainder to the final month.
+
+Cancellation expenses the remaining benefit on a later open date and blocks future recognition. Correction is limited to an untouched plan and offsets the setup on its original open date. Neither changes cash or bank matches. Separate retained records distinguish the two actions. The original purchase stays protected from reversal until its plan has been corrected; normal bank-match guards still apply afterward. Commands, journals, request keys and activity share one transaction and business lock.
