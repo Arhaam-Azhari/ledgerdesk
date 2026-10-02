@@ -485,3 +485,11 @@ td code {
 .owner-history { min-width: 800px; }
 
 .owner-history td:first-child, .owner-history td:nth-child(4) { white-space: nowrap; }
+
+.adjustment-fields { border: 0; padding: 0; margin: 0; }
+.adjustment-line { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: center; padding: 16px 0; border-top: 1px solid #e2e9e8; }
+.adjustment-totals { display: flex; gap: 24px; flex-wrap: wrap; padding: 20px 0; }
+.adjustment-record { border-top: 1px solid #e2e9e8; padding: 20px 0; }
+.adjustment-history { min-width: 600px; }
+.adjustment-history td:first-child, .adjustment-history td:nth-child(3), .adjustment-history td:nth-child(4) { white-space: nowrap; }
+@media (max-width: 700px) { .adjustment-line { grid-template-columns: 1fr; } .adjustment-line button { justify-self: start; } }

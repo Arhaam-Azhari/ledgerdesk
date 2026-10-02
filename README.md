@@ -2,7 +2,7 @@
 
 A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, and owner funding/withdrawals are working milestones. Adjustments, additional user roles, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, and expense category adjustments are working milestones. Adjustments, additional user roles, and deployment remain on the roadmap.
 
 ## Working now
 
@@ -179,11 +179,11 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 117 backend integration tests passed on each of H2 and PostgreSQL 17, and all eleven Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 133 backend integration tests passed on each of H2 and PostgreSQL 17, and all twelve Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
-1. General journal adjustments and a broader accounting period workflow.
+1. Additional adjustment types, including accruals, prepayments and depreciation, and a broader accounting period workflow.
 2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
 The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
@@ -209,3 +209,11 @@ Open **Owner transfers** to record a contribution or personal withdrawal with it
 For a mistaken record, choose **Correct**, enter a reversal date and reason, and reverse it. The original remains in history; a dated offset updates the books. Matched transfers must be unmatched first, and closed periods must be reopened before changing them. Record any replacement separately. For money actually returned, record a new transfer in the opposite direction. See [owner accounting, corrections, screenshots and test instructions](docs/owner-equity.md).
 
 The isolated owner browser workflow runs with `npm run test:equity` in `frontend` after building the backend JAR and installing Chromium. It uses ports 8083 and 5176 and checks failed-refresh retries for both posting and corrections.
+
+## Expense category adjustments
+
+Open **Adjustments** to reclassify an existing expense between categories. Enter the date, memo and balanced debit/credit lines. Debits increase a category; credits reduce it. The editor shows exact totals and rejects unbalanced entries or duplicate categories. Reclassification changes category reports without changing total profit, cash or aging. Original purchase labels remain intact.
+
+History shows original lines and any dated reversal separately. A reversal in a later open period preserves earlier reports. Both posting and reversal can be retried after an unsuccessful refresh without duplicating their journal entries. See [calculations, correction rules, screenshots and test instructions](docs/adjustments.md). This workflow supports expense reclassification; arbitrary journals and additional noncash adjustment types are still future work.
+
+Run the isolated browser check with `npm run test:adjustments` in `frontend`, after building the backend JAR and installing Chromium. Keep ports 8084 and 5177 free.

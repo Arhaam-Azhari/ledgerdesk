@@ -1,0 +1,45 @@
+# Expense category adjustments
+
+This first adjustment checkpoint supports balanced reclassification between the operating expense categories. It does not yet support arbitrary journals, accruals, prepaid assets, depreciation, opening balances, tax entries or year-end closing. Posting and retained reversals are available through the API and browser editor.
+
+`POST /api/adjustments` requires the workspace login, CSRF token and `Idempotency-Key`. Supply `postedOn`, a memo up to 300 characters and between two and twenty lines. Each line has `accountCode`, `debit` and `credit` as decimal strings. Use zero on the unused side and a positive amount on the other. Select each account once. Every account must be an existing operating expense category, and total debits must equal total credits exactly.
+
+For example, a $150 setup purchase initially recorded as Office supplies can be split with a $100.01 debit to Software subscriptions (5100), a $49.99 debit to Professional services (5200), and a $150 credit to Office supplies (5000). The expense total, profit, cash, and customer/vendor outstanding balances stay the same; the category totals change. The original purchase metadata and journal remain intact. Include a clear memo linking the adjustment to the purchase or business reason; this API does not rewrite the original bill/expense category label.
+
+The adjustment appears on its own posting date. A November reclassification preserves October reports and can show a negative category amount in November. Reports use journal balances, while purchase screens retain original document details. Do not use category adjustments to record a new purchase or payment. They do not create bank matching candidates because they never touch the bank account.
+
+Only expense accounts are accepted in this checkpoint. Allowing manual bank, receivable or payable lines would bypass payment records, statement evidence and aging allocations. Owner equity also retains its dedicated transfer workflow. Additional adjustment types need their own supported accounts and accounting rules before being exposed.
+
+Migration V9 retains adjustment headers; their lines are the journal lines linked by the header's source ID. The workspace state includes `adjustments` and `adjustmentLines`. The business lock serializes posting and command retries, the closed-date guard protects reconciled periods, and the header, all lines, activity and command commit together. Exact retries return the existing adjustment ID, including after closing the period; changed details cannot reuse the key. There is no edit/delete endpoint. A retained reversal workflow is described below. The verified browser workflow and captures are recorded below. Final milestone review and merge remain pending.
+
+Eight integration tests cover exact multi-line allocation, unchanged profit/cash/aging and retained purchases, earlier/later periods, invalid money or unbalanced sides, restricted/duplicate accounts, invalid dates/memos/line counts, request retries and closed dates, rollback and endpoint access controls. All 125 backend integration tests passed on H2 and all 125 passed on PostgreSQL 17, with no failures, errors or skipped tests in [run 36945295390](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36945295390), source `8372035660b198d3ab5ddbc3e5ebe593712f5fa9`. The frontend production build and all eleven existing Chromium workflows also passed. Those browser results cover existing screens; the adjustment editor and its dedicated browser proof are not built yet.
+
+If an adjusted purchase is later voided, review its category adjustments separately. The original document reversal does not automatically reverse these independent entries. Reverse an obsolete category adjustment separately when appropriate.
+
+## Retained reversals
+
+`POST /api/adjustments/{id}/reverse` requires the same login, CSRF and request key as posting. Supply `reversedOn` and a nonblank `reason` of up to 240 characters. The reversal date must be on or after the original adjustment and belong to an open period. Each original debit becomes a credit and each credit becomes a debit on that date. The original header and lines remain intact; history includes the reversal date, reason and both sets of lines.
+
+An expense reclassification never changes cash or total profit. A reversal in a later open period therefore preserves an earlier closed statement and category report without reopening it. This differs from correcting a bank-matched owner transfer: there is no cash match to reinterpret. A reversal backdated into a closed period is rejected. To change a closed period itself, use the existing reopen workflow.
+
+Migration V10 permits one reversal per adjustment. Under the shared business lock, the service checks the original journal is balanced and uses supported expense accounts, then records the reversal, offset journal, command and activity together. A successful retry returns the same ID, even after its reversal period closes. Changed reasons/dates cannot reuse the request key; a separate request cannot reverse it twice. A missing, unbalanced or unsupported original is rejected for review rather than copied into a new invalid journal.
+
+`adjustmentLines` now identifies each line as ORIGINAL or REVERSAL and includes its entry date. An original header can appear reversed in the current history while still contributing to a report whose cutoff precedes the reversal.
+
+Eight additional integration checks cover exact swaps and retained history, earlier/later category reports and unchanged balances, duplicate/conflicting retries, invalid details, closed-date protection with later open corrections, rollback, an inconsistent original fixture and reversal endpoint access controls. All 133 backend tests passed on H2 and all 133 passed on PostgreSQL 17, with zero failures, errors or skipped tests in [run 36946020109](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36946020109), source `41f01ed309b1745aa9bddbedabcf7e964d9ee742`. The production frontend build and all eleven existing Chromium workflows also passed. The editor and its dedicated browser tests/captures remain the next checkpoint; these existing browser results verify regression behavior only.
+
+## Browser editor
+
+Open **Adjustments**, choose a date, enter a memo identifying the purchase and reason, and select expense categories. Enter positive debits for the categories receiving the amount and credits for those losing it; use zero on the other side of each line. Add or remove lines as needed. Debits and credits must balance exactly, each category can appear once, and each line must use one side. The totals use integer cents. Choose **Post adjustment** when the details are ready.
+
+History retains the original category lines. Choose **Reverse mistaken adjustment**, enter an open reversal date on or after the original and a reason, then choose **Reverse adjustment**. Original and reversal lines are shown separately. Both forms retain their details and request key after an unsuccessful refresh, so retrying identical details does not create duplicate journals. After an uncertain result, inspect history before changing details or submitting a different command.
+
+Build the backend JAR, install the frontend dependencies and Chromium as in the reporting instructions, then run `npm run test:adjustments` in `frontend`. The isolated workflow uses backend port 8084 and frontend port 5177. It seeds a fictional $150 purchase and checks unbalanced/duplicate-category rejection, exact $100.01/$49.99 splitting, uncertain-refresh retries for posting and reversals, retained lines, historical category reports, unchanged total profit, reloading and a 390-pixel layout. All 133 backend tests passed on each of H2 and PostgreSQL 17, the production frontend build passed, and all twelve Chromium workflows passed in [run 36947801712](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36947801712), source `0a74169256865d3808f1413b9022c1f8e238fa80`. The new browser workflow verifies both uncertain-refresh retries, exact splitting, retained original/reversal lines and earlier/later reports. All four captures were downloaded from that run and visually reviewed; the mobile history scrolls horizontally to keep dates and amounts readable.
+
+![Balanced expense category split before posting](screenshots/adjustment-editor.png)
+
+![Posted adjustment and retained original lines](screenshots/adjustment-history.png)
+
+![Dated reversal with original and offset lines](screenshots/adjustment-reversal.png)
+
+[Mobile adjustment editor and history](screenshots/mobile-adjustments.png)
