@@ -35,7 +35,7 @@ def backup(source, destination):
         raise ValueError('Create the backup parent directory first.')
     before = source.stat()
     original_hash = digest(source)
-    # Build beside the destination so publication stays on the same filesystem.
+    # Check a private staged copy before creating the backup folder.
     with tempfile.TemporaryDirectory(prefix='.ledgerdesk-backup-', dir=destination.parent) as folder:
         stage = Path(folder)
         copied = stage / 'database.mv.db'

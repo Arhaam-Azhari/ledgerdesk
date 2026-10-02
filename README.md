@@ -274,3 +274,8 @@ If owner access is lost, the operator can stop the backend and run the [offline 
 ## Local backup and restore
 
 The [H2 backup guide](docs/local-backups.md) explains how to stop the backend, create a checksummed database copy and restore it into a separate location without overwriting the original. It includes stored accounts and receipt data. The extended process workflow verifies restored accounting records and retained request keys; see the guide for the current verification status. PostgreSQL backup/restore remains a separate milestone.
+
+
+## Development history
+
+The [development history](docs/development-history.md) links the pull requests for each milestone. Each PR contains its changes and verification notes; the linked feature guides include accounting examples, instructions and screenshots. Earlier PRs describe the scope at the time they were merged. Later milestones extend that scope.
