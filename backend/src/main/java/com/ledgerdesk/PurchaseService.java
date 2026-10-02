@@ -52,25 +52,41 @@ public class PurchaseService {
 
     @Transactional
     public String postBill(Bill request, String key, String actor) {
-        BigDecimal amount = LedgerService.money(request.amount());
-        String description = LedgerService.text(request.description(), 240, "Description");
-        String reference = LedgerService.text(request.reference(), 80, "Bill reference");
-        if (request.issuedOn() == null || request.dueOn() == null || request.dueOn().isBefore(request.issuedOn()))
-            throw new IllegalArgumentException("Due date must be on or after the bill date.");
+        validateBill(request);
         ledger.lockBusiness();
         String hash = ledger.fingerprint(List.of("bill", request));
         String previous = ledger.retry(key, hash);
         if (previous != null) return previous;
+        String id = createBill(request);
+        ledger.complete(key, hash, id, actor, "BILL_POSTED");
+        return id;
+    }
+
+    private void validateBill(Bill request) {
+        if (request == null) throw new IllegalArgumentException("Bill details are required.");
+        LedgerService.money(request.amount());
+        LedgerService.text(request.description(), 240, "Description");
+        LedgerService.text(request.reference(), 80, "Bill reference");
+        if (request.issuedOn() == null || request.dueOn() == null || request.dueOn().isBefore(request.issuedOn())
+                || request.issuedOn().getYear() < 1 || request.dueOn().getYear() > 9999)
+            throw new IllegalArgumentException("Choose valid bill dates, with the due date on or after the bill date.");
+    }
+
+    // Callers hold the business lock and own the transaction and command record.
+    String createBill(Bill request) {
+        validateBill(request);
+        BigDecimal amount = LedgerService.money(request.amount());
+        String description = LedgerService.text(request.description(), 240, "Description");
+        String reference = LedgerService.text(request.reference(), 80, "Bill reference");
         vendor(request.vendorId()); category(request.accountCode());
         String referenceKey = LedgerService.text(reference.toUpperCase(Locale.ROOT), 80, "Normalized bill reference");
         if (db.queryForObject("SELECT COUNT(*) FROM bills WHERE vendor_id = ? AND business_id = 1 AND reference_key = ?", Integer.class,
                 request.vendorId(), referenceKey) != 0)
             throw new IllegalArgumentException("This vendor's bill reference is already recorded, including voided bills.");
         String id = ledger.id();
-        db.update("INSERT INTO bills (id, business_id, vendor_id, reference, reference_key, description, issued_on, due_on, account_code, amount) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?)",
+        db.update("INSERT INTO bills (id, business_id, vendor_id, reference, reference_key, description, issued_on, due_on, account_code, amount) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 id, request.vendorId(), reference, referenceKey, description, request.issuedOn(), request.dueOn(), request.accountCode(), amount);
         ledger.journal(id, request.issuedOn(), "Bill " + reference, request.accountCode(), "2000", amount);
-        ledger.complete(key, hash, id, actor, "BILL_POSTED");
         return id;
     }
 

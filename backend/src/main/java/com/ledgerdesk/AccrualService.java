@@ -12,12 +12,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccrualService {
     private final JdbcTemplate db;
     private final LedgerService ledger;
+    private final PurchaseService purchases;
     public record Accrual(LocalDate postedOn, String memo, String accountCode, String amount) {}
     public record Reversal(LocalDate reversedOn, String reason) {}
 
-    public AccrualService(JdbcTemplate db, LedgerService ledger) {
+    public record BillArrival(String vendorId, String reference, String description, LocalDate issuedOn, LocalDate dueOn, String amount) {}
+
+    public AccrualService(JdbcTemplate db, LedgerService ledger, PurchaseService purchases) {
         this.db = db;
         this.ledger = ledger;
+        this.purchases = purchases;
     }
 
     private static void validDate(LocalDate date) {
@@ -58,6 +62,12 @@ public class AccrualService {
         String hash = ledger.fingerprint(List.of("expense-accrual-reversal", accrualId, request));
         String previous = ledger.retry(key, hash);
         if (previous != null) return previous;
+        String id = reverseEntry(accrualId, request, reason);
+        ledger.complete(key, hash, id, actor, "EXPENSE_ACCRUAL_REVERSED");
+        return id;
+    }
+
+    private String reverseEntry(String accrualId, Reversal request, String reason) {
         var found = db.queryForList("SELECT * FROM expense_accruals WHERE id = ? AND business_id = 1", accrualId);
         if (found.isEmpty()) throw new IllegalArgumentException("Accrual not found.");
         var accrual = found.get(0);
@@ -85,14 +95,40 @@ public class AccrualService {
         db.update("INSERT INTO accrual_reversals VALUES (?, ?, ?, ?)", id, accrualId, request.reversedOn(), reason);
         // A later reversal leaves the earlier expense and liability visible at their original cutoff.
         ledger.journal(id, request.reversedOn(), "Accrual reversal: " + reason, "2100", accrual.get("account_code").toString(), amount);
-        ledger.complete(key, hash, id, actor, "EXPENSE_ACCRUAL_REVERSED");
         return id;
+    }
+
+    @Transactional
+    public String receiveBill(String accrualId, BillArrival request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("Supplier bill details are required.");
+        validDate(request.issuedOn());
+        validDate(request.dueOn());
+        LedgerService.text(accrualId, 36, "Accrual ID");
+        String reference = LedgerService.text(request.reference(), 80, "Bill reference");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("accrual-bill", accrualId, request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        var found = db.queryForList("SELECT account_code FROM expense_accruals WHERE id = ? AND business_id = 1", accrualId);
+        if (found.isEmpty()) throw new IllegalArgumentException("Accrual not found.");
+        String account = found.get(0).get("account_code").toString();
+        String reason = "Replaced by supplier bill " + reference;
+        // Both postings use the bill date, so reports never see the bill without its estimate offset.
+        String reversal = reverseEntry(accrualId, new Reversal(request.issuedOn(), reason), reason);
+        String bill = purchases.createBill(new PurchaseService.Bill(request.vendorId(), reference, request.description(),
+                request.issuedOn(), request.dueOn(), account, request.amount()));
+        db.update("INSERT INTO accrual_bills VALUES (?, ?, ?)", accrualId, bill, reversal);
+        ledger.complete(key, hash, bill, actor, "ACCRUAL_BILL_POSTED");
+        return bill;
     }
 
     static Map<String, Object> readState(JdbcTemplate db) {
         return Map.of("accruals", db.queryForList("""
-            SELECT a.*, r.id AS reversal_id, r.reversed_on, r.reason AS reversal_reason
+            SELECT a.*, r.id AS reversal_id, r.reversed_on, r.reason AS reversal_reason,
+                b.id AS bill_id, b.reference AS bill_reference, b.amount AS bill_amount, b.status AS bill_status
             FROM expense_accruals a LEFT JOIN accrual_reversals r ON r.accrual_id = a.id
+            LEFT JOIN accrual_bills link ON link.accrual_id = a.id
+            LEFT JOIN bills b ON b.id = link.bill_id AND b.business_id = a.business_id
             WHERE a.business_id = 1 ORDER BY a.posted_on, a.id
             """));
     }
