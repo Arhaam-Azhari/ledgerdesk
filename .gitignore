@@ -28,3 +28,5 @@ frontend/account-results/
 __pycache__/
 *.mv.db
 *.lock.db
+
+*.dump

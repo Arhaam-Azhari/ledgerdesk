@@ -279,3 +279,7 @@ The [H2 backup guide](docs/local-backups.md) explains how to stop the backend, c
 ## Development history
 
 The [development history](docs/development-history.md) links the pull requests for each milestone. Each PR contains its changes and verification notes; the linked feature guides include accounting examples, instructions and screenshots. Earlier PRs describe the scope at the time they were merged. Later milestones extend that scope.
+
+## PostgreSQL backup and restore
+
+The [PostgreSQL backup guide](docs/postgres-backups.md) covers native custom-format archives and restoration into a new database. The tool verifies checksums, refuses existing database names and keeps failed targets for operator inspection. A dedicated packaged-backend CI workflow checks restored accounting state, stored account permissions and retained transaction retries; the guide records its current verification status.
