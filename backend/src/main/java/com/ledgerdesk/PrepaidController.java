@@ -24,6 +24,11 @@ public class PrepaidController {
             @RequestHeader("Idempotency-Key") String key, Principal user) {
         return Map.of("id", prepaid.cancel(id, body, key, user.getName()));
     }
+    @PostMapping("/{id}/correct")
+    Map<String, String> correct(@PathVariable String id, @RequestBody PrepaidService.Correction body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", prepaid.correct(id, body, key, user.getName()));
+    }
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) { return Map.of("message", error.getMessage()); }

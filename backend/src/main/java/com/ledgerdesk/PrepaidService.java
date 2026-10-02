@@ -17,6 +17,7 @@ public class PrepaidService {
     public record Plan(String expenseId, LocalDate startsOn, int months, String memo) {}
     public record Recognition(LocalDate periodOn) {}
     public record Cancellation(LocalDate cancelledOn, String reason) {}
+    public record Correction(String reason) {}
     public PrepaidService(JdbcTemplate db, LedgerService ledger) { this.db = db; this.ledger = ledger; }
 
     private static void validDate(LocalDate date) {
@@ -91,6 +92,7 @@ public class PrepaidService {
         var found = db.queryForList("SELECT * FROM prepaid_plans WHERE id = ? AND business_id = 1", planId);
         if (found.isEmpty()) throw new IllegalArgumentException("Prepaid plan not found.");
         var plan = found.get(0);
+        requireUncorrected(planId);
         if (db.queryForObject("SELECT COUNT(*) FROM prepaid_cancellations WHERE plan_id = ?", Integer.class, planId) != 0)
             throw new IllegalArgumentException("This prepaid plan was cancelled.");
         var periods = db.queryForList("SELECT * FROM prepaid_periods WHERE plan_id = ? AND period_on = ?", planId, request.periodOn());
@@ -121,6 +123,7 @@ public class PrepaidService {
         var found = db.queryForList("SELECT * FROM prepaid_plans WHERE id = ? AND business_id = 1", planId);
         if (found.isEmpty()) throw new IllegalArgumentException("Prepaid plan not found.");
         var plan = found.get(0);
+        requireUncorrected(planId);
         if (db.queryForObject("SELECT COUNT(*) FROM prepaid_cancellations WHERE plan_id = ?", Integer.class, planId) != 0)
             throw new IllegalArgumentException("This prepaid plan was already cancelled.");
         LocalDate funded = ((java.sql.Date) plan.get("funded_on")).toLocalDate();
@@ -139,8 +142,50 @@ public class PrepaidService {
         return id;
     }
 
+    private void requireUncorrected(String planId) {
+        if (db.queryForObject("SELECT COUNT(*) FROM prepaid_corrections WHERE plan_id = ?", Integer.class, planId) != 0)
+            throw new IllegalArgumentException("This prepaid plan was corrected back to a direct expense.");
+    }
+
+    @Transactional
+    public String correct(String planId, Correction request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("Correction details are required.");
+        String reason = LedgerService.text(request.reason(), 240, "Correction reason");
+        LedgerService.text(planId, 36, "Prepaid plan ID");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("prepaid-correction", planId, request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        var found = db.queryForList("SELECT * FROM prepaid_plans WHERE id = ? AND business_id = 1", planId);
+        if (found.isEmpty()) throw new IllegalArgumentException("Prepaid plan not found.");
+        var plan = found.get(0);
+        requireUncorrected(planId);
+        if (db.queryForObject("SELECT COUNT(*) FROM prepaid_cancellations WHERE plan_id = ?", Integer.class, planId) != 0
+                || db.queryForObject("SELECT COUNT(*) FROM prepaid_periods WHERE plan_id = ? AND entry_id IS NOT NULL", Integer.class, planId) != 0)
+            throw new IllegalArgumentException("Only an unrecognized, uncancelled plan can be corrected.");
+        LocalDate date = ((java.sql.Date) plan.get("funded_on")).toLocalDate();
+        ledger.requireOpenDate(date);
+        BigDecimal amount = (BigDecimal) plan.get("amount");
+        String account = plan.get("account_code").toString();
+        var lines = db.queryForList("SELECT l.account_code, l.debit, l.credit FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id WHERE e.business_id = 1 AND e.source_id = ? AND e.entry_date = ?", planId, date);
+        boolean asset = false, expense = false;
+        for (var line : lines) {
+            BigDecimal debit = (BigDecimal) line.get("debit"), credit = (BigDecimal) line.get("credit");
+            if (line.get("account_code").equals("1300") && debit.compareTo(amount) == 0 && credit.signum() == 0) asset = true;
+            if (line.get("account_code").equals(account) && debit.signum() == 0 && credit.compareTo(amount) == 0) expense = true;
+        }
+        if (lines.size() != 2 || !asset || !expense)
+            throw new IllegalArgumentException("The prepaid setup journal is inconsistent. Review it before correcting.");
+        String id = ledger.id();
+        // Offset the setup on its original open date; leave the purchase and bank line alone.
+        ledger.journal(id, date, "Prepaid correction: " + reason, account, "1300", amount);
+        db.update("INSERT INTO prepaid_corrections VALUES (?, ?, ?, ?)", id, planId, date, reason);
+        ledger.complete(key, hash, id, actor, "PREPAID_PLAN_CORRECTED");
+        return id;
+    }
+
     static Map<String, Object> readState(JdbcTemplate db) {
-        return Map.of("prepaidPlans", db.queryForList("SELECT p.*, c.id AS cancellation_id, c.cancelled_on, c.reason AS cancellation_reason, c.amount AS cancelled_amount, e.description, v.name AS vendor_name FROM prepaid_plans p LEFT JOIN prepaid_cancellations c ON c.plan_id = p.id JOIN expenses e ON e.id = p.expense_id JOIN vendors v ON v.id = e.vendor_id WHERE p.business_id = 1 ORDER BY p.funded_on, p.id"),
+        return Map.of("prepaidPlans", db.queryForList("SELECT p.*, x.id AS correction_id, x.corrected_on, x.reason AS correction_reason, c.id AS cancellation_id, c.cancelled_on, c.reason AS cancellation_reason, c.amount AS cancelled_amount, e.description, v.name AS vendor_name FROM prepaid_plans p LEFT JOIN prepaid_corrections x ON x.plan_id = p.id LEFT JOIN prepaid_cancellations c ON c.plan_id = p.id JOIN expenses e ON e.id = p.expense_id JOIN vendors v ON v.id = e.vendor_id WHERE p.business_id = 1 ORDER BY p.funded_on, p.id"),
                 "prepaidPeriods", db.queryForList("SELECT r.* FROM prepaid_periods r JOIN prepaid_plans p ON p.id = r.plan_id WHERE p.business_id = 1 ORDER BY r.period_on, r.id"));
     }
 }

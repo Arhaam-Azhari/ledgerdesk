@@ -220,6 +220,83 @@ class PrepaidTest {
         assertThat(count("journal_lines")).isEqualTo(4);
         assertThat(reconciliation.preview(new BankReconciliation.Statement(start, end, "0", "-100")).bookDifference()).isEqualByComparingTo("0");
     }
+    @Test void correctingAnAccidentalPlanRestoresTheOriginalExpenseAndRetainsHistory() {
+        var original = reports.reports(start, end);
+        String id = prepaid.create(plan(), "plan", "test");
+        var request = new PrepaidService.Correction("This purchase should be expensed immediately");
+        String correction = prepaid.correct(id, request, "correct", "test");
+        assertThat(prepaid.correct(id, request, "correct", "test")).isEqualTo(correction);
+        var corrected = reports.reports(start, end);
+        assertThat(corrected.profitLoss()).isEqualTo(original.profitLoss());
+        assertThat(corrected.balanceSheet().totalAssets()).isEqualByComparingTo(original.balanceSheet().totalAssets());
+        assertThat(corrected.balanceSheet().difference()).isEqualByComparingTo("0");
+        assertThat(count("prepaid_plans")).isEqualTo(1);
+        assertThat(count("prepaid_periods")).isEqualTo(3);
+        assertThat(count("prepaid_corrections")).isEqualTo(1);
+        assertThat(count("journal_lines")).isEqualTo(6);
+        assertThatThrownBy(() -> prepaid.correct(id, request, "again", "test")).hasMessageContaining("corrected back");
+        assertThatThrownBy(() -> prepaid.correct(id, new PrepaidService.Correction("Changed"), "correct", "test")).hasMessageContaining("different details");
+        assertThatThrownBy(() -> prepaid.recognize(id, new PrepaidService.Recognition(end), "oct", "test")).hasMessageContaining("corrected back");
+        assertThatThrownBy(() -> prepaid.cancel(id, new PrepaidService.Cancellation(end, "Ended"), "cancel", "test")).hasMessageContaining("corrected back");
+        assertThat(prepaid.create(plan(), "plan", "test")).isEqualTo(id);
+        assertThatThrownBy(() -> prepaid.create(plan(), "new-plan", "test")).hasMessageContaining("already has");
+        purchases.reverseExpense(expense, start, "reverse", "test");
+        assertThat(reports.reports(start, end).profitLoss().expenses()).isEqualByComparingTo("0");
+    }
+    @Test void correctionCannotRewriteRecognizedCancelledOrClosedPlans() {
+        String id = prepaid.create(plan(), "plan", "test");
+        prepaid.recognize(id, new PrepaidService.Recognition(end), "oct", "test");
+        assertThatThrownBy(() -> prepaid.correct(id, new PrepaidService.Correction("Wrong plan"), "bad", "test")).hasMessageContaining("unrecognized");
+        prepaid.cancel(id, new PrepaidService.Cancellation(end, "Ended"), "cancel", "test");
+        assertThatThrownBy(() -> prepaid.correct(id, new PrepaidService.Correction("Wrong plan"), "bad", "test")).hasMessageContaining("uncancelled");
+        assertThat(count("prepaid_corrections")).isZero();
+    }
+    @Test void originalClosedDatePreventsCorrectionWithoutChangingEarlierReports() {
+        String id = prepaid.create(plan(), "plan", "test");
+        var before = reports.reports(start, end);
+        reconciliation.close(new BankReconciliation.Statement(start, end, "0", "0"), "close", "test");
+        assertThatThrownBy(() -> prepaid.correct(id, new PrepaidService.Correction("Wrong plan"), "bad", "test")).hasMessageContaining("closed period");
+        assertThat(reports.reports(start, end)).isEqualTo(before);
+        assertThat(count("journal_lines")).isEqualTo(4);
+    }
+    @Test void invalidDetailsAndInconsistentSetupCannotBeCorrected() {
+        String id = prepaid.create(plan(), "plan", "test");
+        for (var request : List.of(new PrepaidService.Correction(" "), new PrepaidService.Correction("x".repeat(241))))
+            assertThatThrownBy(() -> prepaid.correct(id, request, "bad", "test")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> prepaid.correct(id, null, "bad", "test")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> prepaid.correct("missing", new PrepaidService.Correction("Wrong"), "bad", "test")).hasMessageContaining("not found");
+        db.update("UPDATE journal_lines SET debit = 99 WHERE account_code = '1300'");
+        assertThatThrownBy(() -> prepaid.correct(id, new PrepaidService.Correction("Wrong"), "bad", "test")).hasMessageContaining("inconsistent");
+        assertThat(count("prepaid_corrections")).isZero();
+        assertThat(count("journal_lines")).isEqualTo(4);
+    }
+    @Test void failedCorrectionRollsBackTheOffsetAndAllowsAValidRetry() {
+        String id = prepaid.create(plan(), "plan", "test");
+        var request = new PrepaidService.Correction("Wrong plan");
+        assertThatThrownBy(() -> prepaid.correct(id, request, "correct", "x".repeat(101))).isInstanceOf(RuntimeException.class);
+        assertThat(count("prepaid_corrections")).isZero();
+        assertThat(count("journal_lines")).isEqualTo(4);
+        assertThat(count("commands")).isEqualTo(3);
+        assertThat(prepaid.correct(id, request, "correct", "test")).isNotBlank();
+    }
+    @Test void correctionPreservesBankMatchesAndTheirNormalPurchaseReversalGuard() {
+        bank.importCsv(new BankService.Import("October", "transaction_id,date,description,amount\nSOFTWARE,2026-10-01,Software,-100"), "import", "test");
+        String bankId = db.queryForObject("SELECT id FROM bank_transactions", String.class);
+        String line = db.queryForObject("SELECT id FROM journal_lines WHERE account_code = '1000'", String.class);
+        String match = matching.match(bankId, new BankMatching.Match(line), "match", "test");
+        var before = db.queryForList("SELECT * FROM bank_matches");
+        String id = prepaid.create(plan(), "plan", "test");
+        prepaid.correct(id, new PrepaidService.Correction("Wrong plan"), "correct", "test");
+        assertThat(db.queryForList("SELECT * FROM bank_matches")).isEqualTo(before);
+        assertThatThrownBy(() -> purchases.reverseExpense(expense, start, "reverse", "test")).hasMessageContaining("Unmatch");
+        matching.unmatch(bankId, new BankMatching.Unmatch(match), "unmatch", "test");
+        purchases.reverseExpense(expense, start, "reverse", "test");
+        assertThat(matching.candidates(bankId)).isEmpty();
+    }
+    @Test void correctionEndpointRequiresAuthenticationCsrfAndARequestKey() throws Exception {
+        String id = prepaid.create(plan(), "plan", "test");
+        check("/api/prepaid/" + id + "/correct", "{\"reason\":\"Accidental plan\"}", "correct");
+    }
     private void check(String url, String body, String key) throws Exception {
         http.perform(post(url).with(csrf()).contentType("application/json").content(body).header("Idempotency-Key", key)).andExpect(status().isUnauthorized());
         http.perform(post(url).with(httpBasic("test", "test-only")).contentType("application/json").content(body).header("Idempotency-Key", key)).andExpect(status().isForbidden());
