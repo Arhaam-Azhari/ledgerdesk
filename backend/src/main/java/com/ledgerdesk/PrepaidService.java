@@ -16,6 +16,7 @@ public class PrepaidService {
     private final LedgerService ledger;
     public record Plan(String expenseId, LocalDate startsOn, int months, String memo) {}
     public record Recognition(LocalDate periodOn) {}
+    public record Cancellation(LocalDate cancelledOn, String reason) {}
     public PrepaidService(JdbcTemplate db, LedgerService ledger) { this.db = db; this.ledger = ledger; }
 
     private static void validDate(LocalDate date) {
@@ -90,6 +91,8 @@ public class PrepaidService {
         var found = db.queryForList("SELECT * FROM prepaid_plans WHERE id = ? AND business_id = 1", planId);
         if (found.isEmpty()) throw new IllegalArgumentException("Prepaid plan not found.");
         var plan = found.get(0);
+        if (db.queryForObject("SELECT COUNT(*) FROM prepaid_cancellations WHERE plan_id = ?", Integer.class, planId) != 0)
+            throw new IllegalArgumentException("This prepaid plan was cancelled.");
         var periods = db.queryForList("SELECT * FROM prepaid_periods WHERE plan_id = ? AND period_on = ?", planId, request.periodOn());
         if (periods.isEmpty()) throw new IllegalArgumentException("Choose a scheduled month-end date.");
         var period = periods.get(0);
@@ -105,8 +108,39 @@ public class PrepaidService {
         return id;
     }
 
+    @Transactional
+    public String cancel(String planId, Cancellation request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("Cancellation details are required.");
+        validDate(request.cancelledOn());
+        String reason = LedgerService.text(request.reason(), 240, "Cancellation reason");
+        LedgerService.text(planId, 36, "Prepaid plan ID");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("prepaid-cancellation", planId, request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        var found = db.queryForList("SELECT * FROM prepaid_plans WHERE id = ? AND business_id = 1", planId);
+        if (found.isEmpty()) throw new IllegalArgumentException("Prepaid plan not found.");
+        var plan = found.get(0);
+        if (db.queryForObject("SELECT COUNT(*) FROM prepaid_cancellations WHERE plan_id = ?", Integer.class, planId) != 0)
+            throw new IllegalArgumentException("This prepaid plan was already cancelled.");
+        LocalDate funded = ((java.sql.Date) plan.get("funded_on")).toLocalDate();
+        if (request.cancelledOn().isBefore(funded) || db.queryForObject(
+                "SELECT COUNT(*) FROM prepaid_periods WHERE plan_id = ? AND entry_id IS NOT NULL AND period_on > ?",
+                Integer.class, planId, request.cancelledOn()) != 0)
+            throw new IllegalArgumentException("Cancel on or after funding and every posted recognition.");
+        BigDecimal remaining = db.queryForObject("SELECT COALESCE(SUM(amount), 0) FROM prepaid_periods WHERE plan_id = ? AND entry_id IS NULL", BigDecimal.class, planId);
+        if (remaining.signum() <= 0) throw new IllegalArgumentException("This plan is fully recognized; there is no remaining benefit to cancel.");
+        ledger.requireOpenDate(request.cancelledOn());
+        String id = ledger.id();
+        // An ended benefit is expensed now. Cancellation does not imply a supplier refund.
+        ledger.journal(id, request.cancelledOn(), "Prepaid cancellation: " + reason, plan.get("account_code").toString(), "1300", remaining);
+        db.update("INSERT INTO prepaid_cancellations VALUES (?, ?, ?, ?, ?)", id, planId, request.cancelledOn(), reason, remaining);
+        ledger.complete(key, hash, id, actor, "PREPAID_PLAN_CANCELLED");
+        return id;
+    }
+
     static Map<String, Object> readState(JdbcTemplate db) {
-        return Map.of("prepaidPlans", db.queryForList("SELECT p.*, e.description, v.name AS vendor_name FROM prepaid_plans p JOIN expenses e ON e.id = p.expense_id JOIN vendors v ON v.id = e.vendor_id WHERE p.business_id = 1 ORDER BY p.funded_on, p.id"),
+        return Map.of("prepaidPlans", db.queryForList("SELECT p.*, c.id AS cancellation_id, c.cancelled_on, c.reason AS cancellation_reason, c.amount AS cancelled_amount, e.description, v.name AS vendor_name FROM prepaid_plans p LEFT JOIN prepaid_cancellations c ON c.plan_id = p.id JOIN expenses e ON e.id = p.expense_id JOIN vendors v ON v.id = e.vendor_id WHERE p.business_id = 1 ORDER BY p.funded_on, p.id"),
                 "prepaidPeriods", db.queryForList("SELECT r.* FROM prepaid_periods r JOIN prepaid_plans p ON p.id = r.plan_id WHERE p.business_id = 1 ORDER BY r.period_on, r.id"));
     }
 }

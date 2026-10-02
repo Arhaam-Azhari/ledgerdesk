@@ -24,6 +24,8 @@ class PrepaidTest {
     @Autowired LedgerService ledger;
     @Autowired ReportService reports;
     @Autowired BankReconciliation reconciliation;
+    @Autowired BankService bank;
+    @Autowired BankMatching matching;
     @Autowired JdbcTemplate db;
     @Autowired MockMvc http;
     private final LocalDate start = LocalDate.of(2026, 10, 1), end = LocalDate.of(2026, 10, 31);
@@ -131,6 +133,92 @@ class PrepaidTest {
         check("/api/prepaid", body, "plan");
         String id = db.queryForObject("SELECT id FROM prepaid_plans", String.class);
         check("/api/prepaid/" + id + "/recognize", "{\"periodOn\":\"2026-10-31\"}", "oct");
+    }
+    @Test void cancellationExpensesOnlyTheRemainingBenefitAndPreservesClosedReports() {
+        String id = prepaid.create(plan(), "plan", "test");
+        prepaid.recognize(id, new PrepaidService.Recognition(end), "oct", "test");
+        var october = reports.reports(start, end);
+        reconciliation.close(new BankReconciliation.Statement(start, end, "0", "0"), "close", "test");
+        var request = new PrepaidService.Cancellation(end.plusDays(1), "Subscription ended early");
+        String cancelled = prepaid.cancel(id, request, "cancel", "test");
+        assertThat(prepaid.cancel(id, request, "cancel", "test")).isEqualTo(cancelled);
+        assertThat(reports.reports(start, end)).isEqualTo(october);
+        var november = reports.reports(end.plusDays(1), LocalDate.of(2026, 11, 30));
+        assertThat(november.profitLoss().expenses()).isEqualByComparingTo("66.67");
+        assertThat(november.balanceSheet().assets()).anySatisfy(a -> { assertThat(a.code()).isEqualTo("1300"); assertThat(a.amount()).isEqualByComparingTo("0"); });
+        assertThat(november.balanceSheet().difference()).isEqualByComparingTo("0");
+        assertThat(count("prepaid_cancellations")).isEqualTo(1);
+        assertThat(count("prepaid_periods")).isEqualTo(3);
+        assertThatThrownBy(() -> prepaid.recognize(id, new PrepaidService.Recognition(LocalDate.of(2026, 11, 30)), "nov", "test")).hasMessageContaining("cancelled");
+        assertThatThrownBy(() -> prepaid.cancel(id, request, "second", "test")).hasMessageContaining("already cancelled");
+        assertThatThrownBy(() -> prepaid.cancel(id, new PrepaidService.Cancellation(end.plusDays(2), "Changed"), "cancel", "test")).hasMessageContaining("different details");
+        // Retries of earlier successful postings still return their original result after cancellation.
+        assertThat(prepaid.recognize(id, new PrepaidService.Recognition(end), "oct", "test")).isNotBlank();
+    }
+    @Test void anUnstartedPlanCanBeCancelledWithoutRewritingThePayment() {
+        String id = prepaid.create(plan(), "plan", "test");
+        prepaid.cancel(id, new PrepaidService.Cancellation(start, "Bought the wrong subscription"), "cancel", "test");
+        assertThat(reports.reports(start, end).profitLoss().expenses()).isEqualByComparingTo("100");
+        assertThat(db.queryForObject("SELECT SUM(credit - debit) FROM journal_lines WHERE account_code = '1000'", java.math.BigDecimal.class)).isEqualByComparingTo("100");
+        assertThat(db.queryForObject("SELECT amount FROM prepaid_cancellations", java.math.BigDecimal.class)).isEqualByComparingTo("100");
+        assertThatThrownBy(() -> purchases.reverseExpense(expense, end, "reverse", "test")).hasMessageContaining("prepaid plan");
+    }
+    @Test void cancellationRejectsInvalidClosedAndEarlierDates() {
+        String id = prepaid.create(plan(), "plan", "test");
+        for (var request : List.of(new PrepaidService.Cancellation(null, "Reason"),
+                new PrepaidService.Cancellation(start.minusDays(1), "Reason"),
+                new PrepaidService.Cancellation(start, " "), new PrepaidService.Cancellation(start, "x".repeat(241))))
+            assertThatThrownBy(() -> prepaid.cancel(id, request, "bad", "test")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> prepaid.cancel("missing", new PrepaidService.Cancellation(start, "Reason"), "bad", "test")).hasMessageContaining("not found");
+        prepaid.recognize(id, new PrepaidService.Recognition(end), "oct", "test");
+        assertThatThrownBy(() -> prepaid.cancel(id, new PrepaidService.Cancellation(end.minusDays(1), "Reason"), "bad", "test")).hasMessageContaining("every posted recognition");
+        reconciliation.close(new BankReconciliation.Statement(start, end, "0", "0"), "close", "test");
+        assertThatThrownBy(() -> prepaid.cancel(id, new PrepaidService.Cancellation(end, "Reason"), "bad", "test")).hasMessageContaining("closed period");
+        assertThat(count("prepaid_cancellations")).isZero();
+    }
+    @Test void fullyRecognizedPlansCannotCreateAZeroAmountCancellation() {
+        String id = prepaid.create(plan(), "plan", "test");
+        for (int i = 0; i < 3; i++) prepaid.recognize(id, new PrepaidService.Recognition(java.time.YearMonth.from(start).plusMonths(i).atEndOfMonth()), "month-" + i, "test");
+        assertThatThrownBy(() -> prepaid.cancel(id, new PrepaidService.Cancellation(LocalDate.of(2027, 1, 1), "Ended"), "cancel", "test")).hasMessageContaining("fully recognized");
+        assertThat(count("journal_lines")).isEqualTo(10);
+    }
+    @Test void failedCancellationRollsBackItsJournalHistoryAndRequestKey() {
+        String id = prepaid.create(plan(), "plan", "test");
+        var request = new PrepaidService.Cancellation(start, "Ended");
+        assertThatThrownBy(() -> prepaid.cancel(id, request, "cancel", "x".repeat(101))).isInstanceOf(RuntimeException.class);
+        assertThat(count("prepaid_cancellations")).isZero();
+        assertThat(count("journal_lines")).isEqualTo(4);
+        assertThat(count("commands")).isEqualTo(3);
+        assertThat(prepaid.cancel(id, request, "cancel", "test")).isNotBlank();
+    }
+    @Test void cancellationEndpointRequiresAuthenticationCsrfAndARequestKey() throws Exception {
+        String id = prepaid.create(plan(), "plan", "test");
+        check("/api/prepaid/" + id + "/cancel", "{\"cancelledOn\":\"2026-10-01\",\"reason\":\"Benefit ended\"}", "cancel");
+    }
+    @Test void prepaidConversionRecognitionAndCancellationPreserveAnExistingBankMatch() {
+        bank.importCsv(new BankService.Import("October", "transaction_id,date,description,amount\nSOFTWARE,2026-10-01,Software,-100"), "import", "test");
+        String bankId = db.queryForObject("SELECT id FROM bank_transactions", String.class);
+        String line = db.queryForObject("SELECT id FROM journal_lines WHERE account_code = '1000'", String.class);
+        matching.match(bankId, new BankMatching.Match(line), "match", "test");
+        var matches = db.queryForList("SELECT * FROM bank_matches");
+        var preview = reconciliation.preview(new BankReconciliation.Statement(start, end, "0", "-100"));
+        String id = prepaid.create(plan(), "plan", "test");
+        prepaid.recognize(id, new PrepaidService.Recognition(end), "oct", "test");
+        prepaid.cancel(id, new PrepaidService.Cancellation(end, "Ended"), "cancel", "test");
+        assertThat(db.queryForList("SELECT * FROM bank_matches")).isEqualTo(matches);
+        assertThat(reconciliation.preview(new BankReconciliation.Statement(start, end, "0", "-100"))).isEqualTo(preview);
+        assertThat(count("bank_match_events")).isEqualTo(1);
+        assertThat(matching.candidates(bankId)).isEmpty();
+    }
+    @Test void aConvertedExpenseStillOffersItsOriginalCashLineForMatching() {
+        prepaid.create(plan(), "plan", "test");
+        bank.importCsv(new BankService.Import("October", "transaction_id,date,description,amount\nSOFTWARE,2026-10-01,Software,-100"), "import", "test");
+        String bankId = db.queryForObject("SELECT id FROM bank_transactions", String.class);
+        var candidates = matching.candidates(bankId);
+        assertThat(candidates).hasSize(1);
+        matching.match(bankId, new BankMatching.Match(candidates.get(0).get("line_id").toString()), "match", "test");
+        assertThat(count("journal_lines")).isEqualTo(4);
+        assertThat(reconciliation.preview(new BankReconciliation.Statement(start, end, "0", "-100")).bookDifference()).isEqualByComparingTo("0");
     }
     private void check(String url, String body, String key) throws Exception {
         http.perform(post(url).with(csrf()).contentType("application/json").content(body).header("Idempotency-Key", key)).andExpect(status().isUnauthorized());
