@@ -140,6 +140,8 @@ test("receive an actual bill once, preserve closed history and retain its link t
   await expect(
     page.getByLabel("Supplier bill reference", { exact: true }),
   ).toHaveValue("FEES-100");
+  await expect(page.getByRole("status")).toHaveText("Workspace reloaded.");
+  await expect(page.getByRole("button", { name: "Post bill and reverse estimate", exact: true })).toBeEnabled();
   await page.screenshot({
     path: "handoff-results/handoff-editor.png",
     fullPage: true,
