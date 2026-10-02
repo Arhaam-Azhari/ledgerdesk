@@ -4,6 +4,7 @@ import { Accruals, type AccrualState } from "./Accruals";
 import { Adjustments, type AdjustmentState } from "./Adjustments";
 import { OwnerEquity, type EquityState } from "./OwnerEquity";
 import { Reports, type ReportData } from "./Reports";
+import { CashActivity, type CashData } from "./CashActivity";
 import {
   BankReconciliation,
   type ReconciliationState,
@@ -201,6 +202,27 @@ function App() {
     try {
       return await api(
         `/api/reports?startsOn=${encodeURIComponent(start)}&endsOn=${encodeURIComponent(end)}`,
+      );
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Could not load reports.",
+      );
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadCashActivity(
+    start: string,
+    end: string,
+  ): Promise<CashData | null> {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      return await api(
+        `/api/reports/cash-activity?startsOn=${encodeURIComponent(start)}&endsOn=${encodeURIComponent(end)}`,
       );
     } catch (error) {
       setError(
@@ -443,6 +465,7 @@ function App() {
     "Bank matching",
     "Reconciliation",
     "Reports",
+    "Cash activity",
     "Owner transfers",
     "Adjustments",
     "Accruals",
@@ -1266,6 +1289,9 @@ function App() {
             preview={previewReconciliation}
             act={act}
           />
+        )}
+        {page === "Cash activity" && (
+          <CashActivity busy={busy} load={loadCashActivity} workspace={data} />
         )}
         {page === "Reports" && (
           <Reports busy={busy} load={loadReports} workspace={data} />
