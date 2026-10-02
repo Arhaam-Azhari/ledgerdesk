@@ -84,7 +84,7 @@ public class PurchaseService {
                 request.vendorId(), referenceKey) != 0)
             throw new IllegalArgumentException("This vendor's bill reference is already recorded, including voided bills.");
         String id = ledger.id();
-        db.update("INSERT INTO bills (id, business_id, vendor_id, reference, reference_key, description, issued_on, due_on, account_code, amount) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        db.update("INSERT INTO bills (id, business_id, vendor_id, reference, reference_key, description, issued_on, due_on, account_code, amount) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?)",
                 id, request.vendorId(), reference, referenceKey, description, request.issuedOn(), request.dueOn(), request.accountCode(), amount);
         ledger.journal(id, request.issuedOn(), "Bill " + reference, request.accountCode(), "2000", amount);
         return id;
