@@ -358,8 +358,9 @@ export function Reports({
               />
               <p>
                 Accumulated earnings include all income and expenses through{" "}
-                {result.endsOn}. Owner contributions, drawings, opening balance
-                migration and year-end closing are not implemented.
+                {result.endsOn}. Owner contributions and drawings are included
+                in posted equity. Opening balance migration and year-end closing
+                remain future work.
               </p>
               {cents(b.difference) !== 0n && (
                 <p role="alert">
