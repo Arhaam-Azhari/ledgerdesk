@@ -36,9 +36,11 @@ test("create, recognize and end a prepaid benefit, then correct an untouched pla
     return r.json();
   }
   async function interruptRefresh() {
+    await page.unroute("**/api/state");
+    let failOnce = true;
     await page.route("**/api/state", async (route) => {
-      await page.unroute("**/api/state");
-      await route.abort("failed");
+      if (failOnce) { failOnce = false; await route.abort("failed"); }
+      else await route.continue();
     });
   }
   const keys: string[] = [];
