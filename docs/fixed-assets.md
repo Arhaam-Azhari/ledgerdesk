@@ -26,7 +26,7 @@ The service date must be the first of a month on or after payment. Useful life i
 
 Eight integration tests cover exact final rounding, unchanged bank lines, cost/contra asset and expense reports, residual value, earlier cutoffs, retries, closed dates, invalid lives/values, consistent funding sources, prepaid/asset exclusivity, rollback and security for both endpoints. The full CI suite runs on H2 and PostgreSQL 17, together with the existing browser workflows. Source checkpoint `85f2f3d1650e4b6a8c106337cb92d08feac7d7c0` passed [Actions run 36978114358](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36978114358): 186 integration tests on each of H2 and PostgreSQL 17 with zero failures, errors or skipped tests, the production frontend build and all 15 existing Chromium workflows. These browser workflows check regression behavior; asset-specific screens and browser proof are still to be added.
 
-Asset screens and dedicated browser captures remain before milestone review. Correction, zero-proceeds retirement and bank-match regression checks are included in the additional backend checkpoint below. This version supports equipment at cost, whole calendar months and explicit straight-line postings. It does not provide tax depreciation, asset sales/refunds, impairment, life/residual revisions, unpaid asset bills or partial-month conventions.
+The asset screen and proof checkpoint is documented below. Correction, zero-proceeds retirement and bank-match regression checks are included in the additional backend checkpoint below. This version supports equipment at cost, whole calendar months and explicit straight-line postings. It does not provide tax depreciation, asset sales/refunds, impairment, life/residual revisions, unpaid asset bills or partial-month conventions.
 
 ## Correction and retirement
 
@@ -38,7 +38,7 @@ For the $100 equipment above, one $30 October depreciation leaves $70 book value
 
 Both routes require authentication, CSRF and idempotency keys. Exact retries return the original result. Corrected and retired assets reject new depreciation, and both ending kinds remain visible with dates and reasons. Retirement validates the setup, schedule and posted depreciation journals before writing a balanced two- or three-line removal. It retains all original records and cash/bank evidence. Loss and depreciation categories are excluded from ordinary purchase/accrual forms.
 
-Ten additional integration tests cover original expense restoration, preserved closed reports, full/partial/zero-loss retirement, date and state guards, inconsistent journals, rollback, security, unchanged bank matches and purchase-reversal protections. Source `16c13b181ca38a4a61494ca67435af72178840da` passed [Actions run 36979136611](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36979136611): 196 integration tests on each of H2 and PostgreSQL 17, zero failures/errors/skips, production frontend build and all 15 existing Chromium workflows. Asset-specific screens and browser captures remain the next checkpoint.
+Ten additional integration tests cover original expense restoration, preserved closed reports, full/partial/zero-loss retirement, date and state guards, inconsistent journals, rollback, security, unchanged bank matches and purchase-reversal protections. Source `16c13b181ca38a4a61494ca67435af72178840da` passed [Actions run 36979136611](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36979136611): 196 integration tests on each of H2 and PostgreSQL 17, zero failures/errors/skips, production frontend build and all 15 existing Chromium workflows. The asset screen checkpoint below adds dedicated browser coverage.
 
 ## Asset screen checkpoint
 
@@ -46,4 +46,28 @@ The Fixed assets workspace now registers equipment from eligible paid purchases,
 
 Source `541b2b4eed4f4dfe7311fa0f63474639ea263ac1` passed [Actions run 36981453673](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36981453673): 196 integration tests on each of H2 and PostgreSQL 17 with no failures, errors or skipped tests, the production frontend build and all 16 Chromium workflows. The dedicated asset workflow checks a $100 purchase with $10 residual value and three $30 depreciation months, first-of-month and year-overflow validation, desktop/mobile layout, registration and retirement retries after an interrupted refresh, unchanged closed October reports after November retirement, and correction back to direct expense.
 
-Five original browser captures are retained in that run's artifact: the schedule editor, mobile editor, posted depreciation, retirement and correction. Visual review and adding selected captures to the project documentation remain before milestone review and merge.
+Five original browser captures from that run were downloaded and visually reviewed. Desktop and mobile forms fit their viewports; the register retains the posted month and clearly distinguishes retirement from correction. The milestone covers the supported workflows above; the wider platform roadmap remains open.
+
+## Browser proof
+
+These are unedited captures from the asset workflow, using a fresh fictional business. The screenshot badge records the application label at capture time.
+
+The editor previews three $30 depreciation months for equipment costing $100 with $10 residual value.
+
+![Equipment setup and exact schedule](screenshots/asset-editor.png)
+
+The same form and schedule fit a 390-pixel phone viewport.
+
+![Mobile equipment editor](screenshots/mobile-asset.png)
+
+October depreciation leaves $70 net book value, with the next month still scheduled.
+
+![Posted depreciation and book value](screenshots/asset-depreciation.png)
+
+November retirement records a $70 loss and retains the posted October month. Future rows are marked as not posted.
+
+![Retired equipment history](screenshots/asset-retired.png)
+
+An untouched $25 capitalization is corrected to direct expense; its schedule and reason remain visible.
+
+![Correction with retained history](screenshots/asset-corrected.png)

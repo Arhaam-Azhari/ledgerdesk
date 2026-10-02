@@ -2,7 +2,7 @@
 
 A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, expense category adjustments, accrued expenses, and prepaid expenses are working milestones. Additional adjustment types, user roles, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, expense category adjustments, accrued expenses, prepaid expenses, and fixed assets are working milestones. Additional adjustment types, user roles, and deployment remain on the roadmap.
 
 ## Working now
 
@@ -179,7 +179,7 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 178 backend integration tests passed on each of H2 and PostgreSQL 17, and all fifteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 196 backend integration tests passed on each of H2 and PostgreSQL 17, and all sixteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
@@ -237,3 +237,11 @@ Record a purchase paid upfront in Expenses, then open **Prepaid expenses**. Choo
 Recognize the next scheduled month as its benefit is consumed. **End remaining benefit** expenses the unused balance on a chosen open date without changing earlier reports or recording a refund. **Correct accidental plan** restores an untouched plan to a direct expense on its original open date. History retains the plan, schedule and reasons. One plan per purchase, whole months and explicit postings are supported; replacement schedules, partial-month proration and supplier refunds remain future work. See [the prepaid example, screenshots, API and verification](docs/prepaid-expenses.md).
 
 Run `npm run test:prepaid` in `frontend` after building the backend JAR and installing Chromium. Keep ports 8087 and 5180 free. The isolated workflow checks exact allocations, desktop/mobile layout, recognition, cancellation and correction.
+
+## Equipment and depreciation
+
+Record equipment bought with cash in Expenses, then open **Fixed assets**. Choose the paid purchase, first-of-month in-service date, useful life and residual value. The preview divides cost less residual value across whole calendar months, with any rounding remainder in the final month. Registration moves the original expense to Equipment at cost; cash and receipts stay attached to the purchase.
+
+Post each scheduled month in order. The register separates cost, accumulated depreciation and net book value. **Retire without proceeds** removes cost and accumulated depreciation and records the remaining book value as a loss on an open date. **Correct accidental asset** restores an untouched capitalization to the original expense on its original open date. Both retain their history. See [the worked example, screenshots and limits](docs/fixed-assets.md).
+
+This demonstrates straight-line depreciation, contra-asset accounting, balanced retirement journals, exact monetary allocation and dated reports that preserve closed periods. Tax depreciation, sales, partial-month conventions and changes to useful life or residual value remain future work. Run `npm run test:assets` in `frontend` after building the backend JAR and installing Chromium; keep ports 8088 and 5181 free.
