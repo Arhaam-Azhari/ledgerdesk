@@ -1,3 +1,4 @@
+import { Adjustments, type AdjustmentState } from "./Adjustments";
 import { OwnerEquity, type EquityState } from "./OwnerEquity";
 import { Reports, type ReportData } from "./Reports";
 import {
@@ -76,7 +77,8 @@ type Draft = {
   version: number;
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
-type State = EquityState &
+type State = AdjustmentState &
+  EquityState &
   PurchaseState &
   BankState &
   MatchState &
@@ -436,6 +438,7 @@ function App() {
     "Reconciliation",
     "Reports",
     "Owner transfers",
+    "Adjustments",
     "General ledger",
     "Trial balance",
     "Activity",
@@ -559,7 +562,7 @@ function App() {
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
-            <span className="demo-tag">Milestone 06 · Fictional business</span>
+            <span className="demo-tag">Milestone 07 · Fictional business</span>
             <button
               className="secondary"
               disabled={busy}
@@ -1196,6 +1199,9 @@ function App() {
             upload={uploadReceipt}
             download={downloadReceipt}
           />
+        )}
+        {page === "Adjustments" && (
+          <Adjustments data={data} busy={busy} act={act} />
         )}
         {page === "Owner transfers" && (
           <OwnerEquity data={data} busy={busy} act={act} />

@@ -9,7 +9,8 @@
     "test:e2e": "playwright test",
     "test:reconciliation": "playwright test --config playwright.reconciliation.config.ts",
     "test:reports": "playwright test --config playwright.reports.config.ts",
-    "test:equity": "playwright test --config playwright.equity.config.ts"
+    "test:equity": "playwright test --config playwright.equity.config.ts",
+    "test:adjustments": "playwright test --config playwright.adjustments.config.ts"
   },
   "dependencies": {
     "react": "^19.1.1",
