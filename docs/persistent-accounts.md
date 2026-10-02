@@ -1,0 +1,11 @@
+# Persistent account backend checkpoint
+
+Set `APP_ACCOUNTS_PERSISTENT=true` to use database-backed account authentication. The default remains the existing configured-login mode. Migration V18 creates users with BCrypt password hashes and enabled state, plus constrained OWNER/REVIEWER memberships tied to a business. This installation still selects business 1; it does not yet offer switching between businesses.
+
+On first startup with an empty user table, the existing owner configuration seeds the owner and an optional configured reviewer. Passwords must contain at least 12 characters and at most 72 UTF-8 bytes. Usernames are exact, one to 100 characters without surrounding whitespace. Setup locks the business row and validates both accounts before writes. A transaction failure leaves no partial setup.
+
+Once any user exists, startup never overwrites passwords, roles or enabled state. Changing bootstrap environment credentials does not rotate stored credentials or create new accounts. Keep bootstrap credentials outside version control. Account administration and recovery are not implemented yet; do not adopt this mode for real business data until those workflows are available.
+
+Authentication loads the stored hash, enabled state and membership role for business 1 on each user lookup. A user with membership only in another business cannot authenticate into this installation. Existing owner/reviewer request authorization remains the same. This is still local Basic authentication, not a hosted session system.
+
+Six integration tests cover hash storage, loading through a new service instance, role and enabled-state persistence, non-overwriting startup, business membership filtering, validation/atomic setup, password byte limits and selecting the persistent security provider. CI verification is pending. Full restart/login browser proof and account management are later checkpoints; the service-instance test alone is not a process-restart test.

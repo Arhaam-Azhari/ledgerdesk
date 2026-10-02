@@ -23,7 +23,13 @@ public class SecurityConfig {
                             @Value("${app.password:${APP_PASSWORD}}") String password,
                             @Value("${app.reviewer.username:}") String reviewer,
                             @Value("${app.reviewer.password:}") String reviewerPassword,
+                            @Value("${app.accounts.persistent:false}") boolean persistent,
+                            PersistentAccounts accounts,
                             PasswordEncoder encoder) {
+        if (persistent) {
+            accounts.bootstrap(username, password, reviewer, reviewerPassword, encoder);
+            return accounts::load;
+        }
         var users = new InMemoryUserDetailsManager(User.withUsername(username)
                 .password(encoder.encode(password)).roles("OWNER").build());
         if (!reviewer.isBlank() || !reviewerPassword.isBlank()) {
