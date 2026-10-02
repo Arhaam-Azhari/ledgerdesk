@@ -27,6 +27,25 @@ test("create, recognize and end a prepaid benefit, then correct an untouched pla
     expect(r.ok()).toBe(true);
     return r.json();
   }
+  async function reports(start: string, end: string) {
+    const r = await request.get(
+      `/api/reports?startsOn=${start}&endsOn=${end}`,
+      { headers: auth },
+    );
+    expect(r.ok()).toBe(true);
+    return r.json();
+  }
+  async function interruptRefresh() {
+    await page.route("**/api/state", async (route) => {
+      await page.unroute("**/api/state");
+      await route.abort("failed");
+    });
+  }
+  const keys: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "POST" && new URL(r.url()).pathname === "/api/prepaid")
+      keys.push(r.headers()["idempotency-key"]);
+  });
   const vendor = await post(
     "/api/vendors",
     { name: "Software supplier", email: "accounts@example.test" },
@@ -88,10 +107,23 @@ test("create, recognize and end a prepaid benefit, then correct an untouched pla
     fullPage: true,
   });
   await page.setViewportSize({ width: 1280, height: 900 });
+  await interruptRefresh();
   await page
     .getByRole("button", { name: "Create prepaid plan", exact: true })
     .click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByLabel("Prepaid memo", { exact: true })).toHaveValue(
+    "Software October to December",
+  );
+  expect((await state()).prepaidPlans).toHaveLength(1);
+  await page
+    .getByRole("button", { name: "Create prepaid plan", exact: true })
+    .click();
+
   await expect(page.getByRole("status")).toContainText("Prepaid plan created");
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+  expect((await state()).prepaidPlans).toHaveLength(1);
   await page
     .getByRole("button", {
       name: "Recognize Software October to December on 2026-10-31",
@@ -108,6 +140,18 @@ test("create, recognize and end a prepaid benefit, then correct an untouched pla
     path: "prepaid-results/prepaid-recognition.png",
     fullPage: true,
   });
+  const october = await reports("2026-10-01", "2026-10-31");
+  expect(Number(october.profitLoss.expenses)).toBe(33.33);
+  await post(
+    "/api/bank/reconciliations",
+    {
+      startsOn: "2026-10-01",
+      endsOn: "2026-10-31",
+      openingBalance: "0",
+      closingBalance: "0",
+    },
+    "close",
+  );
   await page
     .getByRole("button", {
       name: "Cancel remaining benefit for Software October to December",
@@ -120,21 +164,39 @@ test("create, recognize and end a prepaid benefit, then correct an untouched pla
   await page
     .getByLabel("Benefit cancellation reason", { exact: true })
     .fill("Subscription ended early");
+  await interruptRefresh();
   await page
     .getByRole("button", { name: "Confirm benefit cancellation", exact: true })
     .click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(
+    page.getByLabel("Benefit cancellation reason", { exact: true }),
+  ).toHaveValue("Subscription ended early");
+  expect(
+    (await state()).prepaidPlans.filter(
+      (p: { cancellation_id: string | null }) => p.cancellation_id,
+    ),
+  ).toHaveLength(1);
+  await page
+    .getByRole("button", { name: "Confirm benefit cancellation", exact: true })
+    .click();
+
   await expect(page.getByRole("status")).toContainText("Prepaid benefit ended");
   await expect(page.getByText("Cancelled", { exact: true })).toBeVisible();
   await page.screenshot({
     path: "prepaid-results/prepaid-cancelled.png",
     fullPage: true,
   });
+  expect(await reports("2026-10-01", "2026-10-31")).toEqual(october);
+  const november = await reports("2026-11-01", "2026-11-30");
+  expect(Number(november.profitLoss.expenses)).toBe(66.67);
+  expect(Number(november.balanceSheet.difference)).toBe(0);
   const second = await post(
     "/api/expenses",
     {
       vendorId: vendor,
       description: "One-time software purchase",
-      spentOn: "2026-10-01",
+      spentOn: "2026-11-01",
       accountCode: "5100",
       amount: "25",
     },
@@ -145,7 +207,7 @@ test("create, recognize and end a prepaid benefit, then correct an untouched pla
     .click();
   await expect(page.getByRole("status")).toContainText("Workspace reloaded");
   await page.getByLabel("Paid purchase", { exact: true }).selectOption(second);
-  await page.getByLabel("Benefit start", { exact: true }).fill("2026-10-01");
+  await page.getByLabel("Benefit start", { exact: true }).fill("2026-11-01");
   await page
     .getByLabel("Prepaid memo", { exact: true })
     .fill("Accidental deferral");
