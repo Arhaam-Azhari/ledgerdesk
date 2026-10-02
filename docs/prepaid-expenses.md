@@ -51,3 +51,9 @@ Correction is allowed only before any recognition or cancellation. The plan, sch
 This version keeps one retained plan per purchase, including corrected plans; it does not create replacement schedules on the same purchase. It does not undo already recognized plans or rewrite closed reports. Use it to restore a purchase that should have remained a direct expense.
 
 Seven additional integration tests cover restored reports, retained history and retries, recognition/cancellation blocking, closed dates, invalid or inconsistent sources, atomic rollback, endpoint security and preserved bank matches with purchase-reversal guards. Source checkpoint `ef4f34f0c599e4261a6f0773e9eddf9d555df4ea` passed [Actions run 36956118950](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/36956118950): 178 integration tests on each of H2 and PostgreSQL 17, zero failures, errors or skipped tests, the production frontend build and all 14 existing browser workflows. Prepaid-specific browser proof will be added with its screens.
+
+## Prepaid workspace
+
+Open Prepaid expenses, choose an unused posted purchase and enter a first-of-month benefit start, month count and memo. The preview uses cents and shows the final-month remainder before posting. History shows each scheduled amount, recognized months, remaining asset and retained cancellation or correction reasons. Recognize the next month in order; End remaining benefit and Correct accidental plan open separate reason forms explaining their effects. View expenses and receipts returns to the purchase workspace.
+
+The new isolated browser workflow runs with `npm run test:prepaid` from `frontend`, after packaging the backend. It covers invalid first-of-month input, exact allocations, desktop/mobile captures, creation, recognition, cancellation and correction. CI verification and visual review of these new captures are pending. Additional retry and report-cutoff browser checks will be added before milestone review.
