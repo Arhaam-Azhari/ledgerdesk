@@ -130,8 +130,6 @@ public class PurchaseService {
         String previous = ledger.retry(key, hash);
         if (previous != null) return previous;
         var bill = document("bills", billId);
-        if (db.queryForObject("SELECT COUNT(*) FROM fixed_assets WHERE expense_id = ?", Integer.class, expenseId) != 0)
-            throw new IllegalArgumentException("This purchase funds a fixed asset. Review the asset before correcting its payment.");
         if (date == null || date.isBefore(((java.sql.Date) bill.get("issued_on")).toLocalDate()))
             throw new IllegalArgumentException("Reversal date must be on or after the bill date.");
         if (!bill.get("status").equals("POSTED") || ((BigDecimal) bill.get("paid")).signum() != 0)
