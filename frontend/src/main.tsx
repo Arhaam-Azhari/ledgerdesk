@@ -496,7 +496,12 @@ function App() {
               setBusy(true);
               setError("");
               const f = new FormData(e.currentTarget);
-              const auth = btoa(`${f.get("username")}:${f.get("password")}`);
+              const bytes = new TextEncoder().encode(
+                `${f.get("username")}:${f.get("password")}`,
+              );
+              const auth = btoa(
+                Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""),
+              );
               try {
                 await refresh(auth);
                 setCredentials(auth);

@@ -25,11 +25,9 @@ test("owner creates accounts, changes access and passwords, and last owner is pr
     .getByRole("button", { name: "Create account", exact: true })
     .click();
   await expect(page.getByRole("status")).toContainText("Account created");
-  const row = page
-    .locator("article")
-    .filter({
-      has: page.getByRole("heading", { name: "new-reviewer", exact: true }),
-    });
+  const row = page.locator("article").filter({
+    has: page.getByRole("heading", { name: "new-reviewer", exact: true }),
+  });
   await expect(row).toBeVisible();
   expect((await identity("new-reviewer", "first-reviewer-password")).ok()).toBe(
     true,
@@ -132,7 +130,7 @@ test("owner creates accounts, changes access and passwords, and last owner is pr
   await page.getByLabel("Your current password").fill("demo-local-only");
   await page
     .getByLabel("Replacement password for demo", { exact: true })
-    .fill("owner-replacement-password");
+    .fill("owner-replacement-pässword");
   await page
     .getByRole("button", {
       name: "Confirm password change for demo",
@@ -143,7 +141,7 @@ test("owner creates accounts, changes access and passwords, and last owner is pr
     "Sign in with your new password",
   );
   expect((await identity("demo", "demo-local-only")).status()).toBe(401);
-  await login("owner-replacement-password");
+  await login("owner-replacement-pässword");
   await page.getByRole("button", { name: "Accounts", exact: true }).click();
   await expect(row).toBeVisible();
   await page.screenshot({
