@@ -2,7 +2,7 @@
 
 A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, and expense category adjustments are working milestones. Adjustments, additional user roles, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, expense category adjustments, and accrued expenses are working milestones. Additional adjustment types, user roles, and deployment remain on the roadmap.
 
 ## Working now
 
@@ -179,11 +179,11 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 133 backend integration tests passed on each of H2 and PostgreSQL 17, and all twelve Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 143 backend integration tests passed on each of H2 and PostgreSQL 17, and all thirteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
-1. Additional adjustment types, including accruals, prepayments and depreciation, and a broader accounting period workflow.
+1. Additional adjustment types, including prepayments and depreciation, plus a linked accrual-to-bill handoff, and a broader accounting period workflow.
 2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
 The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
@@ -217,3 +217,11 @@ Open **Adjustments** to reclassify an existing expense between categories. Enter
 History shows original lines and any dated reversal separately. A reversal in a later open period preserves earlier reports. Both posting and reversal can be retried after an unsuccessful refresh without duplicating their journal entries. See [calculations, correction rules, screenshots and test instructions](docs/adjustments.md). This workflow supports expense reclassification; arbitrary journals and additional noncash adjustment types are still future work.
 
 Run the isolated browser check with `npm run test:adjustments` in `frontend`, after building the backend JAR and installing Chromium. Keep ports 8084 and 5177 free.
+
+## Accrued expenses
+
+Open **Accruals** to record an operating expense already incurred before its supplier bill arrives. Enter its date, category, memo and USD amount, then inspect the balanced preview. Posting debits the expense and credits a separate accrued-expenses liability. Cash and vendor aging stay unchanged.
+
+Choose **Reverse accrued expense** to offset the estimate on an open date, with a reason. Original details remain visible, and a later reversal preserves earlier reports. If a refresh fails, retry the same form details. The eventual bill is entered separately; review its entry and the reversal together to avoid counting the expense twice. A linked bill handoff is still future work. See [the accounting example, API contract, screenshots and checks](docs/accruals.md).
+
+Run the isolated browser check with `npm run test:accruals` in `frontend`, after building the backend JAR and installing Chromium. Keep ports 8085 and 5178 free.
