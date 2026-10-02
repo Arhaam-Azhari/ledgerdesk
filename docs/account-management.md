@@ -1,0 +1,11 @@
+# Account management backend checkpoint
+
+In persistent-account mode, owners can list accounts, create an OWNER or REVIEWER, change a role/enabled state, and reset a password. Reviewers cannot read or write account administration routes. All mutations require owner authorization and CSRF; the service also rechecks the actor's current enabled owner membership under the business lock.
+
+`GET /api/accounts` returns IDs, usernames, roles and enabled state with no-store caching. It never returns hashes. `POST /api/accounts` accepts username, password and role. Duplicate usernames are rejected rather than overwritten or attached to a new business. `POST /api/accounts/{id}/access` accepts role and enabled. The last enabled owner cannot be demoted or disabled. Repeating the same access state makes no extra audit entry.
+
+`POST /api/accounts/{id}/password` accepts password and, for an owner's own change, currentPassword. Another enabled owner can reset an account without its old password. Passwords retain the bootstrap validation limits and are stored only as BCrypt hashes. These administration routes do not use ledger idempotency keys or store password fingerprints. A repeated reset sets the same requested password again; duplicate account creation returns an error.
+
+Each actual mutation records an account action and account ID in application activity, without credentials. Account, membership and audit writes share a transaction. A failed audit write rolls back creation. This local installation still selects business 1, and disabled state belongs to the user globally; multi-business account administration is not implemented. Configured-login mode rejects account management.
+
+Eight integration tests cover hash-free lists, creation/duplicates/roles, last-owner protection, real authentication after disabling/promoting/resetting, self-change verification, CSRF/reviewer denial, business-target/actor guards and audit rollback. CI verification is pending. Account-management screens, browser proof and an offline recovery workflow remain before milestone review. Basic authentication remains a local development setup.

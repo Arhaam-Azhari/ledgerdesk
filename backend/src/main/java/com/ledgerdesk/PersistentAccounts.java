@@ -29,7 +29,7 @@ public class PersistentAccounts {
         add(owner, password, "OWNER", encoder);
         if (includeReviewer) add(reviewer, reviewerPassword, "REVIEWER", encoder);
     }
-    private static void validate(String username, String password) {
+    static void validate(String username, String password) {
         if (username == null || username.isBlank() || username.length() > 100 || !username.equals(username.trim()))
             throw new IllegalArgumentException("Use a username of one to 100 characters without surrounding whitespace.");
         if (password == null || password.isBlank() || password.length() < 12 || password.getBytes(StandardCharsets.UTF_8).length > 72)

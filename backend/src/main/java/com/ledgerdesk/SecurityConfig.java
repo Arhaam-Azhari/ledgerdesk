@@ -44,6 +44,7 @@ public class SecurityConfig {
     SecurityFilterChain security(HttpSecurity http) throws Exception {
         // CSRF remains enabled, including for authenticated API writes.
         return http.authorizeHttpRequests(auth -> auth.requestMatchers("/api/csrf").permitAll()
+                .requestMatchers("/api/accounts", "/api/accounts/**").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/**").authenticated()
                 .requestMatchers(HttpMethod.HEAD, "/**").authenticated()
                 .anyRequest().hasRole("OWNER")).httpBasic(Customizer.withDefaults()).build();
