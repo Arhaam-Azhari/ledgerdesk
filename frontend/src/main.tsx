@@ -609,20 +609,6 @@ function App() {
           Local workspace
           <br />
           <small>USD · Accrual accounting</small>
-          <button
-            disabled={busy}
-            onClick={() => {
-              setData(null);
-              setCredentials("");
-              setAccess(null);
-              setPage("Overview");
-              setEditing(null);
-              setCustomerId("");
-              requests.current.clear();
-            }}
-          >
-            Lock workspace
-          </button>
         </div>
       </aside>
       <main>
@@ -632,6 +618,20 @@ function App() {
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
+            <button
+              disabled={busy}
+              onClick={() => {
+                setData(null);
+                setCredentials("");
+                setAccess(null);
+                setPage("Overview");
+                setEditing(null);
+                setCustomerId("");
+                requests.current.clear();
+              }}
+            >
+              Lock workspace
+            </button>
             <span className="demo-tag">Milestone 09 · Fictional business</span>
             <button
               className="secondary"
