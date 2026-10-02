@@ -15,6 +15,11 @@ public class AdjustmentController {
             @RequestHeader("Idempotency-Key") String key, Principal user) {
         return Map.of("id", adjustments.post(body, key, user.getName()));
     }
+    @PostMapping("/{id}/reverse")
+    Map<String, String> reverse(@PathVariable String id, @RequestBody AdjustmentService.Reversal body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", adjustments.reverse(id, body, key, user.getName()));
+    }
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) { return Map.of("message", error.getMessage()); }
