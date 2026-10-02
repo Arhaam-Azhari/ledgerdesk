@@ -19,6 +19,16 @@ public class FixedAssetController {
             @RequestHeader("Idempotency-Key") String key, Principal user) {
         return Map.of("id", assets.depreciate(id, body, key, user.getName()));
     }
+    @PostMapping("/{id}/correct")
+    Map<String, String> correct(@PathVariable String id, @RequestBody FixedAssetService.Correction body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", assets.correct(id, body, key, user.getName()));
+    }
+    @PostMapping("/{id}/retire")
+    Map<String, String> retire(@PathVariable String id, @RequestBody FixedAssetService.Retirement body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", assets.retire(id, body, key, user.getName()));
+    }
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) { return Map.of("message", error.getMessage()); }

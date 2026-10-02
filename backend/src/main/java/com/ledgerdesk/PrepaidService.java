@@ -46,7 +46,7 @@ public class PrepaidService {
         if (!expense.get("status").equals("POSTED")) throw new IllegalArgumentException("Choose an unreversed paid expense.");
         if (db.queryForObject("SELECT COUNT(*) FROM prepaid_plans WHERE expense_id = ?", Integer.class, request.expenseId()) != 0)
             throw new IllegalArgumentException("This expense already has a prepaid plan.");
-        if (db.queryForObject("SELECT COUNT(*) FROM fixed_assets WHERE expense_id = ?", Integer.class, request.expenseId()) != 0)
+        if (db.queryForObject("SELECT COUNT(*) FROM fixed_assets a WHERE a.expense_id = ? AND NOT EXISTS (SELECT 1 FROM asset_corrections c WHERE c.asset_id = a.id)", Integer.class, request.expenseId()) != 0)
             throw new IllegalArgumentException("This expense funds a fixed asset.");
         LocalDate funded = ((java.sql.Date) expense.get("spent_on")).toLocalDate();
         validDate(funded);

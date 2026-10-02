@@ -16,6 +16,8 @@ public class FixedAssetService {
     private final LedgerService ledger;
     public record Asset(String expenseId, LocalDate inServiceOn, int months, String name, String residualValue) {}
     public record Depreciation(LocalDate periodOn) {}
+    public record Correction(String reason) {}
+    public record Retirement(LocalDate retiredOn, String reason) {}
     public FixedAssetService(JdbcTemplate db, LedgerService ledger) { this.db = db; this.ledger = ledger; }
 
     private static void validDate(LocalDate date) {
@@ -70,7 +72,7 @@ public class FixedAssetService {
             if (line.get("account_code").equals(account) && credit.signum() == 0 && debit.compareTo(total) == 0) cost = true;
         }
         if (original.size() != 2 || !cash || !cost || db.queryForObject(
-                "SELECT COUNT(*) FROM accounts WHERE code = ? AND kind = 'EXPENSE' AND code <> '5600'", Integer.class, account) != 1)
+                "SELECT COUNT(*) FROM accounts WHERE code = ? AND kind = 'EXPENSE' AND code NOT IN ('5600', '5700')", Integer.class, account) != 1)
             throw new IllegalArgumentException("The paid expense journal is inconsistent. Review it before capitalizing.");
         String id = ledger.id();
         db.update("INSERT INTO fixed_assets VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?)", id, request.expenseId(), funded,
@@ -96,6 +98,7 @@ public class FixedAssetService {
         if (previous != null) return previous;
         var found = db.queryForList("SELECT * FROM fixed_assets WHERE id = ? AND business_id = 1", assetId);
         if (found.isEmpty()) throw new IllegalArgumentException("Fixed asset not found.");
+        requireActive(assetId);
         var periods = db.queryForList("SELECT * FROM asset_periods WHERE asset_id = ? AND period_on = ?", assetId, request.periodOn());
         if (periods.isEmpty()) throw new IllegalArgumentException("Choose a scheduled depreciation month-end.");
         var period = periods.get(0);
@@ -111,8 +114,102 @@ public class FixedAssetService {
         return id;
     }
 
+    private Map<String, Object> asset(String id) {
+        var found = db.queryForList("SELECT * FROM fixed_assets WHERE id = ? AND business_id = 1", id);
+        if (found.isEmpty()) throw new IllegalArgumentException("Fixed asset not found.");
+        return found.get(0);
+    }
+
+    private void requireActive(String id) {
+        if (db.queryForObject("SELECT COUNT(*) FROM asset_corrections WHERE asset_id = ?", Integer.class, id) != 0)
+            throw new IllegalArgumentException("This asset was corrected back to a direct expense.");
+        if (db.queryForObject("SELECT COUNT(*) FROM asset_retirements WHERE asset_id = ?", Integer.class, id) != 0)
+            throw new IllegalArgumentException("This asset was already retired.");
+    }
+
+    private void requireJournal(String source, LocalDate date, String debitCode, String creditCode, BigDecimal amount) {
+        var lines = db.queryForList("SELECT l.account_code, l.debit, l.credit FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id WHERE e.business_id = 1 AND e.source_id = ? AND e.entry_date = ?", source, date);
+        boolean debit = false, credit = false;
+        for (var line : lines) {
+            BigDecimal d = (BigDecimal) line.get("debit"), c = (BigDecimal) line.get("credit");
+            if (line.get("account_code").equals(debitCode) && d.compareTo(amount) == 0 && c.signum() == 0) debit = true;
+            if (line.get("account_code").equals(creditCode) && c.compareTo(amount) == 0 && d.signum() == 0) credit = true;
+        }
+        if (lines.size() != 2 || !debit || !credit)
+            throw new IllegalArgumentException("The asset journal is inconsistent. Review it before ending the asset.");
+    }
+
+    @Transactional
+    public String correct(String assetId, Correction request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("Correction details are required.");
+        String reason = LedgerService.text(request.reason(), 240, "Correction reason");
+        LedgerService.text(assetId, 36, "Asset ID");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("asset-correction", assetId, request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        var record = asset(assetId);
+        requireActive(assetId);
+        if (db.queryForObject("SELECT COUNT(*) FROM asset_periods WHERE asset_id = ? AND entry_id IS NOT NULL", Integer.class, assetId) != 0)
+            throw new IllegalArgumentException("Only an asset without posted depreciation can be corrected.");
+        LocalDate date = ((java.sql.Date) record.get("funded_on")).toLocalDate();
+        ledger.requireOpenDate(date);
+        BigDecimal cost = (BigDecimal) record.get("cost");
+        String account = record.get("account_code").toString();
+        requireJournal(assetId, date, "1500", account, cost);
+        String id = ledger.id();
+        ledger.journal(id, date, "Equipment correction: " + reason, account, "1500", cost);
+        db.update("INSERT INTO asset_corrections VALUES (?, ?, ?, ?)", id, assetId, date, reason);
+        ledger.complete(key, hash, id, actor, "FIXED_ASSET_CORRECTED");
+        return id;
+    }
+
+    @Transactional
+    public String retire(String assetId, Retirement request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("Retirement details are required.");
+        validDate(request.retiredOn());
+        String reason = LedgerService.text(request.reason(), 240, "Retirement reason");
+        LedgerService.text(assetId, 36, "Asset ID");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("asset-retirement", assetId, request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        var record = asset(assetId);
+        requireActive(assetId);
+        LocalDate funded = ((java.sql.Date) record.get("funded_on")).toLocalDate();
+        if (request.retiredOn().isBefore(funded)) throw new IllegalArgumentException("Retirement cannot precede the purchase.");
+        var periods = db.queryForList("SELECT * FROM asset_periods WHERE asset_id = ? ORDER BY period_on", assetId);
+        BigDecimal accumulated = new BigDecimal("0.00"), scheduled = new BigDecimal("0.00");
+        for (var period : periods) {
+            LocalDate date = ((java.sql.Date) period.get("period_on")).toLocalDate();
+            BigDecimal amount = (BigDecimal) period.get("amount");
+            scheduled = scheduled.add(amount);
+            if (period.get("entry_id") != null) {
+                if (date.isAfter(request.retiredOn())) throw new IllegalArgumentException("Retire on or after every posted depreciation date.");
+                requireJournal(period.get("id").toString(), date, "5600", "1590", amount);
+                accumulated = accumulated.add(amount);
+            } else if (date.isBefore(request.retiredOn()))
+                throw new IllegalArgumentException("Post the earlier depreciation months before retirement.");
+        }
+        BigDecimal cost = (BigDecimal) record.get("cost"), residual = (BigDecimal) record.get("residual_value");
+        if (periods.size() != ((Number) record.get("months")).intValue() || scheduled.compareTo(cost.subtract(residual)) != 0)
+            throw new IllegalArgumentException("The asset schedule is inconsistent. Review it before retirement.");
+        requireJournal(assetId, funded, "1500", record.get("account_code").toString(), cost);
+        ledger.requireOpenDate(request.retiredOn());
+        BigDecimal bookValue = cost.subtract(accumulated);
+        String id = ledger.id(), entry = ledger.id();
+        // Remove gross cost and its contra asset; only the remaining book value becomes a loss.
+        db.update("INSERT INTO journal_entries VALUES (?, 1, ?, ?, ?)", entry, request.retiredOn(), "Equipment retirement: " + reason, id);
+        db.update("INSERT INTO journal_lines VALUES (?, ?, '1500', 0, ?)", ledger.id(), entry, cost);
+        if (accumulated.signum() > 0) db.update("INSERT INTO journal_lines VALUES (?, ?, '1590', ?, 0)", ledger.id(), entry, accumulated);
+        if (bookValue.signum() > 0) db.update("INSERT INTO journal_lines VALUES (?, ?, '5700', ?, 0)", ledger.id(), entry, bookValue);
+        db.update("INSERT INTO asset_retirements VALUES (?, ?, ?, ?, ?, ?, ?)", id, assetId, request.retiredOn(), reason, cost, accumulated, bookValue);
+        ledger.complete(key, hash, id, actor, "FIXED_ASSET_RETIRED");
+        return id;
+    }
+
     static Map<String, Object> readState(JdbcTemplate db) {
-        return Map.of("fixedAssets", db.queryForList("SELECT a.*, e.description, v.name AS vendor_name FROM fixed_assets a JOIN expenses e ON e.id = a.expense_id JOIN vendors v ON v.id = e.vendor_id WHERE a.business_id = 1 ORDER BY a.funded_on, a.id"),
+        return Map.of("fixedAssets", db.queryForList("SELECT a.*, c.id AS correction_id, c.corrected_on, c.reason AS correction_reason, r.id AS retirement_id, r.retired_on, r.reason AS retirement_reason, r.book_value AS retirement_loss, e.description, v.name AS vendor_name FROM fixed_assets a LEFT JOIN asset_corrections c ON c.asset_id = a.id LEFT JOIN asset_retirements r ON r.asset_id = a.id JOIN expenses e ON e.id = a.expense_id JOIN vendors v ON v.id = e.vendor_id WHERE a.business_id = 1 ORDER BY a.funded_on, a.id"),
                 "assetPeriods", db.queryForList("SELECT r.* FROM asset_periods r JOIN fixed_assets a ON a.id = r.asset_id WHERE a.business_id = 1 ORDER BY r.period_on, r.id"));
     }
 }
