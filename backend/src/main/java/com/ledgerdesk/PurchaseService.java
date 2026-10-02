@@ -165,6 +165,8 @@ public class PurchaseService {
         String previous = ledger.retry(key, hash);
         if (previous != null) return previous;
         var expense = document("expenses", expenseId);
+        if (db.queryForObject("SELECT COUNT(*) FROM prepaid_plans WHERE expense_id = ?", Integer.class, expenseId) != 0)
+            throw new IllegalArgumentException("This expense funds a prepaid plan. Review that plan before correcting the payment.");
         if (date == null || date.isBefore(((java.sql.Date) expense.get("spent_on")).toLocalDate()))
             throw new IllegalArgumentException("Reversal date must be on or after the expense date.");
         ledger.requireOpenDate(((java.sql.Date) expense.get("spent_on")).toLocalDate());

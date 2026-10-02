@@ -5,7 +5,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 final class DatabaseFixture {
     private DatabaseFixture() {}
     static void reset(JdbcTemplate db) {
-        for (String table : new String[]{"accrual_bills", "accrual_reversals", "expense_accruals", "adjustment_reversals", "journal_adjustments", "equity_reversals", "equity_transactions", "bank_reconciliations", "bank_match_events", "bank_matches", "bank_transactions", "bank_imports", "receipts", "bill_payments", "bills", "expenses", "vendors", "invoice_drafts", "invoice_numbers", "payments", "journal_lines", "journal_entries", "invoices", "commands", "audit_events"})
+        for (String table : new String[]{"prepaid_periods", "prepaid_plans", "accrual_bills", "accrual_reversals", "expense_accruals", "adjustment_reversals", "journal_adjustments", "equity_reversals", "equity_transactions", "bank_reconciliations", "bank_match_events", "bank_matches", "bank_transactions", "bank_imports", "receipts", "bill_payments", "bills", "expenses", "vendors", "invoice_drafts", "invoice_numbers", "payments", "journal_lines", "journal_entries", "invoices", "commands", "audit_events"})
             db.update("DELETE FROM " + table);
         db.update("DELETE FROM customers WHERE id <> 'demo-customer'");
         db.update("DELETE FROM businesses WHERE id <> 1");
