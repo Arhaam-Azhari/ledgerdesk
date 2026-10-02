@@ -7,3 +7,7 @@ frontend/playwright-report/
 .env
 *.log
 *.tsbuildinfo
+
+frontend/reconciliation-results/
+frontend/report-results/
+frontend/equity-results/

@@ -2,7 +2,7 @@
 
 A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, and dated financial reports are working milestones. Adjustments, additional user roles, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, and owner funding/withdrawals are working milestones. Adjustments, additional user roles, and deployment remain on the roadmap.
 
 ## Working now
 
@@ -179,11 +179,11 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 101 backend integration tests passed on each of H2 and PostgreSQL 17, and all ten Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 117 backend integration tests passed on each of H2 and PostgreSQL 17, and all eleven Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
-1. Journal adjustments, owner contributions and drawings, and a broader accounting period workflow.
+1. General journal adjustments and a broader accounting period workflow.
 2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
 The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
@@ -201,3 +201,11 @@ Further milestones will extend those foundations into a complete service-busines
 Open **Reports**, choose an inclusive start/end date, and run the reports. The five views cover profit and loss, balance sheet, trial balance, customer aging and vendor aging. Export CSV downloads the displayed view with its dates and currency. Changing a date clears the result so an old report cannot be exported with new dates.
 
 Profit and loss covers the selected period; balance sheet, trial balance and aging include earlier records through the end date. A payment recorded after that date does not erase the historical outstanding balance. Reports read the posted books without changing them. See [report calculations, instructions and screenshots](docs/reports.md) for worked figures, scope and verification.
+
+## Owner transfers
+
+Open **Owner transfers** to record a contribution or personal withdrawal with its date, memo and USD amount. Contributions increase bank and equity; withdrawals reduce both. Neither is sales revenue or an operating expense. History and totals cover all recorded dates, while Reports can show an earlier cutoff. Owner transfers can be matched to imported bank rows.
+
+For a mistaken record, choose **Correct**, enter a reversal date and reason, and reverse it. The original remains in history; a dated offset updates the books. Matched transfers must be unmatched first, and closed periods must be reopened before changing them. Record any replacement separately. For money actually returned, record a new transfer in the opposite direction. See [owner accounting, corrections, screenshots and test instructions](docs/owner-equity.md).
+
+The isolated owner browser workflow runs with `npm run test:equity` in `frontend` after building the backend JAR and installing Chromium. It uses ports 8083 and 5176 and checks failed-refresh retries for both posting and corrections.

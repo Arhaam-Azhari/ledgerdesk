@@ -477,3 +477,11 @@ td code {
 
 .aging-table { min-width: 720px; }
 .report-results h3 { margin-top: 20px; }
+
+.owner-fields { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.owner-fields button { justify-self: start; }
+@media (max-width: 700px) { .owner-fields { grid-template-columns: 1fr; } }
+
+.owner-history { min-width: 800px; }
+
+.owner-history td:first-child, .owner-history td:nth-child(4) { white-space: nowrap; }

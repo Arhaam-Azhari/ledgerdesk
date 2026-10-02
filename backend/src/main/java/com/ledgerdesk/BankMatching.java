@@ -22,8 +22,11 @@ public class BankMatching {
             n.number_value AS invoice_number, c.name AS customer_name, i.description AS invoice_description,
             b.reference AS bill_reference, bv.name AS bill_vendor,
             x.description AS expense_description, xv.name AS expense_vendor,
+            q.kind AS equity_kind, q.memo AS equity_memo,
             CASE WHEN p.id IS NOT NULL THEN 'Customer payment'
-                 WHEN bp.id IS NOT NULL THEN 'Bill payment' ELSE 'Direct expense' END AS kind
+                 WHEN bp.id IS NOT NULL THEN 'Bill payment'
+                 WHEN q.kind = 'CONTRIBUTION' THEN 'Owner contribution'
+                 WHEN q.kind = 'DRAWING' THEN 'Owner drawing' ELSE 'Direct expense' END AS kind
         FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
         LEFT JOIN payments p ON p.id = e.source_id
         LEFT JOIN invoices i ON i.id = p.invoice_id
@@ -34,10 +37,11 @@ public class BankMatching {
         LEFT JOIN vendors bv ON bv.id = b.vendor_id
         LEFT JOIN expenses x ON x.id = e.source_id
         LEFT JOIN vendors xv ON xv.id = x.vendor_id
+        LEFT JOIN equity_transactions q ON q.id = e.source_id
         WHERE l.account_code = '1000' AND e.business_id = 1 AND
             ((i.business_id = 1 AND i.status = 'POSTED') OR
              (b.business_id = 1 AND b.status = 'POSTED') OR
-             (x.business_id = 1 AND x.status = 'POSTED'))
+             (x.business_id = 1 AND x.status = 'POSTED') OR (q.business_id = 1 AND NOT EXISTS (SELECT 1 FROM equity_reversals r WHERE r.transfer_id = q.id)))
         """;
 
     static void describe(Map<String, Object> row) {
@@ -45,6 +49,8 @@ public class BankMatching {
             row.put("memo", LedgerService.invoiceNumber(((Number) row.get("invoice_number")).longValue()) + " · " + row.get("customer_name") + " · " + row.get("invoice_description"));
         else if (row.get("bill_reference") != null)
             row.put("memo", row.get("bill_vendor") + " · Bill " + row.get("bill_reference"));
+        else if (row.get("equity_kind") != null)
+            row.put("memo", row.get("kind") + " · " + row.get("equity_memo"));
         else row.put("memo", row.get("expense_vendor") + " · " + row.get("expense_description"));
     }
 
@@ -84,7 +90,7 @@ public class BankMatching {
         var bank = transaction(transactionId);
         ledger.requireOpenDate(((java.sql.Date) bank.get("posted_on")).toLocalDate());
         var lines = db.queryForList(CASH_RECORDS + " AND l.id = ?", lineId);
-        if (lines.isEmpty()) throw new IllegalArgumentException("Choose a posted customer payment, bill payment, or direct expense in this bank account.");
+        if (lines.isEmpty()) throw new IllegalArgumentException("Choose a posted customer payment, bill payment, direct expense, or owner transfer in this bank account.");
         if (((BigDecimal) lines.get(0).get("amount")).compareTo((BigDecimal) bank.get("amount")) != 0)
             throw new IllegalArgumentException("The recorded entry must have the same signed amount as the bank transaction.");
         if (db.queryForObject("SELECT COUNT(*) FROM bank_matches WHERE transaction_id = ? OR line_id = ?", Integer.class, transactionId, lineId) != 0)

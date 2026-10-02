@@ -72,3 +72,9 @@ Preview reads a consistent snapshot. Close takes the same business lock as impor
 Reopening checks the latest closed record and its version under that lock, retains the snapshot, and records the reason and owner. A replacement close creates a new record. This trades concurrency throughput for a simple, testable single-business correctness model.
 
 The browser uses decimal strings/integer cents, invalidates previews after editing or refreshing, requires explicit close/reopen confirmation, and retains command keys after an uncertain refresh. A separate Playwright configuration starts an in-memory demo backend and frontend for reconciliation, preventing its closed periods from affecting other workflows.
+
+## Owner equity
+
+Migration V7 adds retained owner transfer records and separate contribution/drawing accounts. `EquityService` uses the existing business lock, retry fingerprint and two-line journal helper. A contribution credits equity; a withdrawal debits equity. These accounts feed the dated balance sheet without changing profit or customer/vendor aging. Owner cash lines join bank matching candidates and outstanding reconciliation entries, retaining their direction and memo.
+
+The owner form uses the same request-key retention through a failed workspace refresh as other postings. Its history and totals include all recorded dates; dated statements remain a separate Reports view. Migration V8 stores one reversal per transfer, with a date and reason. The original entry is retained; its offset posts on the reversal date. A correction requires open original/reversal dates and an unmatched original bank line. Reversed originals cannot be selected for bank matching. The reversal and activity/command records share the posting transaction and retry lock. There is no edit/delete endpoint. General journal adjustments remain the next accounting work.

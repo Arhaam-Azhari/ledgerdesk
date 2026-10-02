@@ -104,7 +104,8 @@ public class BankReconciliation {
         var outstanding = db.queryForList("""
             SELECT l.id AS line_id, e.entry_date, e.memo, l.debit-l.credit AS amount,
                 cash.invoice_number, cash.customer_name, cash.invoice_description,
-                cash.bill_reference, cash.bill_vendor, cash.expense_description, cash.expense_vendor, cash.kind
+                cash.bill_reference, cash.bill_vendor, cash.expense_description, cash.expense_vendor,
+                cash.equity_kind, cash.equity_memo, cash.kind
             FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
             LEFT JOIN (%s) cash ON cash.line_id = l.id
             WHERE e.business_id = 1 AND l.account_code = '1000' AND e.entry_date <= ?
