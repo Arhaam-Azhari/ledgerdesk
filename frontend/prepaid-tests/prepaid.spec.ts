@@ -61,6 +61,13 @@ test("create, recognize and end a prepaid benefit, then correct an untouched pla
     .click();
   await expect(page.getByRole("alert")).toContainText("first-of-month");
   await page.getByLabel("Benefit start", { exact: true }).fill("2026-10-01");
+  await page.getByLabel("Benefit start", { exact: true }).fill("9999-12-01");
+  await page
+    .getByRole("button", { name: "Create prepaid plan", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("one to sixty months");
+  await page.getByLabel("Benefit start", { exact: true }).fill("2026-10-01");
+  await expect(page.getByRole("alert")).toHaveCount(0);
   const preview = page.getByRole("table", { name: "Prepaid schedule preview" });
   await expect(preview.getByText("$33.33", { exact: true })).toHaveCount(2);
   await expect(preview.getByText("$33.34", { exact: true })).toHaveCount(1);

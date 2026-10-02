@@ -75,7 +75,7 @@ export function Prepaids({ data, busy, act, openExpenses }: Props) {
     n >= 1 &&
     n <= 60 &&
     Number(startsOn.slice(0, 4)) >= 1 &&
-    Number(monthEnd(startsOn, n - 1).slice(0, 4)) <= 9999 &&
+    monthEnd(startsOn, n - 1).length === 10 &&
     cents(expense.amount) / BigInt(n) > 0n;
   const preview = valid
     ? Array.from({ length: n }, (_, i) => ({
@@ -173,7 +173,10 @@ export function Prepaids({ data, busy, act, openExpenses }: Props) {
                 min={expense?.spent_on ?? "0001-01-01"}
                 max="9999-12-01"
                 value={startsOn}
-                onChange={(e) => setStartsOn(e.target.value)}
+                onChange={(e) => {
+                  setStartsOn(e.target.value);
+                  setError("");
+                }}
                 required
               />
             </label>
@@ -185,7 +188,10 @@ export function Prepaids({ data, busy, act, openExpenses }: Props) {
                 max="60"
                 step="1"
                 value={months}
-                onChange={(e) => setMonths(e.target.value)}
+                onChange={(e) => {
+                  setMonths(e.target.value);
+                  setError("");
+                }}
                 required
               />
             </label>
