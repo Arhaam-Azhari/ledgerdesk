@@ -77,4 +77,4 @@ The browser configuration starts an isolated in-memory demo on backend port 8085
 
 ## Remaining work
 
-Linked bill handoff, partial settlement and scheduled reversals remain future work. Prepaid expenses and depreciation require separate workflows. The current feature records one expense estimate and one full dated reversal; it does not automate settlement.
+The [linked bill handoff API](accrual-bill-handoff.md) is implemented as a separate backend checkpoint; its screen and browser proof are still in progress. Partial settlement and scheduled reversals remain future work. Prepaid expenses and depreciation require separate workflows. The current feature records one expense estimate and one full dated reversal; it does not automate settlement.
