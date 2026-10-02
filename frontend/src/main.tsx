@@ -103,6 +103,11 @@ type State = AssetState &
 
 function App() {
   const [credentials, setCredentials] = useState("");
+  const [access, setAccess] = useState<{
+    username: string;
+    role: string;
+    canWrite: boolean;
+  } | null>(null);
   const [data, setData] = useState<State | null>(null);
   const [page, setPage] = useState("Overview");
   const [error, setError] = useState("");
@@ -148,7 +153,22 @@ function App() {
   }
 
   async function refresh(auth = credentials) {
-    setData(await api("/api/state", undefined, auth));
+    const identity = await api("/api/access", undefined, auth);
+    const workspace = await api("/api/state", undefined, auth);
+    setAccess(identity);
+    setData(workspace);
+    if (!identity.canWrite)
+      setPage((current) =>
+        [
+          "Reports",
+          "Cash activity",
+          "General ledger",
+          "Trial balance",
+          "Activity",
+        ].includes(current)
+          ? current
+          : "Reports",
+      );
   }
   async function act(
     path: string,
@@ -156,6 +176,10 @@ function App() {
     success: string,
     form?: HTMLFormElement,
   ) {
+    if (!access?.canWrite) {
+      setError("This reviewer workspace is read-only.");
+      return false;
+    }
     setBusy(true);
     setError("");
     setNotice("");
@@ -554,19 +578,31 @@ function App() {
         </div>
         <p className="workspace">NORTHLINE DESIGN STUDIO</p>
         <nav>
-          {nav.map((n) => (
-            <button
-              key={n}
-              className={page === n ? "active" : ""}
-              onClick={() => {
-                setPage(n);
-                setNotice("");
-                setError("");
-              }}
-            >
-              {n}
-            </button>
-          ))}
+          {nav
+            .filter(
+              (n) =>
+                access?.canWrite ||
+                [
+                  "Reports",
+                  "Cash activity",
+                  "General ledger",
+                  "Trial balance",
+                  "Activity",
+                ].includes(n),
+            )
+            .map((n) => (
+              <button
+                key={n}
+                className={page === n ? "active" : ""}
+                onClick={() => {
+                  setPage(n);
+                  setNotice("");
+                  setError("");
+                }}
+              >
+                {n}
+              </button>
+            ))}
         </nav>
         <div className="sidebar-bottom">
           <span className="dot" />
@@ -578,6 +614,8 @@ function App() {
             onClick={() => {
               setData(null);
               setCredentials("");
+              setAccess(null);
+              setPage("Overview");
               setEditing(null);
               setCustomerId("");
               requests.current.clear();
@@ -625,6 +663,16 @@ function App() {
           <div className="notice" role="status">
             {notice}
           </div>
+        )}
+        {!access?.canWrite && (
+          <section className="note" aria-label="Reviewer access">
+            <h2>Read-only reviewer workspace</h2>
+            <p>
+              Signed in as {access?.username}. You can inspect reports, download
+              report CSVs, and review ledger activity. Posting and editing are
+              reserved for the owner.
+            </p>
+          </section>
         )}
         {page === "Overview" && (
           <>
