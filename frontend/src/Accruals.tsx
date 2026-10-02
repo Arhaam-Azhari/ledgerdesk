@@ -92,6 +92,7 @@ export function Accruals({ data, busy, act }: Props) {
             <label>
               Accrual category
               <select
+                aria-label="Accrual category"
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
                 required
