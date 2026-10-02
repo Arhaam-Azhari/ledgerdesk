@@ -113,3 +113,9 @@ Before any depreciation, correction offsets setup on the original open date. Zer
 The cash activity report reads bank-account journal lines in a repeatable-read transaction. Opening and closing balances use independent ledger sums; period cash lines retain gross receipts and payments, including reversals. A grouped counterpart query avoids multiplying cash lines when an entry has several noncash lines. A single known counterpart supplies the original posting group; mixed or unknown entries remain in Other. Later noncash capitalization does not rewrite an original cash group.
 
 The response keeps entry, source and cash-line IDs for traceability. No report request writes accounting or audit records. The screen invalidates results on date/workspace changes, and CSV exports use displayed report dates, escaped text and validated monetary values. Formal cash-flow classification is outside this report's scope.
+
+## Owner and reviewer permissions
+
+The local account store can configure an owner and a distinct optional reviewer, with BCrypt-encoded passwords. The security filter permits anonymous CSRF retrieval, requires authentication for GET/HEAD, and requires the owner role for other methods. CSRF remains enabled. This rule protects current and future write routes before controller execution; frontend navigation is an additional usability layer.
+
+The frontend reads the no-store access response and workspace data before setting permission state. Reviewers receive only reports and ledger navigation. A frontend action guard rejects mutation attempts, while the backend independently enforces role permissions. Locking clears credentials, permissions, workspace data and pending request keys; the control is in the responsive header. This remains configured in-memory access for one local business, with persistent users, memberships and hosted session handling still to be implemented.

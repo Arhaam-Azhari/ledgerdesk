@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -20,15 +21,25 @@ public class SecurityConfig {
     @Bean
     UserDetailsService users(@Value("${app.username:${APP_USERNAME}}") String username,
                             @Value("${app.password:${APP_PASSWORD}}") String password,
+                            @Value("${app.reviewer.username:}") String reviewer,
+                            @Value("${app.reviewer.password:}") String reviewerPassword,
                             PasswordEncoder encoder) {
-        return new InMemoryUserDetailsManager(User.withUsername(username)
+        var users = new InMemoryUserDetailsManager(User.withUsername(username)
                 .password(encoder.encode(password)).roles("OWNER").build());
+        if (!reviewer.isBlank() || !reviewerPassword.isBlank()) {
+            if (reviewer.isBlank() || reviewerPassword.isBlank() || reviewer.equals(username))
+                throw new IllegalArgumentException("Configure a distinct reviewer username and a nonblank password together.");
+            users.createUser(User.withUsername(reviewer).password(encoder.encode(reviewerPassword)).roles("REVIEWER").build());
+        }
+        return users;
     }
 
     @Bean
     SecurityFilterChain security(HttpSecurity http) throws Exception {
         // CSRF remains enabled, including for authenticated API writes.
         return http.authorizeHttpRequests(auth -> auth.requestMatchers("/api/csrf").permitAll()
-                .anyRequest().authenticated()).httpBasic(Customizer.withDefaults()).build();
+                .requestMatchers(HttpMethod.GET, "/**").authenticated()
+                .requestMatchers(HttpMethod.HEAD, "/**").authenticated()
+                .anyRequest().hasRole("OWNER")).httpBasic(Customizer.withDefaults()).build();
     }
 }

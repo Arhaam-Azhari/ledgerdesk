@@ -179,14 +179,14 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 204 backend integration tests passed on each of H2 and PostgreSQL 17, and all seventeen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 209 backend integration tests passed on each of H2 and PostgreSQL 17, and all eighteen Chromium workflows passed on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
 1. A broader accounting period workflow and additional adjustment types.
 2. Persistent users, separate roles, business isolation, hardened deployment, backups, and restore testing.
 
-The current version has one business and one configured owner login. Bookkeeper/reviewer roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
+The current version has one business, one configured owner login and an optional configured read-only reviewer. Persistent user management, bookkeeper roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
 
 ## What this project demonstrates
 
@@ -253,3 +253,11 @@ Open **Cash activity** and choose a date range to trace opening cash through rec
 Download the displayed totals, groups and movement evidence as CSV. Changing dates or reloading workspace data clears old results. This report demonstrates the difference between cash and accrual profit, date cutoffs, exact reconciliation, traceable ledger evidence and spreadsheet-safe text export. It is a ledger activity report; formal operating/investing/financing classification remains future work. See [examples, screenshots, API and verification](docs/cash-activity.md).
 
 Run `npm run test:cash` in `frontend` after building the backend JAR and installing Chromium; keep ports 8089 and 5182 free.
+
+## Read-only reviewer
+
+Configure a reviewer account to let someone inspect reports and ledger activity without posting or editing. Set `APP_REVIEWER_USERNAME` and `APP_REVIEWER_PASSWORD` together in the backend environment, using a username different from the owner. Leave both unset for the default owner-only setup. Use fictional credentials locally and keep real secrets outside the repository.
+
+Reviewers see Reports, Cash activity, General ledger, Trial balance and Activity, with a visible read-only notice. The server rejects reviewer write methods even with a valid CSRF token; owner writes still require CSRF. **Lock workspace** clears frontend credentials and data and remains available on phones. This demonstrates role-based authorization at the API boundary and permission-aware navigation. Accounts are still configured in memory at startup; persistent users, memberships and hosted sessions remain future work.
+
+See [setup details, screenshots and verification](docs/reviewer-access.md). Run `npm run test:reviewer` in `frontend` after building the backend JAR and installing Chromium; keep ports 8090 and 5183 free. The test enables a fictional reviewer in its isolated backend only.
