@@ -14,7 +14,8 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | Hosted release | Secure hosted sessions, HTTPS deployment and operational configuration remain |
 | Broader access | Bookkeeper permissions, business selection and complete business isolation remain |
 | Opening bank balance | Cleared nonnegative opening, retained setup, first-statement carry-forward and H2/PostgreSQL restoration verified |
-| Accounting completeness | Complete opening trial-balance migration, a broader period workflow and additional adjustment types remain |
+| Period review | Month-end prerequisite checks, retained reports, owner close/reopen history, date protections and H2/PostgreSQL restoration verified |
+| Accounting completeness | Complete opening trial-balance migration, fiscal-year closing and additional adjustment types remain |
 | Operations | Encrypted backup storage, scheduled retention and broader recovery fixtures remain |
 
 The core workflows can already demonstrate a document progressing through payment, ledger posting, bank reconciliation, reporting and recovery. The remaining work is meaningful: more roles and businesses affect authorization throughout the application, and hosted sessions/deployment change how credentials and private records are handled.

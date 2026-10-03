@@ -23,6 +23,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#17](https://github.com/Arhaam-Azhari/ledgerdesk/pull/17) | Add cleared opening bank balance setup and statement carry-forward |
 | [#18](https://github.com/Arhaam-Azhari/ledgerdesk/pull/18) | Verify opening balances and closed statements after restoration |
 | [#19](https://github.com/Arhaam-Azhari/ledgerdesk/pull/19) | Use valid cash report dates after an opening balance |
+| [#20](https://github.com/Arhaam-Azhari/ledgerdesk/pull/20) | Add accounting period review, close/reopen history and restoration proof |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 
