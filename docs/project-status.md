@@ -1,6 +1,6 @@
 # Project status
 
-Ledgerdesk currently works as a local, single-business USD accounting application. Fourteen feature and recovery milestones are merged. The receipt-restoration checks in PR #15 extend that recovery evidence. This is a working portfolio application with substantial accounting behavior; finishing a hosted product still requires the work below.
+Ledgerdesk currently works as a local, single-business USD accounting application. The development history records each feature and recovery milestone. Receipt-restoration checks extend that recovery evidence. This is a working portfolio application with substantial accounting behavior; finishing a hosted product still requires the work below.
 
 | Area | Current state |
 | --- | --- |
@@ -10,7 +10,7 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | Accounting adjustments | Owner transfers, expense reclassification, accruals and bill handoff, prepaid schedules and straight-line asset depreciation implemented |
 | Local access | Stored owner/reviewer accounts, account administration, last-owner protection and offline owner recovery implemented |
 | Database recovery | Separate-file H2 restore and native PostgreSQL 17 restore verified through packaged-backend process tests |
-| Attachment recovery | PNG/JPEG restore checks added in PR #15; its feature guide records the current verification result |
+| Attachment recovery | PNG/JPEG restore verified in PR #15; PR #16 extends the same checks to a static PDF |
 | Hosted release | Secure hosted sessions, HTTPS deployment and operational configuration remain |
 | Broader access | Bookkeeper permissions, business selection and complete business isolation remain |
 | Accounting completeness | Opening balance migration, a broader period workflow and additional adjustment types remain |

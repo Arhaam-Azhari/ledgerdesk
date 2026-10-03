@@ -176,6 +176,12 @@ test("stored accounts and accounting data survive restart, recovery and backup r
         mimeType: "image/jpeg",
         key: "restore-expense-receipt",
       },
+      {
+        path: `/api/expenses/${expenseId}/receipts`,
+        name: "software-receipt.pdf",
+        mimeType: "application/pdf",
+        key: "restore-pdf-receipt",
+      },
     ]) {
       const buffer = await readFile(resolve("tests/fixtures", item.name));
       const response = await request.post(item.path, {
@@ -194,6 +200,8 @@ test("stored accounts and accounting data survive restart, recovery and backup r
         headers: auth(owner, ownerPassword),
       });
       expect(download.ok()).toBe(true);
+      if (item.mimeType === "application/pdf")
+        expect(await download.body()).toEqual(buffer);
       // Compare the stored download: image validation can rewrite uploaded bytes.
       attachments.push({
         ...item,
@@ -327,7 +335,7 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     ).toBe(true);
     expect(recoveredState.equityTransactions).toHaveLength(1);
     expect(recoveredState.ledger).toHaveLength(6);
-    expect(recoveredState.receipts).toHaveLength(2);
+    expect(recoveredState.receipts).toHaveLength(3);
     await stop();
     const backupTool = resolve("../scripts/local_backup.py");
     const backupFolder = join(folder, "saved-backup");
