@@ -141,7 +141,7 @@ class AccountingPeriodTest {
     }
     @Test void scheduledMonthsBlockUntilRecognizedOrEnded() {
         seed();
-        String vendor = purchases.addVendor(new PurchaseService.Vendor("Supplier", ""), "vendor", "test");
+        String vendor = purchases.addVendor(new PurchaseService.Vendor("Supplier", "supplier@example.test"), "vendor", "test");
         String expense = purchases.postExpense(new PurchaseService.Expense(vendor, "Software", start, "5100", "60"), "expense", "test");
         String plan = prepaid.create(new PrepaidService.Plan(expense, start, 2, "Two months software"), "plan", "test");
         String equipment = purchases.postExpense(new PurchaseService.Expense(vendor, "Equipment", start, "5000", "100"), "equipment", "test");
@@ -156,7 +156,7 @@ class AccountingPeriodTest {
     }
     @Test void cancellationAndCorrectionBeforeCutoffRemoveDueWork() {
         seed();
-        String vendor = purchases.addVendor(new PurchaseService.Vendor("Supplier", ""), "vendor", "test");
+        String vendor = purchases.addVendor(new PurchaseService.Vendor("Supplier", "supplier@example.test"), "vendor", "test");
         String expense = purchases.postExpense(new PurchaseService.Expense(vendor, "Software", start, "5100", "60"), "expense", "test");
         String plan = prepaid.create(new PrepaidService.Plan(expense, start, 2, "Software plan"), "plan", "test");
         prepaid.cancel(plan, new PrepaidService.Cancellation(start.plusDays(5), "Benefit ended"), "cancel", "test");
@@ -170,7 +170,7 @@ class AccountingPeriodTest {
     }
     @Test void futureCancellationDoesNotHideEarlierUnpostedRecognition() {
         seed();
-        String vendor = purchases.addVendor(new PurchaseService.Vendor("Supplier", ""), "vendor", "test");
+        String vendor = purchases.addVendor(new PurchaseService.Vendor("Supplier", "supplier@example.test"), "vendor", "test");
         String expense = purchases.postExpense(new PurchaseService.Expense(vendor, "Software", start, "5100", "60"), "expense", "test");
         String plan = prepaid.create(new PrepaidService.Plan(expense, start, 2, "Software plan"), "plan", "test");
         prepaid.cancel(plan, new PrepaidService.Cancellation(end.plusDays(1), "Later benefit ended"), "cancel", "test");
