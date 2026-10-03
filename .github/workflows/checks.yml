@@ -50,7 +50,7 @@ jobs:
         working-directory: backend
       - run: java -jar target/ledgerdesk-0.1.0.jar --spring.profiles.active=demo > backend.log 2>&1 &
         working-directory: backend
-      - run: npm ci && npm run build && npx playwright install --with-deps chromium && npm run test:e2e && npm run test:reconciliation && npm run test:reports && npm run test:equity && npm run test:adjustments && npm run test:accruals && npm run test:handoff && npm run test:prepaid && npm run test:assets && npm run test:cash && npm run test:reviewer && npm run test:persistent && npm run test:accounts && npm run test:opening
+      - run: npm ci && npm run build && npx playwright install --with-deps chromium && npm run test:e2e && npm run test:reconciliation && npm run test:reports && npm run test:equity && npm run test:adjustments && npm run test:accruals && npm run test:handoff && npm run test:prepaid && npm run test:assets && npm run test:cash && npm run test:reviewer && npm run test:persistent && npm run test:accounts && npm run test:opening && npm run test:periods
         working-directory: frontend
       - uses: actions/upload-artifact@v4
         if: always()
@@ -71,6 +71,7 @@ jobs:
             frontend/persistent-results/
             frontend/account-results/
             frontend/opening-results/
+            frontend/period-results/
 
   postgres-restore:
     runs-on: ubuntu-latest
