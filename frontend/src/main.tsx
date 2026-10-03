@@ -1,3 +1,4 @@
+import { OpeningBankBalance, type OpeningState } from "./OpeningBankBalance";
 import { Accounts, type ManagedAccount } from "./Accounts";
 import { FixedAssets, type AssetState } from "./FixedAssets";
 import { Prepaids, type PrepaidState } from "./Prepaids";
@@ -82,7 +83,8 @@ type Draft = {
   version: number;
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
-type State = AssetState &
+type State = OpeningState &
+  AssetState &
   PrepaidState &
   AccrualState &
   AdjustmentState &
@@ -557,6 +559,7 @@ function App() {
     "Reports",
     "Cash activity",
     "Owner transfers",
+    ...(access?.canWrite ? ["Opening bank balance"] : []),
     "Adjustments",
     "Accruals",
     "Prepaid expenses",
@@ -1373,6 +1376,9 @@ function App() {
         )}
         {page === "Adjustments" && (
           <Adjustments data={data} busy={busy} act={act} />
+        )}
+        {page === "Opening bank balance" && access?.canWrite && (
+          <OpeningBankBalance data={data} busy={busy} act={act} />
         )}
         {page === "Owner transfers" && (
           <OwnerEquity data={data} busy={busy} act={act} />

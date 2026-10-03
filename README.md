@@ -25,6 +25,7 @@ The sample business is **Northline Design Studio**, a fictional agency using USD
 - Preview and import a bank CSV, skip identical duplicate rows, and reject conflicting IDs.
 - Review exact-amount candidates and explicitly match recorded payments or expenses.
 - Undo a match while retaining its history and leaving journal entries unchanged.
+- Carry one cleared opening bank balance into fresh books before recording activity.
 - Reconcile statement balances with the books and outstanding deposits/payments.
 - Close a balanced statement, retain its calculation, and protect the closed period.
 - Reopen the latest closed statement with a reason and preserve the original snapshot.
@@ -179,7 +180,7 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 229 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 239 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-one Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
@@ -285,3 +286,9 @@ The [development history](docs/development-history.md) links the pull requests f
 The [PostgreSQL backup guide](docs/postgres-backups.md) covers native custom-format archives and restoration into a new database. The tool verifies checksums, refuses existing database names and keeps failed targets for operator inspection. A dedicated packaged-backend CI workflow checks restored accounting state, stored account permissions and retained transaction retries; the guide records its current verification status.
 
 The [project status](docs/project-status.md) summarizes completed areas and the remaining work toward a hosted product.
+
+## Opening bank balance
+
+For fresh books, open **Opening bank balance** before posting transactions, importing bank rows or closing a statement. Enter the last date covered by prior books, the cleared bank amount and a supporting note. Confirm the permanent cutover after checking these details. The screen then retains the opening instead of offering edits.
+
+A $1,000.25 balance at September 30 becomes bank and opening balance equity, with no profit or new cash receipt. The first statement defaults to October 1 and carries $1,000.25; cash activity starts on October 1 or later. Zero is supported. This step covers one cleared nonnegative bank balance; unpaid opening documents, outstanding cheques/deposits, overdrafts and a complete historical trial balance remain future work. See [instructions, accounting example, screenshots and test proof](docs/opening-bank-balance.md).
