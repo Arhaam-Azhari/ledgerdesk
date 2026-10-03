@@ -32,3 +32,7 @@ The 390-pixel layout keeps forms and totals visible, with horizontal scrolling i
 ## Dates with an opening bank balance
 
 When an opening is recorded, the date form starts at the later of January 1 this year or the first day after the prior books. The end defaults no earlier than that start. The form explains the cutover and prevents choosing a start on or before it. Reload clears old report results while preserving the chosen valid date range. Owners and reviewers receive the same report guidance. The carried amount remains opening cash; it is not counted as a receipt. See [opening setup](opening-bank-balance.md).
+
+Source `212a78236b515f6f018697ce27415d87c0c69691` passed [run 37148579096](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37148579096): 239 integration tests on each of H2 and PostgreSQL 17, no failures/errors/skips, 14 backup-tool tests, production frontend build, all 21 Chromium workflows and the real PostgreSQL restore check. The extended opening workflow checks valid defaults, native date validation before cutover, date retention after reload and the same guidance in a reviewer workspace. The reviewed capture below shows $1,000.25 opening and closing cash with no period receipts or payments.
+
+![Cash report after an opening balance](screenshots/opening-cash-activity.png)
