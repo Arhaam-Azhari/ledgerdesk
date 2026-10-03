@@ -18,7 +18,7 @@ test("reviewer reads reports, cannot post and can lock then switch to owner", as
   await expect(
     page.getByRole("heading", { name: "Reports", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("navigation").getByRole("button")).toHaveCount(5);
+  await expect(page.getByRole("navigation").getByRole("button")).toHaveText(["Period close", "Reports", "Cash activity", "General ledger", "Trial balance", "Activity"]);
   await expect(
     page.getByRole("button", { name: "Invoices", exact: true }),
   ).toHaveCount(0);
