@@ -22,4 +22,4 @@ These checks extend the existing stored-account, receipt-byte/header, contributi
 
 Package the backend first (`cd backend` then `mvn -B package -DskipTests`). From `frontend`, run `npm run test:persistent` for the real H2 process workflow. For PostgreSQL, the `postgres-restore` GitHub Actions job supplies the disposable PostgreSQL 17 service and runs `python3 scripts/verify_postgres_restore.py`; see [PostgreSQL restore setup](postgres-backups.md) for the environment and operator requirements.
 
-Execution of this extended fixture is pending for this checkpoint. Earlier successful recovery runs do not yet prove restoration of opening balances; results will be recorded after the new run completes.
+Source `3d84f0edb9a12e8c25cd7df02ae0ab5babcc6594` passed [run 37147872731](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37147872731): 239 integration tests on each of H2 and PostgreSQL 17, no failures/errors/skips, 14 backup-tool tests, production frontend build, all 21 Chromium workflows and the dedicated PostgreSQL restore check. The extended H2 process workflow and PostgreSQL native restore workflow both completed.
