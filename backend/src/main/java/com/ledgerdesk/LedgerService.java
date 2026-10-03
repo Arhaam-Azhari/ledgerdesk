@@ -52,6 +52,8 @@ public class LedgerService {
     }
 
     void requireOpenDate(LocalDate date) {
+        if (db.queryForObject("SELECT COUNT(*) FROM opening_bank_balances WHERE business_id = 1 AND as_of >= ?", Integer.class, date) != 0)
+            throw new IllegalArgumentException("Post after the opening balance date; earlier history belongs to the carried balance.");
         if (db.queryForObject("SELECT COUNT(*) FROM bank_reconciliations WHERE business_id = 1 AND status = 'CLOSED' AND ends_on >= ?", Integer.class, date) != 0)
             throw new IllegalArgumentException("This date belongs to a closed period. Reopen the latest reconciliation before changing it.");
     }
@@ -279,6 +281,7 @@ public class LedgerService {
         result.putAll(PrepaidService.readState(db));
         result.putAll(FixedAssetService.readState(db));
         result.putAll(EquityService.readState(db));
+        result.putAll(OpeningBankBalance.readState(db));
         result.putAll(PurchaseService.readState(db));
         result.putAll(BankService.readState(db));
         result.putAll(BankMatching.readState(db));

@@ -25,6 +25,8 @@ public class CashActivityService {
     public Activity report(LocalDate startsOn, LocalDate endsOn) {
         if (startsOn == null || endsOn == null || startsOn.getYear() < 1 || endsOn.getYear() > 9999 || startsOn.isAfter(endsOn))
             throw new IllegalArgumentException("Choose a valid cash activity period, with the start on or before the end.");
+        if (db.queryForObject("SELECT COUNT(*) FROM opening_bank_balances WHERE business_id = 1 AND as_of >= ?", Integer.class, startsOn) != 0)
+            throw new IllegalArgumentException("Start cash activity after the opening balance date.");
         BigDecimal opening = balance(startsOn, false), closing = balance(endsOn, true);
         var rows = db.queryForList("""
             SELECT l.id AS line_id, e.id AS entry_id, e.source_id, e.entry_date, e.memo,

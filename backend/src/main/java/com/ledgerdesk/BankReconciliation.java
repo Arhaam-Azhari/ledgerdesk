@@ -37,10 +37,18 @@ public class BankReconciliation {
         Preview result = preview(statement);
         var closed = db.queryForList("SELECT * FROM bank_reconciliations WHERE business_id = 1 AND status = 'CLOSED' ORDER BY ends_on DESC");
         if (closed.isEmpty()) {
-            if (result.openingBalance().signum() != 0)
-                throw new IllegalArgumentException("The first statement must start from zero; opening balance migration is not supported yet.");
+            var openings = db.queryForList("SELECT * FROM opening_bank_balances WHERE business_id = 1");
+            if (openings.isEmpty()) {
+                if (result.openingBalance().signum() != 0)
+                    throw new IllegalArgumentException("The first statement must start from zero or use a recorded opening bank balance.");
+            } else {
+                var opening = openings.get(0);
+                LocalDate firstDay = ((java.sql.Date) opening.get("as_of")).toLocalDate().plusDays(1);
+                if (!statement.startsOn().equals(firstDay) || result.openingBalance().compareTo((BigDecimal) opening.get("balance")) != 0)
+                    throw new IllegalArgumentException("Start the day after the opening balance date and carry its exact bank balance.");
+            }
             int earlier = db.queryForObject("SELECT COUNT(*) FROM bank_transactions WHERE business_id = 1 AND posted_on < ?", Integer.class, statement.startsOn())
-                    + db.queryForObject("SELECT COUNT(*) FROM journal_entries WHERE business_id = 1 AND entry_date < ?", Integer.class, statement.startsOn());
+                    + db.queryForObject("SELECT COUNT(*) FROM journal_entries e WHERE e.business_id = 1 AND e.entry_date < ? AND NOT EXISTS (SELECT 1 FROM opening_bank_balances o WHERE o.id = e.source_id AND o.business_id = 1)", Integer.class, statement.startsOn());
             if (earlier != 0) throw new IllegalArgumentException("The first statement must include the beginning of the recorded books and bank history.");
         } else {
             var latest = closed.get(0);
@@ -109,6 +117,7 @@ public class BankReconciliation {
             FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
             LEFT JOIN (%s) cash ON cash.line_id = l.id
             WHERE e.business_id = 1 AND l.account_code = '1000' AND e.entry_date <= ?
+              AND NOT EXISTS (SELECT 1 FROM opening_bank_balances o WHERE o.id = e.source_id AND o.business_id = 1)
               AND NOT EXISTS (SELECT 1 FROM bank_matches m JOIN bank_transactions t ON t.id = m.transaction_id
                   WHERE m.line_id = l.id AND t.posted_on <= ?)
             ORDER BY e.entry_date, l.id
