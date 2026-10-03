@@ -1,3 +1,4 @@
+import type { OpeningState } from "./OpeningBankBalance";
 import { useEffect, useState } from "react";
 import { cents, dollars, today } from "./money";
 export type CashData = {
@@ -39,15 +40,27 @@ export function CashActivity({
   workspace,
 }: {
   busy: boolean;
-  workspace: object;
+  workspace: OpeningState;
   load: (start: string, end: string) => Promise<CashData | null>;
 }) {
-  const [start, setStart] = useState(today().slice(0, 4) + "-01-01"),
-    [end, setEnd] = useState(today());
+  const opening = workspace.openingBankBalances[0];
+  const firstDay = opening
+    ? new Date(Date.parse(opening.as_of + "T00:00:00Z") + 86400000)
+        .toISOString()
+        .slice(0, 10)
+    : "0001-01-01";
+  const initialStart = [today().slice(0, 4) + "-01-01", firstDay].sort()[1];
+  const [start, setStart] = useState(initialStart),
+    [end, setEnd] = useState([today(), initialStart].sort()[1]);
   const [result, setResult] = useState<CashData | null>(null);
   useEffect(() => {
     setResult(null);
   }, [workspace]);
+  useEffect(() => {
+    // Keep the chosen period on reload, unless a new opening makes it invalid.
+    setStart((current) => (current < firstDay ? firstDay : current));
+    setEnd((current) => (current < firstDay ? firstDay : current));
+  }, [firstDay]);
   function download() {
     if (!result) return;
     // Keep user-entered memos as text when the file is opened in a spreadsheet.
@@ -138,6 +151,13 @@ export function CashActivity({
       </p>
       <section className="card">
         <h2>Cash activity dates</h2>
+        {opening && (
+          <p>
+            Prior books end on {opening.as_of}. Start on {firstDay} or later.
+            The carried bank balance is opening cash, not a receipt in this
+            period.
+          </p>
+        )}
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -150,7 +170,7 @@ export function CashActivity({
               Cash activity start
               <input
                 type="date"
-                min="0001-01-01"
+                min={firstDay}
                 max="9999-12-31"
                 value={start}
                 onChange={(e) => {
