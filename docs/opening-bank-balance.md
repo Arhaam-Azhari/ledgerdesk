@@ -1,6 +1,16 @@
-# Opening bank balance: backend checkpoint
+# Opening bank balance
 
 This first opening-balance step carries one cleared bank balance into otherwise empty books. It is deliberately narrower than importing an existing business's complete trial balance. Customers, vendors and unposted invoice drafts can already exist; journal entries, bank imports and reconciliation records must not exist.
+
+## Owner setup
+
+Sign in as an owner and open **Opening bank balance** before posting transactions, importing bank rows or closing a statement. Enter the last date covered by prior books, the cleared bank balance and a short supporting note. Review the amount and confirm the permanent cutover. Cancelling confirmation saves nothing. After recording, the screen shows the retained date, amount and note rather than an editable form.
+
+For example, record $1,000.25 on September 30. Open **Reconciliation**: the first statement defaults to October 1 with $1,000.25 opening balance. Enter the statement end and actual closing balance, preview and review before closing. **Cash activity** must use October 1 or later as its start. Do not count the opening as a new cash receipt. Setup is unavailable in books with existing posted activity; reviewers cannot record an opening.
+
+The browser workflow exercises cancelled confirmation, invalid amounts, zero eligibility, a retry after a failed refresh, retained desktop/mobile views, cash and equity reporting, and two consecutive statement closes. Run `npm run test:opening` after packaging the backend. CI uploads its screenshots with the browser results. Browser execution for this UI checkpoint is pending until its workflow completes.
+
+## Accounting and API
 
 An owner posts `POST /api/opening-bank-balance` with an idempotency key, CSRF and a JSON body:
 
@@ -18,6 +28,6 @@ Cash activity must start after the opening date. Its opening cash includes the c
 
 Setup, journal, command key and activity share the existing business lock and transaction. One unique opening record per business prevents competing setups. An exact retry returns its retained ID, including after a statement is closed; changed details under the same key or a second setup are rejected. There is no edit/delete/reversal endpoint in this checkpoint: confirm the cutover date and cleared amount before recording it.
 
-Ten new integration tests cover equity/profit/cash calculations, first-statement behavior and continuity, invalid openings, zero cutoffs and rollback, setup guards, idempotency, audit rollback, concurrent setup and endpoint permissions. Source `204d87e85a49f242d2220f3b373707203f85dad5` passed [run 37085909865](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37085909865): 239 integration tests on each of H2 and PostgreSQL 17, no failures/errors/skips, 14 backup-tool tests, production frontend build, all 20 existing Chromium workflows and the PostgreSQL restore job. The browser suite verifies regression behavior; the owner setup screen and opening-specific browser proof remain to be built.
+Ten new integration tests cover equity/profit/cash calculations, first-statement behavior and continuity, invalid openings, zero cutoffs and rollback, setup guards, idempotency, audit rollback, concurrent setup and endpoint permissions. Source `204d87e85a49f242d2220f3b373707203f85dad5` passed [run 37085909865](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37085909865): 239 integration tests on each of H2 and PostgreSQL 17, no failures/errors/skips, 14 backup-tool tests, production frontend build, all 20 existing Chromium workflows and the PostgreSQL restore job. The browser suite verifies regression behavior; the opening-specific browser workflow was added in the subsequent UI checkpoint described above.
 
 This supports a bank balance already cleared at cutover. Opening receivables/payables, equipment/prepaids, accrued liabilities, overdrafts, outstanding cheques/deposits, historical equity allocation and a complete opening trial balance are not imported here. Use fresh books without an opening record for the existing zero-start workflow. The local Basic-authentication and single-business limitations remain.

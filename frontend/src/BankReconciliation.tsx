@@ -1,3 +1,4 @@
+import type { OpeningState } from "./OpeningBankBalance";
 import { useEffect, useState } from "react";
 import { cents, dollars } from "./money";
 
@@ -94,10 +95,11 @@ export function BankReconciliation({
   preview,
   act,
 }: {
-  data: ReconciliationState & {
-    bankTransactions: { posted_on: string }[];
-    ledger: { entry_date: string }[];
-  };
+  data: ReconciliationState &
+    OpeningState & {
+      bankTransactions: { posted_on: string }[];
+      ledger: { entry_date: string }[];
+    };
   busy: boolean;
   preview: (statement: Statement) => Promise<ReconciliationPreview | null>;
   act: (path: string, body: object, success: string) => Promise<boolean>;
@@ -106,17 +108,20 @@ export function BankReconciliation({
     .filter((r) => r.status === "CLOSED")
     .sort((a, b) => b.ends_on.localeCompare(a.ends_on))[0];
   const today = new Date().toISOString().slice(0, 10);
+  const opening = data.openingBankBalances[0];
   const initialStart = latest
     ? nextDay(latest.ends_on)
-    : [
-        ...data.bankTransactions.map((r) => r.posted_on),
-        ...data.ledger.map((r) => r.entry_date),
-        today,
-      ].sort()[0];
+    : opening
+      ? nextDay(opening.as_of)
+      : [
+          ...data.bankTransactions.map((r) => r.posted_on),
+          ...data.ledger.map((r) => r.entry_date),
+          today,
+        ].sort()[0];
   const [statement, setStatement] = useState<Statement>({
     startsOn: initialStart,
     endsOn: initialStart > today ? initialStart : today,
-    openingBalance: latest?.closing_balance ?? "0.00",
+    openingBalance: latest?.closing_balance ?? opening?.balance ?? "0.00",
     closingBalance: "0.00",
   });
   const [result, setResult] = useState<ReconciliationPreview | null>(null);
@@ -126,7 +131,7 @@ export function BankReconciliation({
     setStatement({
       startsOn: initialStart,
       endsOn: initialStart > today ? initialStart : today,
-      openingBalance: latest?.closing_balance ?? "0.00",
+      openingBalance: latest?.closing_balance ?? opening?.balance ?? "0.00",
       closingBalance: "0.00",
     });
   }, [data]);
@@ -151,7 +156,9 @@ export function BankReconciliation({
         <p>
           {latest
             ? `Books are protected through ${latest.ends_on}. The next statement starts ${nextDay(latest.ends_on)} with its closing balance carried forward.`
-            : "The first close starts from zero and includes the beginning of the recorded books and bank history."}
+            : opening
+              ? `The first statement starts ${nextDay(opening.as_of)} with the cleared opening balance of ${dollars(cents(opening.balance))}.`
+              : "The first close starts from zero and includes the beginning of the recorded books and bank history."}
         </p>
         <form
           onSubmit={async (event) => {
