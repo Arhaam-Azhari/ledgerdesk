@@ -108,15 +108,17 @@ def main():
                 status, expense = write('/api/expenses', {'vendorId': vendor['id'], 'description': 'Software with receipt', 'spentOn': '2026-10-01', 'accountCode': '5100', 'amount': '25.00'}, 'pg-restore-expense')
                 assert status == 200
                 attachments = []
-                for path, name, media_type, key in [(f"/api/bills/{bill['id']}/receipts", 'supply-receipt.png', 'image/png', 'pg-bill-receipt'), (f"/api/expenses/{expense['id']}/receipts", 'software-receipt.jpg', 'image/jpeg', 'pg-expense-receipt')]:
+                for path, name, media_type, key in [(f"/api/bills/{bill['id']}/receipts", 'supply-receipt.png', 'image/png', 'pg-bill-receipt'), (f"/api/expenses/{expense['id']}/receipts", 'software-receipt.jpg', 'image/jpeg', 'pg-expense-receipt'), (f"/api/expenses/{expense['id']}/receipts", 'software-receipt.pdf', 'application/pdf', 'pg-pdf-receipt')]:
                     content = (ROOT / 'frontend/tests/fixtures' / name).read_bytes()
                     status, receipt = upload(path, name, media_type, content, key)
                     assert status == 200
                     stored = download(receipt['id'])
                     assert stored[0] == 200
+                    if media_type == 'application/pdf':
+                        assert stored[1] == content
                     attachments.append((path, name, media_type, key, content, receipt['id'], stored))
                 status, before = api('/api/state')
-                assert status == 200 and len(before['equityTransactions']) == 1 and len(before['ledger']) == 6 and len(before['receipts']) == 2
+                assert status == 200 and len(before['equityTransactions']) == 1 and len(before['ledger']) == 6 and len(before['receipts']) == 3
                 stop()
                 tool = ROOT / 'scripts/postgres_backup.py'
                 subprocess.run(['python3', str(tool), 'backup', SOURCE, str(backup), '--confirm-stopped'], check=True)
@@ -142,7 +144,7 @@ def main():
                 rejected = subprocess.run(['python3', str(tool), 'restore', str(backup), TARGET, '--confirm-stopped'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 assert rejected.returncode != 0
                 assert api('/api/state')[1] == before
-                print('PostgreSQL 17 restore verified: stored roles, exact workspace, PNG/JPEG receipt bytes and headers, protected writes and retained retries.')
+                print('PostgreSQL 17 restore verified: stored roles, exact workspace, PNG/JPEG/PDF receipt bytes and headers, protected writes and retained retries.')
             finally:
                 stop()
 

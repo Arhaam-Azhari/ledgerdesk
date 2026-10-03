@@ -11,3 +11,12 @@ Retrying the original owner upload with its original command key returns the ret
 Source `cdca1aaddda73407d32bb5a47a7d10e2e2a5ca9d` passed [run 37080727752](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37080727752): 14 backup-tool tests, 229 integration tests on each of H2 and PostgreSQL 17, zero failures/errors/skips, production frontend build, all 20 Chromium workflows and the dedicated PostgreSQL restore job. Both the real H2 and PostgreSQL restores completed the receipt byte/header, access and idempotent upload checks. Run `npm run test:persistent` for H2 after packaging the backend, or use the dedicated PostgreSQL restore job described in [the PostgreSQL guide](postgres-backups.md). Use the existing [H2 guide](local-backups.md) for operator backup/restore instructions.
 
 This fixture covers a PNG attached to a bill and a JPEG attached to an expense. It does not establish PDF restoration, every possible image, five-receipt limits after restoration, crash recovery or encrypted backup storage. Existing receipt validation tests cover file acceptance separately; recovery evidence is limited to the records exercised here.
+
+
+## Static PDF extension
+
+[PR #16](https://github.com/Arhaam-Azhari/ledgerdesk/pull/16) extends the same H2 and PostgreSQL process checks with a one-page, unencrypted PDF attached to the software expense. The fixture is labeled fictional and contains no actions or embedded files. Each fixture now has three receipt metadata rows while keeping six ledger lines: attaching another document must not post an accounting entry.
+
+Before backup, the PDF download must equal the uploaded fixture bytes exactly; PDF validation preserves accepted bytes. After restoring the separate database, both roles download the same stored PDF and headers, anonymous access is denied, reviewer uploads are blocked, and the original PDF upload retry returns its retained receipt ID without changing the workspace. The PR records the source checkpoint and CI results for this extension.
+
+This exercises a static PDF along with PNG/JPEG. It does not prove recovery of every accepted PDF/image, five-receipt limits after restoration, crash recovery or encrypted backups. Existing file-validation tests remain separate from these recovery assertions.
