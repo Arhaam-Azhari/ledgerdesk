@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -126,6 +126,83 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       },
     });
     expect(transfer.ok()).toBe(true);
+    async function postDocument(path: string, data: object, key: string) {
+      const response = await request.post(path, {
+        headers: {
+          ...auth(owner, ownerPassword),
+          [csrf.headerName]: csrf.token,
+          "Idempotency-Key": key,
+        },
+        data,
+      });
+      expect(response.ok()).toBe(true);
+      return (await response.json()).id as string;
+    }
+    const billId = await postDocument(
+      "/api/bills",
+      {
+        vendorId,
+        reference: "RESTORE-40",
+        description: "Supplies supported by a receipt",
+        issuedOn: "2026-10-01",
+        dueOn: "2026-10-15",
+        accountCode: "5000",
+        amount: "40.00",
+      },
+      "restore-bill",
+    );
+    const expenseId = await postDocument(
+      "/api/expenses",
+      {
+        vendorId,
+        description: "Software supported by a receipt",
+        spentOn: "2026-10-01",
+        accountCode: "5100",
+        amount: "25.00",
+      },
+      "restore-expense",
+    );
+    const attachments = [];
+    for (const item of [
+      {
+        path: `/api/bills/${billId}/receipts`,
+        name: "supply-receipt.png",
+        mimeType: "image/png",
+        key: "restore-bill-receipt",
+      },
+      {
+        path: `/api/expenses/${expenseId}/receipts`,
+        name: "software-receipt.jpg",
+        mimeType: "image/jpeg",
+        key: "restore-expense-receipt",
+      },
+    ]) {
+      const buffer = await readFile(resolve("tests/fixtures", item.name));
+      const response = await request.post(item.path, {
+        headers: {
+          ...auth(owner, ownerPassword),
+          [csrf.headerName]: csrf.token,
+          "Idempotency-Key": item.key,
+        },
+        multipart: {
+          file: { name: item.name, mimeType: item.mimeType, buffer },
+        },
+      });
+      expect(response.ok()).toBe(true);
+      const id = (await response.json()).id as string;
+      const download = await request.get(`/api/receipts/${id}`, {
+        headers: auth(owner, ownerPassword),
+      });
+      expect(download.ok()).toBe(true);
+      // Compare the stored download: image validation can rewrite uploaded bytes.
+      attachments.push({
+        ...item,
+        buffer,
+        id,
+        stored: await download.body(),
+        headers: download.headers(),
+      });
+    }
 
     await stop();
     await start("changed-owner-password", "changed-reviewer-password");
@@ -249,7 +326,8 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       ),
     ).toBe(true);
     expect(recoveredState.equityTransactions).toHaveLength(1);
-    expect(recoveredState.ledger).toHaveLength(2);
+    expect(recoveredState.ledger).toHaveLength(6);
+    expect(recoveredState.receipts).toHaveLength(2);
     await stop();
     const backupTool = resolve("../scripts/local_backup.py");
     const backupFolder = join(folder, "saved-backup");
@@ -279,6 +357,61 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       .get("/api/state", { headers: auth(owner, recoveredPassword) })
       .then((r) => r.json());
     expect(restoredState).toEqual(recoveredState);
+    for (const receipt of attachments) {
+      for (const credentials of [
+        auth(owner, recoveredPassword),
+        auth(reviewer, reviewerPassword),
+      ]) {
+        const download = await request.get(`/api/receipts/${receipt.id}`, {
+          headers: credentials,
+        });
+        expect(download.ok()).toBe(true);
+        expect(await download.body()).toEqual(receipt.stored);
+        for (const header of [
+          "content-type",
+          "content-disposition",
+          "x-content-type-options",
+          "cache-control",
+        ])
+          expect(download.headers()[header]).toBe(receipt.headers[header]);
+      }
+      expect((await request.get(`/api/receipts/${receipt.id}`)).status()).toBe(
+        401,
+      );
+      const receiptCsrf = await request.get("/api/csrf").then((r) => r.json());
+      const upload = {
+        file: {
+          name: receipt.name,
+          mimeType: receipt.mimeType,
+          buffer: receipt.buffer,
+        },
+      };
+      const retry = await request.post(receipt.path, {
+        headers: {
+          ...auth(owner, recoveredPassword),
+          [receiptCsrf.headerName]: receiptCsrf.token,
+          "Idempotency-Key": receipt.key,
+        },
+        multipart: upload,
+      });
+      expect(retry.ok()).toBe(true);
+      expect((await retry.json()).id).toBe(receipt.id);
+      const denied = await request.post(receipt.path, {
+        headers: {
+          ...auth(reviewer, reviewerPassword),
+          [receiptCsrf.headerName]: receiptCsrf.token,
+          "Idempotency-Key": `blocked-${receipt.key}`,
+        },
+        multipart: upload,
+      });
+      expect(denied.status()).toBe(403);
+    }
+    expect(
+      await request
+        .get("/api/state", { headers: auth(owner, recoveredPassword) })
+        .then((r) => r.json()),
+    ).toEqual(recoveredState);
+
     const restoredCsrf = await request.get("/api/csrf").then((r) => r.json());
     const retry = await request.post("/api/equity", {
       headers: {

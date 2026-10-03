@@ -165,3 +165,10 @@ Source `9185dc4538a539928cd464c3b68464fd8c520ec3` passed [run 37079403182](https
 The packaged backend records a supplier and $125.37 owner contribution in a fresh PostgreSQL 17 database. After shutdown, the actual CLI runs native custom-archive backup, manifest validation, new-database creation and a single-transaction restore. A new backend process opens the restored database, compares the entire workspace and stored owner/reviewer access, rejects changed bootstrap credentials and reviewer writes, and retries the original contribution key without duplication. A second restore refuses the existing target and leaves the workspace unchanged.
 
 [PostgreSQL backup instructions](postgres-backups.md) explain connection configuration, private storage, failed-target inspection and operator checks. This fixture does not upload receipts, restore server roles/grants, simulate power loss or establish point-in-time recovery.
+
+
+## Receipt attachments after database restoration
+
+Source `cdca1aaddda73407d32bb5a47a7d10e2e2a5ca9d` passed [run 37080727752](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37080727752): 14 backup-tool tests, 229 integration tests on each database, no failures/errors/skips, production frontend build, all 20 Chromium workflows and the PostgreSQL restore job. The real H2 and PostgreSQL process fixtures now retain a PNG bill receipt and JPEG expense receipt.
+
+After opening separate restored databases, authenticated downloads match the pre-backup stored bytes and headers. Full workspace comparisons retain metadata and document links, both owner/reviewer downloads work, anonymous downloads return 401 and valid-CSRF reviewer uploads return 403. Retrying the original owner upload keys returns the retained IDs without changing receipts, accounting or activity. The [receipt restoration guide](receipt-restoration.md) explains normalization and the tested limits; PDF restoration remains outside this fixture.

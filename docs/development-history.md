@@ -18,6 +18,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#12](https://github.com/Arhaam-Azhari/ledgerdesk/pull/12) | Add stored accounts, owner administration and offline recovery |
 | [#13](https://github.com/Arhaam-Azhari/ledgerdesk/pull/13) | Add offline local database backup and restore |
 | [#14](https://github.com/Arhaam-Azhari/ledgerdesk/pull/14) | Add PostgreSQL backup and restore |
+| [#15](https://github.com/Arhaam-Azhari/ledgerdesk/pull/15) | Verify receipt attachments after database restoration |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 

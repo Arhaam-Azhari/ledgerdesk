@@ -41,3 +41,6 @@ This is a verified recovery path for one application database on the PostgreSQL 
 
 
 The native tool behavior is described in the PostgreSQL 17 manuals for [pg_dump](https://www.postgresql.org/docs/17/app-pgdump.html) and [pg_restore](https://www.postgresql.org/docs/17/app-pgrestore.html). The application test above verifies this project's use of those tools; it does not establish every deployment configuration.
+
+
+The later [receipt restoration checks](receipt-restoration.md) verify PNG/JPEG attachment bytes, metadata, download headers and permissions after recovery. Earlier proof above remains the record of its original fixture.
