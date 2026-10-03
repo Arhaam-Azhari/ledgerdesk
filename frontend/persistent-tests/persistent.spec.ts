@@ -112,6 +112,21 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     });
     expect(vendor.ok()).toBe(true);
     const vendorId = (await vendor.json()).id;
+    const opening = {
+      asOf: "2026-09-30",
+      balance: "1000.25",
+      memo: "Cleared opening retained in local backup",
+    };
+    const openingResponse = await request.post("/api/opening-bank-balance", {
+      headers: {
+        ...auth(owner, ownerPassword),
+        [csrf.headerName]: csrf.token,
+        "Idempotency-Key": "backup-bank-opening",
+      },
+      data: opening,
+    });
+    expect(openingResponse.ok()).toBe(true);
+    const openingId = (await openingResponse.json()).id;
     const transfer = await request.post("/api/equity", {
       headers: {
         ...auth(owner, ownerPassword),
@@ -212,6 +227,39 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       });
     }
 
+    const statement = {
+      startsOn: "2026-10-01",
+      endsOn: "2026-10-31",
+      openingBalance: "1000.25",
+      closingBalance: "1000.25",
+    };
+    await postDocument(
+      "/api/bank/reconciliations",
+      statement,
+      "backup-statement",
+    );
+    const cashPath =
+      "/api/reports/cash-activity?startsOn=2026-10-01&endsOn=2026-10-31";
+    const reportsPath = "/api/reports?startsOn=2026-10-01&endsOn=2026-10-31";
+    const cashBefore = await request
+      .get(cashPath, { headers: auth(owner, ownerPassword) })
+      .then((r) => r.json());
+    expect(cashBefore).toMatchObject({
+      openingCash: "1000.25",
+      closingCash: "1100.62",
+      receipts: "125.37",
+      payments: "25.00",
+    });
+    const reportsBefore = await request
+      .get(reportsPath, { headers: auth(owner, ownerPassword) })
+      .then((r) => r.json());
+    expect(reportsBefore.profitLoss.netProfit).toBe("-65.00");
+    expect(reportsBefore.balanceSheet).toMatchObject({
+      totalAssets: "1100.62",
+      totalEquity: "1060.62",
+      totalLiabilities: "40.00",
+      difference: "0.00",
+    });
     await stop();
     await start("changed-owner-password", "changed-reviewer-password");
     expect((await identity(owner, "changed-owner-password")).status()).toBe(
@@ -334,7 +382,9 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       ),
     ).toBe(true);
     expect(recoveredState.equityTransactions).toHaveLength(1);
-    expect(recoveredState.ledger).toHaveLength(6);
+    expect(recoveredState.ledger).toHaveLength(8);
+    expect(recoveredState.openingBankBalances).toHaveLength(1);
+    expect(recoveredState.bankReconciliations).toHaveLength(1);
     expect(recoveredState.receipts).toHaveLength(3);
     await stop();
     const backupTool = resolve("../scripts/local_backup.py");
@@ -435,6 +485,98 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       },
     });
     expect(retry.ok()).toBe(true);
+    async function restoredPost(
+      path: string,
+      data: object,
+      key: string,
+      asReviewer = false,
+    ) {
+      return request.post(path, {
+        headers: {
+          ...auth(
+            asReviewer ? reviewer : owner,
+            asReviewer ? reviewerPassword : recoveredPassword,
+          ),
+          [restoredCsrf.headerName]: restoredCsrf.token,
+          "Idempotency-Key": key,
+        },
+        data,
+      });
+    }
+    const openingRetry = await restoredPost(
+      "/api/opening-bank-balance",
+      opening,
+      "backup-bank-opening",
+    );
+    expect(openingRetry.ok()).toBe(true);
+    expect((await openingRetry.json()).id).toBe(openingId);
+    expect(
+      (
+        await restoredPost(
+          "/api/opening-bank-balance",
+          opening,
+          "second-opening",
+        )
+      ).status(),
+    ).toBe(400);
+    expect(
+      (
+        await restoredPost(
+          "/api/opening-bank-balance",
+          opening,
+          "reviewer-opening",
+          true,
+        )
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await restoredPost(
+          "/api/equity",
+          {
+            kind: "CONTRIBUTION",
+            postedOn: "2026-09-30",
+            memo: "Before cutover",
+            amount: "1.00",
+          },
+          "cutover-post",
+        )
+      ).status(),
+    ).toBe(400);
+    expect(
+      (
+        await request.get(
+          "/api/reports/cash-activity?startsOn=2026-09-30&endsOn=2026-10-31",
+          { headers: auth(owner, recoveredPassword) },
+        )
+      ).status(),
+    ).toBe(400);
+    expect(
+      await request
+        .get(cashPath, { headers: auth(owner, recoveredPassword) })
+        .then((r) => r.json()),
+    ).toEqual(cashBefore);
+    expect(
+      await request
+        .get(reportsPath, { headers: auth(owner, recoveredPassword) })
+        .then((r) => r.json()),
+    ).toEqual(reportsBefore);
+    const nextPreview = await restoredPost(
+      "/api/bank/reconciliations/preview",
+      { ...statement, startsOn: "2026-11-01", endsOn: "2026-11-30" },
+      "restored-preview",
+    );
+    expect(nextPreview.ok()).toBe(true);
+    expect(await nextPreview.json()).toMatchObject({
+      bookDifference: "0.00",
+      outstandingDeposits: "125.37",
+      outstandingPayments: "25.00",
+    });
+    expect(
+      await request
+        .get("/api/state", { headers: auth(owner, recoveredPassword) })
+        .then((r) => r.json()),
+    ).toEqual(recoveredState);
     expect(
       (
         await request

@@ -46,3 +46,6 @@ These are unmodified Chromium captures from the opening workflow, using fictiona
 ![First statement with the carried bank balance](screenshots/opening-reconciliation.png)
 
 The screenshots show the setup and review; the browser assertions additionally confirm successful October and November closes, exact retry without duplication, zero profit, matching assets/equity and no new cash receipts. They do not demonstrate a complete historical migration or opening-data restoration after backup.
+
+
+The later [opening balance restoration checks](opening-balance-restoration.md) verify retained opening metadata and keys, a closed first statement, dated reports and cutover protections after an actual separate-database restore.

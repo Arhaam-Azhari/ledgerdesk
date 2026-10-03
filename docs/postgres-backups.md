@@ -44,3 +44,6 @@ The native tool behavior is described in the PostgreSQL 17 manuals for [pg_dump]
 
 
 The later [receipt restoration checks](receipt-restoration.md) verify PNG/JPEG attachment bytes, metadata, download headers and permissions after recovery. Earlier proof above remains the record of its original fixture.
+
+
+The later [opening balance restoration checks](opening-balance-restoration.md) verify retained opening metadata and keys, a closed first statement, dated reports and cutover protections after an actual separate-database restore.
