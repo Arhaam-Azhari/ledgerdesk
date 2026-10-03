@@ -81,6 +81,8 @@ public class BankReconciliation {
         if (closed.isEmpty() || !closed.get(0).get("id").equals(id)
                 || ((Number) closed.get(0).get("version")).longValue() != request.version())
             throw new IllegalArgumentException("Only the latest closed reconciliation can be reopened. Reload the workspace.");
+        if (db.queryForObject("SELECT COUNT(*) FROM accounting_period_closes WHERE business_id = 1 AND status = 'CLOSED' AND ends_on >= ?", Integer.class, closed.get(0).get("starts_on")) != 0)
+            throw new IllegalArgumentException("Reopen the affected accounting period before reopening its bank statement.");
         db.update("UPDATE bank_reconciliations SET status = 'REOPENED', version = version + 1, reopened_at = ?, reopened_by = ?, reopen_reason = ? WHERE id = ?",
                 java.time.LocalDateTime.now(), actor, reason, id);
         ledger.complete(key, hash, id, actor, "BANK_RECONCILIATION_REOPENED");
