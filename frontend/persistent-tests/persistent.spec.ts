@@ -233,10 +233,30 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       openingBalance: "1000.25",
       closingBalance: "1000.25",
     };
-    await postDocument(
+    const bankId = await postDocument(
       "/api/bank/reconciliations",
       statement,
       "backup-statement",
+    );
+    const period = {
+      endsOn: "2026-10-31",
+      reviewNote: "Reviewed reports before local backup",
+    };
+    const firstPeriodId = await postDocument(
+      "/api/accounting-periods",
+      period,
+      "backup-period-first",
+    );
+    const reopening = { version: 1, reason: "Second review before backup" };
+    await postDocument(
+      `/api/accounting-periods/${firstPeriodId}/reopen`,
+      reopening,
+      "backup-period-first-reopen",
+    );
+    const activePeriodId = await postDocument(
+      "/api/accounting-periods",
+      period,
+      "backup-period-active",
     );
     const cashPath =
       "/api/reports/cash-activity?startsOn=2026-10-01&endsOn=2026-10-31";
@@ -386,6 +406,7 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     expect(recoveredState.openingBankBalances).toHaveLength(1);
     expect(recoveredState.bankReconciliations).toHaveLength(1);
     expect(recoveredState.receipts).toHaveLength(3);
+    expect(recoveredState.accountingPeriodCloses).toHaveLength(2);
     await stop();
     const backupTool = resolve("../scripts/local_backup.py");
     const backupFolder = join(folder, "saved-backup");
@@ -577,6 +598,117 @@ test("stored accounts and accounting data survive restart, recovery and backup r
         .get("/api/state", { headers: auth(owner, recoveredPassword) })
         .then((r) => r.json()),
     ).toEqual(recoveredState);
+    for (const [key, expected] of [
+      ["backup-period-first", firstPeriodId],
+      ["backup-period-active", activePeriodId],
+    ]) {
+      const response = await restoredPost(
+        "/api/accounting-periods",
+        period,
+        key,
+      );
+      expect(response.ok()).toBe(true);
+      expect((await response.json()).id).toBe(expected);
+    }
+    const originalReopen = await restoredPost(
+      `/api/accounting-periods/${firstPeriodId}/reopen`,
+      reopening,
+      "backup-period-first-reopen",
+    );
+    expect(originalReopen.ok()).toBe(true);
+    expect((await originalReopen.json()).id).toBe(firstPeriodId);
+    expect(
+      (
+        await restoredPost(
+          "/api/accounting-periods",
+          period,
+          "duplicate-period",
+        )
+      ).status(),
+    ).toBe(400);
+    expect(
+      (
+        await restoredPost(
+          `/api/accounting-periods/${activePeriodId}/reopen`,
+          reopening,
+          "reviewer-period",
+          true,
+        )
+      ).status(),
+    ).toBe(403);
+    expect(
+      (
+        await restoredPost(
+          `/api/bank/reconciliations/${bankId}/reopen`,
+          reopening,
+          "protected-bank",
+        )
+      ).status(),
+    ).toBe(400);
+    expect(
+      (
+        await restoredPost(
+          "/api/equity",
+          {
+            kind: "CONTRIBUTION",
+            postedOn: "2026-10-15",
+            memo: "Closed accounting date",
+            amount: "1.00",
+          },
+          "protected-period",
+        )
+      ).status(),
+    ).toBe(400);
+    const reviewerHistory = await request.get("/api/accounting-periods", {
+      headers: auth(reviewer, reviewerPassword),
+    });
+    expect(reviewerHistory.ok()).toBe(true);
+    expect((await reviewerHistory.json()).accountingPeriodCloses).toEqual(
+      recoveredState.accountingPeriodCloses,
+    );
+    expect(
+      await request
+        .get("/api/state", { headers: auth(owner, recoveredPassword) })
+        .then((r) => r.json()),
+    ).toEqual(recoveredState);
+    const reopenPath = `/api/accounting-periods/${activePeriodId}/reopen`;
+    expect(
+      (
+        await restoredPost(reopenPath, reopening, "restored-period-reopen")
+      ).ok(),
+    ).toBe(true);
+    const afterReopen = await request
+      .get("/api/state", { headers: auth(owner, recoveredPassword) })
+      .then((r) => r.json());
+    const repeatedReopen = await restoredPost(
+      reopenPath,
+      reopening,
+      "restored-period-reopen",
+    );
+    expect(repeatedReopen.ok()).toBe(true);
+    expect((await repeatedReopen.json()).id).toBe(activePeriodId);
+    expect(
+      (
+        await restoredPost(
+          "/api/accounting-periods",
+          period,
+          "backup-period-active",
+        )
+      ).ok(),
+    ).toBe(true);
+    expect(
+      await request
+        .get("/api/state", { headers: auth(owner, recoveredPassword) })
+        .then((r) => r.json()),
+    ).toEqual(afterReopen);
+    expect(afterReopen.ledger).toEqual(recoveredState.ledger);
+    for (const old of recoveredState.accountingPeriodCloses) {
+      const current = afterReopen.accountingPeriodCloses.find(
+        (row: { id: string }) => row.id === old.id,
+      );
+      expect(current.snapshot).toBe(old.snapshot);
+      expect(current.status).toBe("REOPENED");
+    }
     expect(
       (
         await request

@@ -19,7 +19,8 @@
     "test:cash": "playwright test --config playwright.cash.config.ts",
     "test:assets": "playwright test --config playwright.assets.config.ts",
     "test:prepaid": "playwright test --config playwright.prepaid.config.ts",
-    "test:opening": "playwright test --config playwright.opening.config.ts"
+    "test:opening": "playwright test --config playwright.opening.config.ts",
+    "test:periods": "playwright test --config playwright.periods.config.ts"
   },
   "dependencies": {
     "react": "^19.1.1",

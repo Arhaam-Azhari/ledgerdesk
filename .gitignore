@@ -32,3 +32,5 @@ __pycache__/
 *.dump
 
 frontend/opening-results/
+
+frontend/period-results/

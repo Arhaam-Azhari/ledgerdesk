@@ -1,3 +1,8 @@
+import {
+  AccountingPeriods,
+  type PeriodState,
+  type PeriodPreview,
+} from "./AccountingPeriods";
 import { OpeningBankBalance, type OpeningState } from "./OpeningBankBalance";
 import { Accounts, type ManagedAccount } from "./Accounts";
 import { FixedAssets, type AssetState } from "./FixedAssets";
@@ -83,7 +88,8 @@ type Draft = {
   version: number;
 };
 const invoiceNumber = (n: number) => `INV-${String(n).padStart(6, "0")}`;
-type State = OpeningState &
+type State = PeriodState &
+  OpeningState &
   AssetState &
   PrepaidState &
   AccrualState &
@@ -168,6 +174,7 @@ function App() {
         [
           "Reports",
           "Cash activity",
+          "Period close",
           "General ledger",
           "Trial balance",
           "Activity",
@@ -292,6 +299,26 @@ function App() {
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Could not load reports.",
+      );
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function previewPeriod(end: string): Promise<PeriodPreview | null> {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      return await api(
+        `/api/accounting-periods/preview?endsOn=${encodeURIComponent(end)}`,
+      );
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not preview the accounting period.",
       );
       return null;
     } finally {
@@ -556,6 +583,7 @@ function App() {
     "Bank imports",
     "Bank matching",
     "Reconciliation",
+    "Period close",
     "Reports",
     "Cash activity",
     "Owner transfers",
@@ -655,6 +683,7 @@ function App() {
                 [
                   "Reports",
                   "Cash activity",
+                  "Period close",
                   "General ledger",
                   "Trial balance",
                   "Activity",
@@ -1408,6 +1437,15 @@ function App() {
             data={data}
             busy={busy}
             preview={previewReconciliation}
+            act={act}
+          />
+        )}
+        {page === "Period close" && (
+          <AccountingPeriods
+            data={data}
+            busy={busy}
+            canWrite={!!access?.canWrite}
+            preview={previewPeriod}
             act={act}
           />
         )}

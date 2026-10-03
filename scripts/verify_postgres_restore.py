@@ -121,7 +121,15 @@ def main():
                         assert stored[1] == content
                     attachments.append((path, name, media_type, key, content, receipt['id'], stored))
                 statement = {'startsOn': '2026-10-01', 'endsOn': '2026-10-31', 'openingBalance': '1000.25', 'closingBalance': '1000.25'}
-                assert write('/api/bank/reconciliations', statement, 'pg-backup-statement')[0] == 200
+                status, bank_record = write('/api/bank/reconciliations', statement, 'pg-backup-statement')
+                assert status == 200
+                period = {'endsOn': '2026-10-31', 'reviewNote': 'Reviewed reports before PostgreSQL backup'}
+                status, first_period = write('/api/accounting-periods', period, 'pg-period-first')
+                assert status == 200
+                reopening = {'version': 1, 'reason': 'Second review before backup'}
+                assert write('/api/accounting-periods/' + first_period['id'] + '/reopen', reopening, 'pg-period-first-reopen')[0] == 200
+                status, active_period = write('/api/accounting-periods', period, 'pg-period-active')
+                assert status == 200
                 status, cash_before = api('/api/reports/cash-activity?startsOn=2026-10-01&endsOn=2026-10-31')
                 assert status == 200 and cash_before['openingCash'] == '1000.25' and cash_before['closingCash'] == '1100.62'
                 assert cash_before['receipts'] == '125.37' and cash_before['payments'] == '25.00'
@@ -130,7 +138,7 @@ def main():
                 assert reports_before['balanceSheet']['totalAssets'] == '1100.62'
                 assert reports_before['balanceSheet']['totalEquity'] == '1060.62'
                 status, before = api('/api/state')
-                assert status == 200 and len(before['equityTransactions']) == 1 and len(before['ledger']) == 8 and len(before['openingBankBalances']) == 1 and len(before['bankReconciliations']) == 1 and len(before['receipts']) == 3
+                assert status == 200 and len(before['equityTransactions']) == 1 and len(before['ledger']) == 8 and len(before['openingBankBalances']) == 1 and len(before['bankReconciliations']) == 1 and len(before['receipts']) == 3 and len(before['accountingPeriodCloses']) == 2
                 stop()
                 tool = ROOT / 'scripts/postgres_backup.py'
                 subprocess.run(['python3', str(tool), 'backup', SOURCE, str(backup), '--confirm-stopped'], check=True)
@@ -165,11 +173,32 @@ def main():
                 assert status == 200 and next_preview['bookDifference'] == '0.00'
                 assert next_preview['outstandingDeposits'] == '125.37' and next_preview['outstandingPayments'] == '25.00'
                 assert api('/api/state')[1] == before
+                assert write('/api/accounting-periods', period, 'pg-period-first')[1] == first_period
+                assert write('/api/accounting-periods', period, 'pg-period-active')[1] == active_period
+                assert write('/api/accounting-periods/' + first_period['id'] + '/reopen', reopening, 'pg-period-first-reopen')[1] == first_period
+                assert write('/api/accounting-periods', period, 'pg-period-duplicate')[0] == 400
+                assert write('/api/accounting-periods/' + active_period['id'] + '/reopen', reopening, 'pg-period-reviewer', REVIEWER, REVIEWER_PASSWORD)[0] == 403
+                assert write('/api/bank/reconciliations/' + bank_record['id'] + '/reopen', reopening, 'pg-protected-bank')[0] == 400
+                assert write('/api/equity', {**transfer, 'postedOn': '2026-10-15'}, 'pg-protected-period')[0] == 400
+                status, reviewer_history = api('/api/accounting-periods', REVIEWER, REVIEWER_PASSWORD)
+                assert status == 200 and reviewer_history['accountingPeriodCloses'] == before['accountingPeriodCloses']
+                assert api('/api/state')[1] == before
                 # A second restore must refuse the existing target, preserving its books.
                 rejected = subprocess.run(['python3', str(tool), 'restore', str(backup), TARGET, '--confirm-stopped'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 assert rejected.returncode != 0
                 assert api('/api/state')[1] == before
-                print('PostgreSQL 17 restore verified: stored roles, exact workspace, PNG/JPEG/PDF receipt bytes and headers, opening balance and closed statement, dated reports, protected writes and retained retries.')
+                # The retained current version still permits an intentional owner reopen.
+                path = '/api/accounting-periods/' + active_period['id'] + '/reopen'
+                assert write(path, reopening, 'pg-restored-period-reopen')[0] == 200
+                after_reopen = api('/api/state')[1]
+                assert write(path, reopening, 'pg-restored-period-reopen')[1] == active_period
+                assert write('/api/accounting-periods', period, 'pg-period-active')[1] == active_period
+                assert api('/api/state')[1] == after_reopen
+                assert after_reopen['ledger'] == before['ledger']
+                for old in before['accountingPeriodCloses']:
+                    current = next(row for row in after_reopen['accountingPeriodCloses'] if row['id'] == old['id'])
+                    assert current['snapshot'] == old['snapshot'] and current['status'] == 'REOPENED'
+                print('PostgreSQL 17 restore verified: stored roles, exact workspace, PNG/JPEG/PDF receipt bytes and headers, opening balance, closed statement and retained accounting close/reopen history, dated reports, protected writes and retained retries.')
             finally:
                 stop()
 

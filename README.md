@@ -29,6 +29,8 @@ The sample business is **Northline Design Studio**, a fictional agency using USD
 - Reconcile statement balances with the books and outstanding deposits/payments.
 - Close a balanced statement, retain its calculation, and protect the closed period.
 - Reopen the latest closed statement with a reason and preserve the original snapshot.
+- Review accounting periods, retain report snapshots and protect closed books.
+- Reopen the latest accounting close with a reason while keeping its original reports.
 - Keep local demo records between restarts.
 
 ## Run locally
@@ -180,7 +182,7 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 239 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-one Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 253 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-two Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
@@ -259,7 +261,7 @@ Run `npm run test:cash` in `frontend` after building the backend JAR and install
 
 Configure a reviewer account to let someone inspect reports and ledger activity without posting or editing. Set `APP_REVIEWER_USERNAME` and `APP_REVIEWER_PASSWORD` together in the backend environment, using a username different from the owner. Leave both unset for the default owner-only setup. Use fictional credentials locally and keep real secrets outside the repository.
 
-Reviewers see Reports, Cash activity, General ledger, Trial balance and Activity, with a visible read-only notice. The server rejects reviewer write methods even with a valid CSRF token; owner writes still require CSRF. **Lock workspace** clears frontend credentials and data and remains available on phones. This demonstrates role-based authorization at the API boundary and permission-aware navigation. Configured-login mode remains available; optional database-backed accounts now retain passwords and permissions across restarts. Hosted sessions and multi-business access remain future work.
+Reviewers see Period close, Reports, Cash activity, General ledger, Trial balance and Activity, with a visible read-only notice. The server rejects reviewer write methods even with a valid CSRF token; owner writes still require CSRF. **Lock workspace** clears frontend credentials and data and remains available on phones. This demonstrates role-based authorization at the API boundary and permission-aware navigation. Configured-login mode remains available; optional database-backed accounts now retain passwords and permissions across restarts. Hosted sessions and multi-business access remain future work.
 
 See [setup details, screenshots and verification](docs/reviewer-access.md). Run `npm run test:reviewer` in `frontend` after building the backend JAR and installing Chromium; keep ports 8090 and 5183 free. The test enables a fictional reviewer in its isolated backend only.
 
@@ -292,3 +294,11 @@ The [project status](docs/project-status.md) summarizes completed areas and the 
 For fresh books, open **Opening bank balance** before posting transactions, importing bank rows or closing a statement. Enter the last date covered by prior books, the cleared bank amount and a supporting note. Confirm the permanent cutover after checking these details. The screen then retains the opening instead of offering edits.
 
 A $1,000.25 balance at September 30 becomes bank and opening balance equity, with no profit or new cash receipt. The first statement defaults to October 1 and carries $1,000.25; cash activity starts on October 1 or later. Zero is supported. This step covers one cleared nonnegative bank balance; unpaid opening documents, outstanding cheques/deposits, overdrafts and a complete historical trial balance remain future work. See [instructions, accounting example, screenshots and test proof](docs/opening-bank-balance.md).
+
+## Accounting period review and close
+
+Open **Period close**, choose a month-end and preview the reporting period. Close the supporting bank statement and post due prepaid/depreciation work first. Review profit, assets, liabilities, trial balance, cash and unpaid balances, then supply a review note and confirm. The saved record retains the reports and protects posting dates without creating another journal.
+
+Owners can reopen the latest close with a reason; the original review remains in history. Reclosing creates a new record. Reviewers can inspect previews and history without write controls. This demonstrates accounting cutoffs, retained report evidence, transactional safeguards, version checks and reliable request retries. Fiscal-year closing and tax filing remain outside this workflow. See [instructions, reviewed desktop/mobile captures and database restoration proof](docs/accounting-period-close.md).
+
+Run `npm run test:periods` in `frontend` after packaging the backend and installing Chromium; keep ports 8095 and 5187 free.
