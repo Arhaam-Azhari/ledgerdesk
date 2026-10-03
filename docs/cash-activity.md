@@ -27,3 +27,8 @@ Opening cash of $100, no October receipts and a $25 payment leave $75 closing ca
 The 390-pixel layout keeps forms and totals visible, with horizontal scrolling inside wide tables.
 
 ![Mobile cash activity](screenshots/mobile-cash.png)
+
+
+## Dates with an opening bank balance
+
+When an opening is recorded, the date form starts at the later of January 1 this year or the first day after the prior books. The end defaults no earlier than that start. The form explains the cutover and prevents choosing a start on or before it. Reload clears old report results while preserving the chosen valid date range. Owners and reviewers receive the same report guidance. The carried amount remains opening cash; it is not counted as a receipt. See [opening setup](opening-bank-balance.md).

@@ -7,7 +7,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "java -jar target/ledgerdesk-0.1.0.jar --spring.profiles.active=demo --server.port=8094 --spring.datasource.url='jdbc:h2:mem:opening-browser;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1'",
+        "java -jar target/ledgerdesk-0.1.0.jar --spring.profiles.active=demo --server.port=8094 --app.reviewer.username=opening-reviewer --app.reviewer.password=opening-reviewer-password --spring.datasource.url='jdbc:h2:mem:opening-browser;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1'",
       cwd: "../backend",
       url: "http://127.0.0.1:8094/api/csrf",
       timeout: 60000,

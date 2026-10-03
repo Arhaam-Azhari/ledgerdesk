@@ -95,6 +95,28 @@ test("carry a cleared opening through reports and the first two statements", asy
   await page
     .getByRole("button", { name: "Cash activity", exact: true })
     .click();
+  const defaultStart = [
+    new Date().toLocaleDateString("en-CA").slice(0, 4) + "-01-01",
+    "2026-10-01",
+  ].sort()[1];
+  await expect(page.getByLabel("Cash activity start")).toHaveValue(
+    defaultStart,
+  );
+  await expect(
+    page.getByText("The carried bank balance is opening cash", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.getByLabel("Cash activity start").fill("2026-09-30");
+  await page.getByRole("button", { name: "Run cash activity" }).click();
+  expect(
+    await page
+      .getByLabel("Cash activity start")
+      .evaluate((input: HTMLInputElement) => input.validity.rangeUnderflow),
+  ).toBe(true);
+  await expect(page.getByText("Cash bridge ·", { exact: false })).toHaveCount(
+    0,
+  );
   await page.getByLabel("Cash activity start").fill("2026-10-01");
   await page.getByLabel("Cash activity end").fill("2026-10-31");
   await page.getByRole("button", { name: "Run cash activity" }).click();
@@ -113,6 +135,19 @@ test("carry a cleared opening through reports and the first two statements", asy
   await expect(
     page.getByText("Cash bridge · 2026-10-01 to 2026-10-31"),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Reload workspace" }).click();
+  await expect(page.getByLabel("Cash activity start")).toHaveValue(
+    "2026-10-01",
+  );
+  await expect(page.getByLabel("Cash activity end")).toHaveValue("2026-10-31");
+  await page.getByRole("button", { name: "Run cash activity" }).click();
+  await expect(
+    page.getByText("Cash bridge · 2026-10-01 to 2026-10-31"),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "opening-results/opening-cash-activity.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await page.getByLabel("Report start").fill("2026-10-01");
   await page.getByLabel("Report end").fill("2026-10-31");
@@ -175,5 +210,29 @@ test("carry a cleared opening through reports and the first two statements", asy
   await page.getByRole("button", { name: "Reload workspace" }).click();
   await expect(
     page.getByRole("heading", { name: "Recorded opening bank balance" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Lock workspace" }).click();
+  await page.getByLabel("Username").fill("opening-reviewer");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("opening-reviewer-password");
+  await page.getByRole("button", { name: "Open workspace" }).click();
+  await expect(
+    page.getByRole("button", { name: "Opening bank balance", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Cash activity", exact: true })
+    .click();
+  await expect(page.getByLabel("Cash activity start")).toHaveValue(
+    defaultStart,
+  );
+  await expect(page.getByLabel("Cash activity start")).toHaveAttribute(
+    "min",
+    "2026-10-01",
+  );
+  await expect(
+    page.getByText("The carried bank balance is opening cash", {
+      exact: false,
+    }),
   ).toBeVisible();
 });

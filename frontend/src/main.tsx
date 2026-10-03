@@ -702,7 +702,7 @@ function App() {
             >
               Lock workspace
             </button>
-            <span className="demo-tag">Milestone 09 · Fictional business</span>
+            <span className="demo-tag">Fictional business · USD</span>
             <button
               className="secondary"
               disabled={busy}
