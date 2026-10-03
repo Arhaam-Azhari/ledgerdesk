@@ -13,7 +13,8 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | Attachment recovery | PNG/JPEG restore verified in PR #15; PR #16 extends the same checks to a static PDF |
 | Hosted release | Secure hosted sessions, HTTPS deployment and operational configuration remain |
 | Broader access | Bookkeeper permissions, business selection and complete business isolation remain |
-| Accounting completeness | Opening balance migration, a broader period workflow and additional adjustment types remain |
+| Opening bank balance | One cleared nonnegative bank opening, retained setup and first-statement carry-forward implemented |
+| Accounting completeness | Complete opening trial-balance migration, a broader period workflow and additional adjustment types remain |
 | Operations | Encrypted backup storage, scheduled retention and broader recovery fixtures remain |
 
 The core workflows can already demonstrate a document progressing through payment, ledger posting, bank reconciliation, reporting and recovery. The remaining work is meaningful: more roles and businesses affect authorization throughout the application, and hosted sessions/deployment change how credentials and private records are handled.

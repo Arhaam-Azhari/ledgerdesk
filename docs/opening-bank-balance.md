@@ -8,7 +8,7 @@ Sign in as an owner and open **Opening bank balance** before posting transaction
 
 For example, record $1,000.25 on September 30. Open **Reconciliation**: the first statement defaults to October 1 with $1,000.25 opening balance. Enter the statement end and actual closing balance, preview and review before closing. **Cash activity** must use October 1 or later as its start. Do not count the opening as a new cash receipt. Setup is unavailable in books with existing posted activity; reviewers cannot record an opening.
 
-The browser workflow exercises cancelled confirmation, invalid amounts, zero eligibility, a retry after a failed refresh, retained desktop/mobile views, cash and equity reporting, and two consecutive statement closes. Run `npm run test:opening` after packaging the backend. CI uploads its screenshots with the browser results. Browser execution for this UI checkpoint is pending until its workflow completes.
+The browser workflow exercises cancelled confirmation, invalid amounts, zero eligibility, a retry after a failed refresh, retained desktop/mobile views, cash and equity reporting, and two consecutive statement closes. Run `npm run test:opening` after packaging the backend. CI uploads its screenshots with the browser results. Source `26ebaa044f0a7862a5b5fb81b0c48436870b453b` passed [run 37111654985](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37111654985): 239 integration tests on each of H2 and PostgreSQL 17, no failures/errors/skips, 14 backup-tool tests, production frontend build, all 21 Chromium workflows and the real PostgreSQL restore check. The opening browser workflow completed against the packaged backend.
 
 ## Accounting and API
 
@@ -31,3 +31,18 @@ Setup, journal, command key and activity share the existing business lock and tr
 Ten new integration tests cover equity/profit/cash calculations, first-statement behavior and continuity, invalid openings, zero cutoffs and rollback, setup guards, idempotency, audit rollback, concurrent setup and endpoint permissions. Source `204d87e85a49f242d2220f3b373707203f85dad5` passed [run 37085909865](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37085909865): 239 integration tests on each of H2 and PostgreSQL 17, no failures/errors/skips, 14 backup-tool tests, production frontend build, all 20 existing Chromium workflows and the PostgreSQL restore job. The browser suite verifies regression behavior; the opening-specific browser workflow was added in the subsequent UI checkpoint described above.
 
 This supports a bank balance already cleared at cutover. Opening receivables/payables, equipment/prepaids, accrued liabilities, overdrafts, outstanding cheques/deposits, historical equity allocation and a complete opening trial balance are not imported here. Use fresh books without an opening record for the existing zero-start workflow. The local Basic-authentication and single-business limitations remain.
+
+## Reviewed screenshots
+
+These are unmodified Chromium captures from the opening workflow, using fictional data. The desktop and 390-pixel mobile views were inspected for readable text and usable controls. The older “Milestone 09” header badge is a presentation label, not the test count or PR number.
+
+- [Setup before confirmation](screenshots/opening-setup.png): September 30 cutover and $1,000.25 cleared bank balance.
+- [Retained opening](screenshots/opening-recorded.png): the recorded date, amount and supporting note replace the form.
+- [Mobile retained opening](screenshots/opening-mobile.png): narrow-screen layout without page overflow.
+- [First statement review](screenshots/opening-reconciliation.png): opening/book/adjusted bank balance $1,000.25; differences and outstanding items zero.
+
+![Opening bank balance setup](screenshots/opening-setup.png)
+
+![First statement with the carried bank balance](screenshots/opening-reconciliation.png)
+
+The screenshots show the setup and review; the browser assertions additionally confirm successful October and November closes, exact retry without duplication, zero profit, matching assets/equity and no new cash receipts. They do not demonstrate a complete historical migration or opening-data restoration after backup.
