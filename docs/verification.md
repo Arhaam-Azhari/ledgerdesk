@@ -156,3 +156,12 @@ Five unedited captures from that run were downloaded and visually reviewed: thre
 Source `01f1f6685bc5a387abdaf7f592fc76949b0848d6` passed [run 37077815392](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37077815392): six Python backup-tool tests, 229 backend tests on H2 and 229 on PostgreSQL 17 (zero failures/errors/skips), the production frontend build and all 20 Chromium workflows. The extended persistent workflow creates a supplier and $125.37 contribution, verifies restart and offline owner recovery, stops the backend, executes the backup and restore CLI, and starts the packaged backend against a separate restored H2 file.
 
 The restored full workspace matches the pre-backup state, recovered owner and reviewer passwords/roles work, the old owner password fails, and retrying the original contribution key leaves one transaction. Unit checks reject corrupted copies, observed lock files, changed manifest paths and overwriting existing data. [Backup instructions](local-backups.md) explain operator shutdown, checksums, private storage and restore validation. The fixture does not include receipt uploads or prove PostgreSQL backup restoration, live backups or crash recovery.
+
+
+## Native PostgreSQL backup and restore
+
+Source `9185dc4538a539928cd464c3b68464fd8c520ec3` passed [run 37079403182](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37079403182): 14 Python backup tests, 229 integration tests on each of H2 and PostgreSQL 17, zero failures/errors/skips, production frontend build, all 20 Chromium workflows and the dedicated PostgreSQL restore job.
+
+The packaged backend records a supplier and $125.37 owner contribution in a fresh PostgreSQL 17 database. After shutdown, the actual CLI runs native custom-archive backup, manifest validation, new-database creation and a single-transaction restore. A new backend process opens the restored database, compares the entire workspace and stored owner/reviewer access, rejects changed bootstrap credentials and reviewer writes, and retries the original contribution key without duplication. A second restore refuses the existing target and leaves the workspace unchanged.
+
+[PostgreSQL backup instructions](postgres-backups.md) explain connection configuration, private storage, failed-target inspection and operator checks. This fixture does not upload receipts, restore server roles/grants, simulate power loss or establish point-in-time recovery.

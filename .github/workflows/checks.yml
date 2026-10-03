@@ -70,3 +70,35 @@ jobs:
             frontend/reviewer-results/
             frontend/persistent-results/
             frontend/account-results/
+
+  postgres-restore:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: ledgerdesk
+          POSTGRES_PASSWORD: ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ledgerdesk" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: mvn -B package -DskipTests
+        working-directory: backend
+      - run: python3 scripts/verify_postgres_restore.py
+        env:
+          LEDGERDESK_PG_CONTAINER: ${{ job.services.postgres.id }}
+          PGUSER: ledgerdesk
+          DATABASE_PASSWORD: ci-only
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: postgres-restore-log
+          path: postgres-restore-backend.log

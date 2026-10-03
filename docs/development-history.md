@@ -4,7 +4,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 
 | Pull request | Milestone |
 | --- | --- |
-+| [#1](https://github.com/Arhaam-Azhari/ledgerdesk/pull/1) | Add vendor bills, expenses, and receipt attachments |
+| [#1](https://github.com/Arhaam-Azhari/ledgerdesk/pull/1) | Add vendor bills, expenses, and receipt attachments |
 | [#2](https://github.com/Arhaam-Azhari/ledgerdesk/pull/2) | Add bank imports, reviewed matching and statement reconciliation |
 | [#3](https://github.com/Arhaam-Azhari/ledgerdesk/pull/3) | Add dated financial reports and CSV exports |
 | [#4](https://github.com/Arhaam-Azhari/ledgerdesk/pull/4) | Add owner funding, withdrawals and retained corrections |
@@ -17,9 +17,10 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#11](https://github.com/Arhaam-Azhari/ledgerdesk/pull/11) | Add read-only reviewer workspace and authorization |
 | [#12](https://github.com/Arhaam-Azhari/ledgerdesk/pull/12) | Add stored accounts, owner administration and offline recovery |
 | [#13](https://github.com/Arhaam-Azhari/ledgerdesk/pull/13) | Add offline local database backup and restore |
+| [#14](https://github.com/Arhaam-Azhari/ledgerdesk/pull/14) | Add PostgreSQL backup and restore |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 
 Feature guides under `docs/` explain the accounting entries, worked figures, supported limits and reproduction steps. `verification.md` links the test runs and reviewed screenshots. Screenshots show particular tested workflows; the tests provide broader evidence about rollback, authorization and retries.
 
-This is still a local, single-business USD application. A public repository and passing checks do not mean it is ready to host real business records. Hosted sessions, broader roles, business isolation and PostgreSQL backup restoration remain separate milestones.
+This is still a local, single-business USD application. A public repository and passing checks do not mean it is ready to host real business records. Hosted sessions, broader roles and business isolation remain separate milestones.
