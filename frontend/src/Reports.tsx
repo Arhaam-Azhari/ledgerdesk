@@ -3,6 +3,8 @@ import { cents, dollars, today } from "./money";
 import { ProfitComparison, type ComparisonLoader } from "./ProfitComparison";
 import { CustomerStatements, type StatementCustomer, type StatementLoader, type StatementDownloader } from "./CustomerStatements";
 
+import { AccountActivity, type LedgerAccount, type ActivityLoader } from "./AccountActivity";
+
 type Account = { code: string; name: string; kind: string; amount: string };
 type Aging = {
   items: {
@@ -120,6 +122,8 @@ export function Reports({
   customers,
   statement,
   statementPdf,
+  accounts,
+  activity,
 }: {
   workspace: object;
   busy: boolean;
@@ -128,8 +132,10 @@ export function Reports({
   customers: StatementCustomer[];
   statement: StatementLoader;
   statementPdf: StatementDownloader;
+  accounts: LedgerAccount[];
+  activity: ActivityLoader;
 }) {
-  const [mode, setMode] = useState<"single" | "compare" | "statement">("single");
+  const [mode, setMode] = useState<"single" | "compare" | "statement" | "activity">("single");
   const [start, setStart] = useState(today().slice(0, 4) + "-01-01");
   const [end, setEnd] = useState(today());
   const [result, setResult] = useState<ReportData | null>(null);
@@ -253,7 +259,9 @@ export function Reports({
     <button className="secondary" disabled={busy} aria-pressed={mode === "single"} onClick={() => { setMode("single"); setResult(null); }}>Single period reports</button>
     <button className="secondary" disabled={busy} aria-pressed={mode === "compare"} onClick={() => { setMode("compare"); setResult(null); }}>Compare profit</button>
     <button className="secondary" disabled={busy} aria-pressed={mode === "statement"} onClick={() => { setMode("statement"); setResult(null); }}>Customer statements</button>
+    <button className="secondary" disabled={busy} aria-pressed={mode === "activity"} onClick={() => { setMode("activity"); setResult(null); }}>Account activity</button>
   </div>;
+  if (mode === "activity") return <>{modeSelector}<AccountActivity busy={busy} accounts={accounts} workspace={workspace} load={activity} /></>;
   if (mode === "statement") return <>{modeSelector}<CustomerStatements busy={busy} customers={customers} workspace={workspace} load={statement} download={statementPdf} /></>;
   if (mode === "compare") return <>{modeSelector}<ProfitComparison busy={busy} workspace={workspace} load={compare} /></>;
   return (

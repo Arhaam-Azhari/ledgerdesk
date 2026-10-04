@@ -53,6 +53,15 @@ test("bookkeeper posts routine records and cannot use owner controls", async ({ 
   const statementDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download statement PDF", exact: true }).click();
   expect((await statementDownload).suggestedFilename()).toBe("ledgerdesk-customer-statement-2026-10-01-2026-10-31.pdf");
+  await page.getByRole("button", { name: "Account activity", exact: true }).click();
+  await page.getByRole("combobox", { name: "Ledger account", exact: true }).selectOption("1000");
+  await page.getByLabel("Activity start", { exact: true }).fill("2026-10-01");
+  await page.getByLabel("Activity end", { exact: true }).fill("2026-10-31");
+  await page.getByRole("button", { name: "Run account activity", exact: true }).click();
+  await expect(page.locator(".account-activity-results")).toContainText("Closing balance");
+  const activityDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export account activity CSV", exact: true }).click();
+  expect((await activityDownload).suggestedFilename()).toBe("ledgerdesk-account-1000-2026-10-01-2026-10-31.csv");
 
   for (const path of ["/api/accounts", "/api/equity", "/api/opening-bank-balance", "/api/accounting-periods", "/api/bank/reconciliations/example/reopen"])
     expect((await request.post(path, { headers: { ...bookkeeper, [csrf.headerName]: csrf.token }, data: {} })).status()).toBe(403);

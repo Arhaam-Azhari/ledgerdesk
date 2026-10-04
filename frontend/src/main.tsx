@@ -13,6 +13,7 @@ import { Adjustments, type AdjustmentState } from "./Adjustments";
 import { OwnerEquity, type EquityState } from "./OwnerEquity";
 import { Reports, type ReportData } from "./Reports";
 import type { ComparisonData } from "./ProfitComparison";
+import type { AccountActivityData } from "./AccountActivity";
 import type { StatementData } from "./CustomerStatements";
 import { CashActivity, type CashData } from "./CashActivity";
 import {
@@ -335,6 +336,17 @@ function App() {
       return await api(`/api/reports/profit-comparison?${query}`);
     } catch (error) {
       setError(error instanceof Error ? error.message : "Could not compare profit.");
+      return null;
+    } finally { setBusy(false); }
+  }
+
+  async function loadAccountActivity(code: string, start: string, end: string): Promise<AccountActivityData | null> {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const query = new URLSearchParams({ startsOn: start, endsOn: end });
+      return await api(`/api/reports/accounts/${encodeURIComponent(code)}/activity?${query}`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not load account activity.");
       return null;
     } finally { setBusy(false); }
   }
@@ -1551,7 +1563,7 @@ function App() {
             />
           )}
         {page === "Reports" && (
-          <Reports busy={busy} load={loadReports} compare={compareProfit} customers={data.customers} statement={loadStatement} statementPdf={downloadStatement} workspace={data} />
+          <Reports busy={busy} load={loadReports} compare={compareProfit} customers={data.customers} statement={loadStatement} statementPdf={downloadStatement} accounts={data.trialBalance} activity={loadAccountActivity} workspace={data} />
         )}
         {page === "Activity" && (
           <section className="card">
