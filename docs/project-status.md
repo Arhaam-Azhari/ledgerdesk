@@ -8,11 +8,11 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | Ledger and reports | Balanced entries, trial balance, dated financial reports, customer/vendor aging, cash activity and CSV exports implemented |
 | Bank evidence | CSV import, reviewed matching, statement reconciliation and closed-date protections implemented |
 | Accounting adjustments | Owner transfers, expense reclassification, accruals and bill handoff, prepaid schedules and straight-line asset depreciation implemented |
-| Local access | Stored owner/reviewer accounts, account administration, last-owner protection and offline owner recovery implemented |
+| Local access | Stored owner/bookkeeper/reviewer accounts, account administration, last-owner protection and offline owner recovery implemented |
 | Database recovery | Separate-file H2 restore and native PostgreSQL 17 restore verified through packaged-backend process tests |
 | Attachment recovery | PNG/JPEG restore verified in PR #15; PR #16 extends the same checks to a static PDF |
 | Hosted release | Secure hosted sessions, HTTPS deployment and operational configuration remain |
-| Broader access | Bookkeeper permissions, business selection and complete business isolation remain |
+| Broader access | Routine bookkeeper permissions implemented; business selection and complete business isolation remain |
 | Opening bank balance | Cleared nonnegative opening, retained setup, first-statement carry-forward and H2/PostgreSQL restoration verified |
 | Period review | Month-end prerequisite checks, retained reports, owner close/reopen history, date protections and H2/PostgreSQL restoration verified |
 | Accounting completeness | Complete opening trial-balance migration, fiscal-year closing and additional adjustment types remain |

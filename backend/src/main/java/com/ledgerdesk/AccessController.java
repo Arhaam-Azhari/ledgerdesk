@@ -13,8 +13,10 @@ public class AccessController {
     public AccessController(@Value("${app.accounts.persistent:false}") boolean persistent) { this.persistent=persistent; }
     @GetMapping("/api/access")
     ResponseEntity<Map<String, Object>> access(Authentication user) {
-        boolean canWrite = user.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_OWNER"));
+        boolean owner = user.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_OWNER"));
+        boolean bookkeeper = user.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_BOOKKEEPER"));
+        boolean canWrite = owner || bookkeeper;
         return ResponseEntity.ok().header("Cache-Control", "no-store")
-                .body(Map.of("username", user.getName(), "canWrite", canWrite, "role", canWrite ? "OWNER" : "REVIEWER", "persistentAccounts", persistent));
+                .body(Map.of("username", user.getName(), "canWrite", canWrite, "role", owner ? "OWNER" : bookkeeper ? "BOOKKEEPER" : "REVIEWER", "persistentAccounts", persistent));
     }
 }

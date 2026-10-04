@@ -182,14 +182,14 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 253 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-two Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 260 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-three Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
 1. A broader accounting period workflow and additional adjustment types.
 2. Bookkeeper permissions, business isolation, hardened deployment, encrypted backup storage, scheduled retention and broader restore fixtures.
 
-The current version has one business, owner/reviewer roles and optional database-backed account management. Bookkeeper roles, multi-business access, secure hosted sessions, and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
+The current version has one business, owner/reviewer roles and optional database-backed account management. Bookkeeper access supports routine accounting; multi-business access, secure hosted sessions and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
 
 ## What this project demonstrates
 
@@ -302,3 +302,7 @@ Open **Period close**, choose a month-end and preview the reporting period. Clos
 Owners can reopen the latest close with a reason; the original review remains in history. Reclosing creates a new record. Reviewers can inspect previews and history without write controls. This demonstrates accounting cutoffs, retained report evidence, transactional safeguards, version checks and reliable request retries. Fiscal-year closing and tax filing remain outside this workflow. See [instructions, reviewed desktop/mobile captures and database restoration proof](docs/accounting-period-close.md).
 
 Run `npm run test:periods` in `frontend` after packaging the backend and installing Chromium; keep ports 8095 and 5187 free.
+
+## Bookkeeper access
+
+Persistent account owners can assign a bookkeeper for routine documents, adjustments and bank reconciliation. Opening balances, owner transfers, accounting closes, statement reopening and account administration stay owner-only. The [permission table and verification status](docs/bookkeeper-access.md) explain setup and limits. H2/PostgreSQL integration and desktop/mobile browser checks passed; the guide links the reviewed captures.
