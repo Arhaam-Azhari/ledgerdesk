@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-test("customer statements retain historical balances, export evidence and clear stale results", async ({ page, request }) => {
+test("customer statements retain historical balances, download PDFs and clear stale results", async ({ page, request }) => {
   test.setTimeout(60000);
   const auth = { Authorization: `Basic ${Buffer.from("demo:demo-local-only").toString("base64")}` };
   async function post(path: string, data: object, key: string) {
@@ -53,6 +53,54 @@ test("customer statements retain historical balances, export evidence and clear 
     expect(file.suggestedFilename()).toContain(`ledgerdesk-customer-statement-${await page.getByRole("combobox", { name: "Statement customer", exact: true }).inputValue()}`);
     return readFile((await file.path())!, "utf8");
   }
+  let pdfDownloads = 0;
+  page.on("download", (file) => { if (file.suggestedFilename().endsWith(".pdf")) pdfDownloads++; });
+  const pdfButton = page.getByRole("button", { name: "Download statement PDF", exact: true });
+  async function downloadedPdf(save = false) {
+    const downloading = page.waitForEvent("download");
+    const responding = page.waitForResponse((response) => response.url().includes("/statement/pdf?"));
+    await pdfButton.click();
+    const response = await responding;
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toBe("application/pdf");
+    expect(response.headers()["cache-control"]).toBe("no-store");
+    expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+    const url = new URL(response.url());
+    expect(url.pathname).toContain(`/customers/${customer}/statement/pdf`);
+    expect(url.searchParams.get("startsOn")).toBe(await page.getByLabel("Statement start", { exact: true }).inputValue());
+    expect(url.searchParams.get("endsOn")).toBe(await page.getByLabel("Statement end", { exact: true }).inputValue());
+    const file = await downloading;
+    expect(file.suggestedFilename()).toBe(`ledgerdesk-customer-statement-${url.searchParams.get("startsOn")}-${url.searchParams.get("endsOn")}.pdf`);
+    expect((await readFile((await file.path())!)).subarray(0, 5).toString()).toBe("%PDF-");
+    if (save) await file.saveAs("report-results/customer-statement-download.pdf");
+  }
+  const pdfRoute = "**/api/reports/customers/*/statement/pdf?*";
+  let release!: () => void;
+  const heldRequest = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(pdfRoute, async (route) => { await heldRequest; await route.continue(); });
+  const firstDownload = downloadedPdf(true);
+  await expect(pdfButton).toBeDisabled();
+  await expect(page.getByLabel("Statement start", { exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Export statement CSV", exact: true })).toBeDisabled();
+  release();
+  await firstDownload;
+  await page.unroute(pdfRoute);
+  for (const [status, contentType, body, message] of [
+    [503, "application/json", "{}", "Could not download the statement PDF"],
+    [200, "text/html", "<html>Error page</html>", "response was not a PDF"],
+    [200, "application/pdf", "not a document", "response was not a PDF"],
+  ] as const) {
+    await page.route(pdfRoute, (route) => route.fulfill({ status, contentType, body }));
+    await pdfButton.click();
+    await expect(page.getByRole("alert")).toContainText(message);
+    await expect(pdfButton).toBeEnabled();
+    await expect(result).toContainText("$325.10");
+    expect(pdfDownloads).toBe(1);
+    await page.unroute(pdfRoute);
+  }
+  await downloadedPdf();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  expect(pdfDownloads).toBe(2);
   const csv = await exported();
   expect(csv).toContain('"Customer","Cedar Design Partners"');
   expect(csv).toContain('"Period start","2030-10-01"');
@@ -68,9 +116,11 @@ test("customer statements retain historical balances, export evidence and clear 
   await page.getByLabel("Statement start").fill("2030-10-16");
   await page.getByLabel("Statement end").fill("2030-10-30");
   await expect(result).toHaveCount(0);
+  await expect(pdfButton).toHaveCount(0);
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   await expect(result).toContainText("No customer activity in this period");
   await expect(result.getByRole("row").filter({ hasText: "Closing amount owed" })).toContainText("$350.35");
+  await downloadedPdf();
   await page.getByLabel("Statement end").fill("2030-10-01");
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("valid statement period");
@@ -83,19 +133,23 @@ test("customer statements retain historical balances, export evidence and clear 
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("could not be completed");
   await expect(page.getByRole("button", { name: "Export statement CSV" })).toHaveCount(0);
+  await expect(pdfButton).toHaveCount(0);
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   await expect(result).toContainText("$350.35");
   await page.unroute("**/api/reports/customers/*/statement?*");
   await page.getByRole("button", { name: "Reload workspace", exact: true }).click();
   await expect(result).toHaveCount(0);
+  await expect(pdfButton).toHaveCount(0);
   await page.getByRole("combobox", { name: "Statement customer", exact: true }).selectOption(formulaCustomer);
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   expect(await exported()).toContain('"Customer","\'=2+2"');
   await page.getByRole("combobox", { name: "Statement customer", exact: true }).selectOption(customer);
   await expect(result).toHaveCount(0);
+  await expect(pdfButton).toHaveCount(0);
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   await page.getByRole("button", { name: "Single period reports", exact: true }).click();
   await expect(page.getByRole("button", { name: "Export statement CSV" })).toHaveCount(0);
+  await expect(pdfButton).toHaveCount(0);
   const after = await (await request.get("/api/state", { headers: auth })).json();
   expect(after.ledger).toEqual(before.ledger);
   expect(after.trialBalance).toEqual(before.trialBalance);

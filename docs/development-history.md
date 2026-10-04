@@ -33,6 +33,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#27](https://github.com/Arhaam-Azhari/ledgerdesk/pull/27) | Add dated customer statement accounting and traceable ledger movements |
 | [#28](https://github.com/Arhaam-Azhari/ledgerdesk/pull/28) | Add customer statement screen, ledger references and dated CSV export |
 | [#29](https://github.com/Arhaam-Azhari/ledgerdesk/pull/29) | Add authenticated dated customer statement PDF downloads and rendered proof |
+| [#30](https://github.com/Arhaam-Azhari/ledgerdesk/pull/30) | Download customer statement PDFs from Reports with retry and role checks |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 

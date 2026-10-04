@@ -14,10 +14,11 @@ export type StatementData = {
   }[];
 };
 export type StatementLoader = (customer: string, start: string, end: string) => Promise<StatementData | null>;
+export type StatementDownloader = (statement: StatementData) => Promise<void>;
 const kinds: Record<string, string> = { INVOICE: "Invoice", PAYMENT: "Payment", INVOICE_REVERSAL: "Invoice reversal" };
 
-export function CustomerStatements({ busy, customers, workspace, load }: {
-  busy: boolean; customers: StatementCustomer[]; workspace: object; load: StatementLoader;
+export function CustomerStatements({ busy, customers, workspace, load, download }: {
+  busy: boolean; customers: StatementCustomer[]; workspace: object; load: StatementLoader; download: StatementDownloader;
 }) {
   const [customer, setCustomer] = useState(customers[0]?.id || "");
   const [start, setStart] = useState(today().slice(0, 4) + "-01-01"), [end, setEnd] = useState(today());
@@ -90,7 +91,11 @@ export function CustomerStatements({ busy, customers, workspace, load }: {
     {result && <section className="card statement-results">
       <h2>Customer account statement</h2>
       <p><strong>{result.customer.name}</strong><br />{result.customer.email}<br />{result.startsOn} to {result.endsOn} · {result.currency}</p>
-      <button className="secondary" disabled={busy} onClick={exportCsv}>Export statement CSV</button>
+      <div className="button-row">
+        <button className="secondary" disabled={busy} onClick={exportCsv}>Export statement CSV</button>
+        <button className="secondary" disabled={busy} onClick={() => void download(result)}>Download statement PDF</button>
+      </div>
+      <p>PDF reads the books again for these dates. A new backdated posting can change its figures; CSV keeps the displayed statement. Neither download sends anything to the customer.</p>
       <div className="table-wrap"><table>
         <thead><tr><th>Calculation</th><th>USD</th></tr></thead>
         <tbody>{totals.map(([label, value]) => <tr key={label}><td>{label}</td><td>{dollars(cents(value))}</td></tr>)}</tbody>

@@ -350,6 +350,32 @@ function App() {
     } finally { setBusy(false); }
   }
 
+  async function downloadStatement(statement: StatementData) {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      // Use the result's customer and dates, not an editor that may have changed.
+      const query = new URLSearchParams({ startsOn: statement.startsOn, endsOn: statement.endsOn });
+      const response = await fetch(`/api/reports/customers/${encodeURIComponent(statement.customer.id)}/statement/pdf?${query}`, {
+        headers: { Authorization: `Basic ${credentials}` }, credentials: "same-origin", cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Could not download the statement PDF. Try again.");
+      if (response.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase() !== "application/pdf")
+        throw new Error("The statement response was not a PDF. Try again.");
+      const blob = await response.blob();
+      if (await blob.slice(0, 5).text() !== "%PDF-")
+        throw new Error("The statement response was not a PDF. Try again.");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ledgerdesk-customer-statement-${statement.startsOn}-${statement.endsOn}.pdf`;
+      document.body.append(link);
+      link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not download the statement PDF.");
+    } finally { setBusy(false); }
+  }
+
   async function previewPeriod(end: string): Promise<PeriodPreview | null> {
     setBusy(true);
     setError("");
@@ -1525,7 +1551,7 @@ function App() {
             />
           )}
         {page === "Reports" && (
-          <Reports busy={busy} load={loadReports} compare={compareProfit} customers={data.customers} statement={loadStatement} workspace={data} />
+          <Reports busy={busy} load={loadReports} compare={compareProfit} customers={data.customers} statement={loadStatement} statementPdf={downloadStatement} workspace={data} />
         )}
         {page === "Activity" && (
           <section className="card">
