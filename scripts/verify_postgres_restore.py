@@ -16,11 +16,14 @@ BASE = 'http://127.0.0.1:8093'
 SOURCE = 'backup_source'
 TARGET = 'backup_restored'
 OWNER = 'backup-owner'
-PASSWORD = 'stored-owner-password'
+BOOTSTRAP_PASSWORD = 'stored-owner-password'
+PASSWORD = 'self-changed-owner-password'
 REVIEWER = 'backup-reviewer'
-REVIEWER_PASSWORD = 'stored-reviewer-password'
+BOOTSTRAP_REVIEWER_PASSWORD = 'stored-reviewer-password'
+REVIEWER_PASSWORD = 'self-changed-reviewer-password'
 BOOKKEEPER = 'backup-bookkeeper'
-BOOKKEEPER_PASSWORD = 'stored-bookkeeper-password'
+INITIAL_BOOKKEEPER_PASSWORD = 'stored-bookkeeper-password'
+BOOKKEEPER_PASSWORD = 'self-changed-bookkeeper-password'
 server = None
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 
@@ -52,7 +55,7 @@ def start(database, log):
     settings = {
         'server': {'port': 8093, 'address': '127.0.0.1'},
         'spring': {'datasource': {'url': f'jdbc:postgresql://127.0.0.1:5432/{database}', 'username': os.environ['PGUSER'], 'password': os.environ['DATABASE_PASSWORD']}},
-        'app': {'accounts': {'persistent': True}, 'username': OWNER, 'password': PASSWORD if database == SOURCE else 'changed-bootstrap-password', 'reviewer': {'username': REVIEWER, 'password': REVIEWER_PASSWORD}},
+        'app': {'accounts': {'persistent': True}, 'username': OWNER, 'password': BOOTSTRAP_PASSWORD if database == SOURCE else 'changed-bootstrap-password', 'reviewer': {'username': REVIEWER, 'password': BOOTSTRAP_REVIEWER_PASSWORD}},
     }
     server = subprocess.Popen(['java', '-jar', 'target/ledgerdesk-0.1.0.jar'], cwd=ROOT / 'backend', env={**os.environ, 'SPRING_APPLICATION_JSON': json.dumps(settings)}, stdout=log, stderr=subprocess.STDOUT)
     deadline = time.monotonic() + 60
@@ -100,8 +103,14 @@ def main():
         with (ROOT / 'postgres-restore-backend.log').open('w') as log:
             try:
                 start(SOURCE, log)
-                status, bookkeeper_account = write('/api/accounts', {'username': BOOKKEEPER, 'password': BOOKKEEPER_PASSWORD, 'role': 'BOOKKEEPER'}, 'pg-bookkeeper-account')
+                status, bookkeeper_account = write('/api/accounts', {'username': BOOKKEEPER, 'password': INITIAL_BOOKKEEPER_PASSWORD, 'role': 'BOOKKEEPER'}, 'pg-bookkeeper-account', OWNER, BOOTSTRAP_PASSWORD)
                 assert status == 200
+                # Exercise the actual self-service route before any accounting work.
+                for user, initial, replacement, role in [(OWNER, BOOTSTRAP_PASSWORD, PASSWORD, 'OWNER'), (REVIEWER, BOOTSTRAP_REVIEWER_PASSWORD, REVIEWER_PASSWORD, 'REVIEWER'), (BOOKKEEPER, INITIAL_BOOKKEEPER_PASSWORD, BOOKKEEPER_PASSWORD, 'BOOKKEEPER')]:
+                    assert write('/api/me/password', {'currentPassword': initial, 'password': replacement}, 'unused-password-key', user, initial)[0] == 200
+                    assert api('/api/access', user, initial)[0] == 401
+                    status, identity = api('/api/access', user, replacement)
+                    assert status == 200 and identity['role'] == role
                 status, accounts_before = api('/api/accounts')
                 assert status == 200
                 status, vendor = write('/api/vendors', {'name': 'Restored supplier', 'email': 'supplier@example.test'}, 'pg-backup-vendor', BOOKKEEPER, BOOKKEEPER_PASSWORD)
@@ -145,12 +154,26 @@ def main():
                 assert reports_before['balanceSheet']['totalEquity'] == '1060.62'
                 status, before = api('/api/state')
                 assert status == 200 and len(before['equityTransactions']) == 1 and len(before['ledger']) == 8 and len(before['openingBankBalances']) == 1 and len(before['bankReconciliations']) == 1 and len(before['receipts']) == 3 and len(before['accountingPeriodCloses']) == 2
+                for user in [OWNER, REVIEWER, BOOKKEEPER]:
+                    assert len([row for row in before['audit'] if row['actor'] == user and row['action'] == 'ACCOUNT_SELF_PASSWORD_CHANGED']) == 1
+                assert all(secret not in json.dumps(before) for secret in [BOOTSTRAP_PASSWORD, PASSWORD, BOOTSTRAP_REVIEWER_PASSWORD, REVIEWER_PASSWORD, INITIAL_BOOKKEEPER_PASSWORD, BOOKKEEPER_PASSWORD])
+                stop()
+                start(SOURCE, log)
+                # Old bootstrap settings cannot reset self-changed stored passwords.
+                for user, initial, replacement, role in [(OWNER, BOOTSTRAP_PASSWORD, PASSWORD, 'OWNER'), (REVIEWER, BOOTSTRAP_REVIEWER_PASSWORD, REVIEWER_PASSWORD, 'REVIEWER'), (BOOKKEEPER, INITIAL_BOOKKEEPER_PASSWORD, BOOKKEEPER_PASSWORD, 'BOOKKEEPER')]:
+                    assert api('/api/access', user, initial)[0] == 401
+                    status, identity = api('/api/access', user, replacement)
+                    assert status == 200 and identity['role'] == role
+                assert api('/api/state')[1] == before
+                assert api('/api/accounts')[1] == accounts_before
                 stop()
                 tool = ROOT / 'scripts/postgres_backup.py'
                 subprocess.run(['python3', str(tool), 'backup', SOURCE, str(backup), '--confirm-stopped'], check=True)
                 subprocess.run(['python3', str(tool), 'restore', str(backup), TARGET, '--confirm-stopped'], check=True)
                 start(TARGET, log)
                 assert api('/api/access', password='changed-bootstrap-password')[0] == 401
+                for user, initial in [(OWNER, BOOTSTRAP_PASSWORD), (REVIEWER, BOOTSTRAP_REVIEWER_PASSWORD), (BOOKKEEPER, INITIAL_BOOKKEEPER_PASSWORD)]:
+                    assert api('/api/access', user, initial)[0] == 401
                 status, owner = api('/api/access')
                 assert status == 200 and owner['canWrite']
                 status, reviewer = api('/api/access', REVIEWER, REVIEWER_PASSWORD)
@@ -229,7 +252,7 @@ def main():
                 assert write('/api/vendors', new_vendor, 'pg-bookkeeper-demoted', BOOKKEEPER, BOOKKEEPER_PASSWORD)[0] == 403
                 assert write('/api/accounts/' + bookkeeper_account['id'] + '/access', {'role': 'BOOKKEEPER', 'enabled': False}, 'pg-bookkeeper-disable')[0] == 200
                 assert api('/api/state', BOOKKEEPER, BOOKKEEPER_PASSWORD)[0] == 401
-                print('PostgreSQL 17 restore verified: bookkeeper identity, account IDs, reads, routine retry/posting and denied owner actions; stored roles, exact workspace, PNG/JPEG/PDF receipt bytes and headers, opening balance, closed statement and retained accounting close/reopen history, dated reports, protected writes and retained retries.')
+                print('PostgreSQL 17 restore verified: all three self-changed passwords survive source restart and restore with old passwords rejected; bookkeeper identity, account IDs, reads, routine retry/posting and denied owner actions; stored roles, exact workspace, PNG/JPEG/PDF receipt bytes and headers, opening balance, closed statement and retained accounting close/reopen history, dated reports, protected writes and retained retries.')
             finally:
                 stop()
 
