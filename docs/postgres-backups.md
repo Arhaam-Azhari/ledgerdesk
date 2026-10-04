@@ -50,3 +50,6 @@ The later [opening balance restoration checks](opening-balance-restoration.md) v
 
 
 The later [bookkeeper recovery fixture](bookkeeper-recovery.md) also verifies retained account IDs, roles and access limits, receipt reads, original request retries and deliberate new work after restoration.
+
+
+The later [self-changed password scenario](changed-password-recovery.md) verifies final owner/reviewer/bookkeeper logins after restart and restore. An older backup can contain older password hashes; review account access and subsequent password changes during an operator recovery.
