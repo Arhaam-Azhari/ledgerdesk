@@ -36,6 +36,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#30](https://github.com/Arhaam-Azhari/ledgerdesk/pull/30) | Download customer statement PDFs from Reports with retry and role checks |
 | [#31](https://github.com/Arhaam-Azhari/ledgerdesk/pull/31) | Explain dated account balances through individual ledger lines |
 | [#32](https://github.com/Arhaam-Azhari/ledgerdesk/pull/32) | Add dated account activity screen, debit/credit presentation and signed CSV evidence |
+| [#33](https://github.com/Arhaam-Azhari/ledgerdesk/pull/33) | Preview calendar-year earnings offsets and prerequisites without posting |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 

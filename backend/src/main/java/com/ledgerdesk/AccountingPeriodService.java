@@ -47,18 +47,8 @@ public class AccountingPeriodService {
             if (start.isAfter(end)) throw new IllegalArgumentException("The period must include the beginning of the recorded books.");
         }
         var bank = db.queryForList("SELECT id FROM bank_reconciliations WHERE business_id = 1 AND status = 'CLOSED' AND ends_on = ? ORDER BY closed_at DESC", end);
-        int prepaid = db.queryForObject("""
-            SELECT COUNT(*) FROM prepaid_periods r JOIN prepaid_plans p ON p.id = r.plan_id
-            WHERE p.business_id = 1 AND p.funded_on <= ? AND r.period_on <= ? AND r.entry_id IS NULL
-            AND NOT EXISTS (SELECT 1 FROM prepaid_corrections c WHERE c.plan_id = p.id AND c.corrected_on <= ?)
-            AND NOT EXISTS (SELECT 1 FROM prepaid_cancellations c WHERE c.plan_id = p.id AND c.cancelled_on <= ?)
-            """, Integer.class, end, end, end, end);
-        int depreciation = db.queryForObject("""
-            SELECT COUNT(*) FROM asset_periods r JOIN fixed_assets a ON a.id = r.asset_id
-            WHERE a.business_id = 1 AND a.funded_on <= ? AND r.period_on <= ? AND r.entry_id IS NULL
-            AND NOT EXISTS (SELECT 1 FROM asset_corrections c WHERE c.asset_id = a.id AND c.corrected_on <= ?)
-            AND NOT EXISTS (SELECT 1 FROM asset_retirements r WHERE r.asset_id = a.id AND r.retired_on <= ?)
-            """, Integer.class, end, end, end, end);
+        int prepaid = pendingPrepaidMonths(end);
+        int depreciation = pendingDepreciationMonths(end);
         var financial = reports.reports(start, end);
         var activity = cash.report(start, end);
         boolean balanced = financial.balanceSheet().difference().signum() == 0
@@ -106,6 +96,24 @@ public class AccountingPeriodService {
         ledger.complete(key, hash, id, actor, "ACCOUNTING_PERIOD_REOPENED");
         return id;
     }
+    int pendingPrepaidMonths(LocalDate end) {
+        return db.queryForObject("""
+            SELECT COUNT(*) FROM prepaid_periods r JOIN prepaid_plans p ON p.id = r.plan_id
+            WHERE p.business_id = 1 AND p.funded_on <= ? AND r.period_on <= ? AND r.entry_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM prepaid_corrections c WHERE c.plan_id = p.id AND c.corrected_on <= ?)
+            AND NOT EXISTS (SELECT 1 FROM prepaid_cancellations c WHERE c.plan_id = p.id AND c.cancelled_on <= ?)
+            """, Integer.class, end, end, end, end);
+    }
+
+    int pendingDepreciationMonths(LocalDate end) {
+        return db.queryForObject("""
+            SELECT COUNT(*) FROM asset_periods r JOIN fixed_assets a ON a.id = r.asset_id
+            WHERE a.business_id = 1 AND a.funded_on <= ? AND r.period_on <= ? AND r.entry_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM asset_corrections c WHERE c.asset_id = a.id AND c.corrected_on <= ?)
+            AND NOT EXISTS (SELECT 1 FROM asset_retirements r WHERE r.asset_id = a.id AND r.retired_on <= ?)
+            """, Integer.class, end, end, end, end);
+    }
+
     private List<Map<String, Object>> latest() {
         return db.queryForList("SELECT * FROM accounting_period_closes WHERE business_id = 1 AND status = 'CLOSED' ORDER BY ends_on DESC");
     }
