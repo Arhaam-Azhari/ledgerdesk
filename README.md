@@ -182,7 +182,7 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 269 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-four Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 275 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-four Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
@@ -314,3 +314,7 @@ The [bookkeeper recovery checks](docs/bookkeeper-recovery.md) verify stored role
 With persistent accounts enabled, owners, bookkeepers and reviewers can use **Change my password** in the header. Enter the current password and a confirmed replacement; a successful save locks the workspace for sign-in with the new password. Accounting permissions remain unchanged. See [instructions, connection-failure recovery, reviewed desktop/mobile captures and verification](docs/own-password.md).
 
 The [password recovery proof](docs/changed-password-recovery.md) now follows self-changed owner, reviewer and bookkeeper logins through real restarts and separate H2/PostgreSQL restores, preserving roles and rejecting old credentials.
+
+## Profit comparison API
+
+The [profit comparison API](docs/profit-comparison.md) compares two explicit, non-overlapping reporting periods and returns revenue, expense categories, net profit and exact current-minus-previous dollar changes. It uses accrual postings rather than cash collections. The browser editor and comparison CSV export are the next milestone; the existing Reports screen still displays one period at a time.
