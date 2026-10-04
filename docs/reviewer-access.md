@@ -36,3 +36,6 @@ These original screenshots use an empty fictional business to show permission co
 ![Reviewer report access and restricted navigation](screenshots/reviewer-reports.png)
 
 ![Phone reviewer workspace with accessible lock control](screenshots/mobile-reviewer.png)
+
+
+Stored accounts can also [change their own password](own-password.md) using the current password and CSRF. This personal login operation does not grant additional accounting or account-administration permissions.

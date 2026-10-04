@@ -8,8 +8,17 @@ This changes the authenticated account only. `POST /api/me/password` accepts `cu
 
 Reviewers retain read-only accounting access, and bookkeepers retain their existing limits. Neither gets access to account lists or other users' resets. Configured-login mode has no editable stored password; it omits the header control and the endpoint rejects attempts. Owner administration and offline recovery remain available separately.
 
-## Verification checkpoint
+## Verification
 
 The production frontend build and diff checks pass locally. Eight new backend checks cover every stored role, current-password validation, CSRF/authentication, target/role injection, disabled or other-business accounts, activity rollback, Unicode byte limits and configured-login rejection. The isolated Chromium workflow covers all roles, mismatched confirmation, a wrong current password, cancellation, cleared fields, desktop/mobile views, confirmed lock/sign-in and a server save whose response is deliberately lost.
 
-Full H2/PostgreSQL integration, browser regression and database restoration checks are pending. Original captures must be downloaded and reviewed before being presented as screen evidence. Run `npm run test:password` from `frontend` after packaging the backend and installing Chromium; keep ports 8097 and 5189 free. This remains local Basic authentication; changing a password does not establish a hosted session revocation design.
+Source `34ee4556de713a685639bd69de6aeb3823f4ed09` passed [run 37184170212](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37184170212): 269 integration tests on each of H2 and PostgreSQL 17, zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 24 Chromium workflows and the existing PostgreSQL restore check. Both original captures were downloaded and visually reviewed for readable labels, instructions and action controls; the mobile page stays within its width. Run `npm run test:password` from `frontend` after packaging the backend and installing Chromium; keep ports 8097 and 5189 free. This remains local Basic authentication; changing a password does not establish a hosted session revocation design.
+
+
+## Reviewed captures
+
+[Desktop password form](screenshots/password-editor.png) and [390-pixel mobile form](screenshots/password-mobile.png) use a fictional bookkeeper account and masked fields. The workflow also changes reviewer and owner passwords, verifies old-password rejection and new-password sign-in, and checks that non-owners still cannot open account administration.
+
+![Change your own password](screenshots/password-editor.png)
+
+The existing restore scenarios passed as regressions. A self-changed password followed through restart and backup is not part of this new browser fixture.
