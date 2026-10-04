@@ -11,7 +11,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/reports")
 public class ReportController {
     private final ReportService reports;
-    public ReportController(ReportService reports) { this.reports = reports; }
+    private final CustomerStatementService statements;
+    public ReportController(ReportService reports, CustomerStatementService statements) {
+        this.reports = reports;
+        this.statements = statements;
+    }
     @GetMapping ResponseEntity<ReportService.Reports> reports(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endsOn) {
@@ -19,6 +23,13 @@ public class ReportController {
     }
     @ExceptionHandler(IllegalArgumentException.class) @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) { return Map.of("message", error.getMessage()); }
+
+    @GetMapping("/customers/{customerId}/statement") ResponseEntity<CustomerStatementService.Statement> statement(
+            @PathVariable String customerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endsOn) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(statements.statement(customerId, startsOn, endsOn));
+    }
 
     @GetMapping("/profit-comparison") ResponseEntity<ReportService.ProfitComparison> comparison(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
