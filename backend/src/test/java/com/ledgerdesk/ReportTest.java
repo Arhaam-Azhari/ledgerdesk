@@ -193,4 +193,101 @@ class ReportTest {
         assertThat(report().balanceSheet().accumulatedEarnings()).isEqualByComparingTo("0");
     }
 
+    @Test void profitComparisonUsesInclusiveAccrualPeriodsAndExactCategoryChangesWithoutWriting() {
+        LocalDate previousStart = start.minusMonths(1), previousEnd = start.minusDays(1);
+        String oldInvoice = invoice("100.10", previousStart, previousEnd, "old-first");
+        invoice("200.20", previousEnd, previousEnd, "old-last");
+        invoice("500.50", start, end, "new-first");
+        invoice("600.60", end, end, "new-last");
+        invoice("999", end.plusDays(1), end.plusDays(1), "future");
+        ledger.createDraft(new LedgerService.Invoice("demo-customer", "Draft", start, end, "900"), "draft", "test");
+        bill("100.15", previousStart, previousEnd, "old-bill");
+        purchases.postExpense(new PurchaseService.Expense(vendor, "Software", start, "5100", "50.10"), "new-expense", "test");
+        ledger.recordPayment(oldInvoice, new LedgerService.Payment(start, "100.10"), "old-paid", "test");
+        var lines = db.queryForList("SELECT * FROM journal_lines ORDER BY id");
+        var activity = db.queryForList("SELECT * FROM audit_events ORDER BY id");
+        var commands = db.queryForList("SELECT * FROM commands ORDER BY command_key");
+        var result = reports.compareProfit(start, end, previousStart, previousEnd);
+        assertThat(result.current().profitLoss()).isEqualTo(report().profitLoss());
+        assertThat(result.previous().profitLoss()).isEqualTo(reports.reports(previousStart, previousEnd).profitLoss());
+        assertThat(result.change().revenue()).isEqualByComparingTo("800.80");
+        assertThat(result.change().expenses()).isEqualByComparingTo("-50.05");
+        assertThat(result.change().netProfit()).isEqualByComparingTo("850.85");
+        assertThat(result.change().accounts()).anySatisfy(a -> {
+            assertThat(a.code()).isEqualTo("5000"); assertThat(a.amount()).isEqualByComparingTo("-100.15");
+        }).anySatisfy(a -> {
+            assertThat(a.code()).isEqualTo("5100"); assertThat(a.amount()).isEqualByComparingTo("50.10");
+        });
+        assertThat(db.queryForList("SELECT * FROM journal_lines ORDER BY id")).isEqualTo(lines);
+        assertThat(db.queryForList("SELECT * FROM audit_events ORDER BY id")).isEqualTo(activity);
+        assertThat(db.queryForList("SELECT * FROM commands ORDER BY command_key")).isEqualTo(commands);
+    }
+
+    @Test void comparisonKeepsDatedReversalsSignedInTheirOwnPeriod() {
+        LocalDate previousStart = start.minusMonths(1), previousEnd = start.minusDays(1);
+        String i = invoice("100.10", previousEnd, previousEnd, "old-invoice");
+        String b = bill("80.05", previousEnd, previousEnd, "old-bill");
+        ledger.voidInvoice(i, start, "void-invoice", "test");
+        purchases.voidBill(b, start, "void-bill", "test");
+        var comparison = reports.compareProfit(start, end, previousStart, previousEnd);
+        assertThat(comparison.previous().profitLoss().netProfit()).isEqualByComparingTo("20.05");
+        assertThat(comparison.current().profitLoss().revenue()).isEqualByComparingTo("-100.10");
+        assertThat(comparison.current().profitLoss().expenses()).isEqualByComparingTo("-80.05");
+        assertThat(comparison.change().revenue()).isEqualByComparingTo("-200.20");
+        assertThat(comparison.change().expenses()).isEqualByComparingTo("-160.10");
+        assertThat(comparison.change().netProfit()).isEqualByComparingTo("-40.10");
+    }
+
+    @Test void comparisonAcceptsUnequalPeriodsAndGapsWithoutIncludingGapPostings() {
+        LocalDate previousStart = LocalDate.of(2024, 2, 29), currentStart = LocalDate.of(2024, 4, 1);
+        invoice("10.25", previousStart, previousStart, "leap-day");
+        invoice("999", previousStart.plusDays(1), previousStart.plusDays(1), "gap");
+        invoice("15.35", currentStart.plusDays(1), currentStart.plusDays(1), "current");
+        var comparison = reports.compareProfit(currentStart, currentStart.plusDays(1), previousStart, previousStart);
+        assertThat(comparison.previous().startsOn()).isEqualTo(previousStart);
+        assertThat(comparison.previous().endsOn()).isEqualTo(previousStart);
+        assertThat(comparison.current().endsOn()).isEqualTo(currentStart.plusDays(1));
+        assertThat(comparison.change().netProfit()).isEqualByComparingTo("5.10");
+    }
+
+    @Test void emptyComparisonRetainsEveryCategoryAndSupportsDateLimits() {
+        var comparison = reports.compareProfit(LocalDate.of(9999, 12, 31), LocalDate.of(9999, 12, 31),
+                LocalDate.of(1, 1, 1), LocalDate.of(1, 1, 1));
+        assertThat(comparison.change().revenue()).isEqualByComparingTo("0.00");
+        assertThat(comparison.change().expenses()).isEqualByComparingTo("0.00");
+        assertThat(comparison.change().netProfit()).isEqualByComparingTo("0.00");
+        assertThat(comparison.change().accounts()).hasSameSizeAs(comparison.current().profitLoss().accounts());
+        assertThat(comparison.change().accounts()).allSatisfy(a -> assertThat(a.amount()).isEqualByComparingTo("0.00"));
+    }
+
+    @Test void comparisonRejectsInvalidOverlappingAndReversedPeriods() {
+        LocalDate previousStart = start.minusMonths(1), previousEnd = start.minusDays(1);
+        assertThatThrownBy(() -> reports.compareProfit(null, end, previousStart, previousEnd)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(start, null, previousStart, previousEnd)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(start, end, null, previousEnd)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(start, end, previousStart, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(end, start, previousStart, previousEnd)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(start, end, previousEnd, previousStart)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(start, end, previousStart, start)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(start, end, end.plusDays(1), end.plusDays(2))).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(start, LocalDate.of(10000, 1, 1), previousStart, previousEnd)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reports.compareProfit(start, end, LocalDate.of(0, 1, 1), previousEnd)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test void comparisonEndpointRequiresLoginAllowsAllReadingRolesAndValidatesParameters() throws Exception {
+        String path = "/api/reports/profit-comparison?startsOn=2026-10-01&endsOn=2026-10-31"
+                + "&previousStartsOn=2026-09-01&previousEndsOn=2026-09-30";
+        http.perform(get(path)).andExpect(status().isUnauthorized());
+        for (String role : java.util.List.of("OWNER", "BOOKKEEPER", "REVIEWER"))
+            http.perform(get(path).with(user("reader").roles(role)))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.previous.endsOn").value("2026-09-30"))
+                .andExpect(jsonPath("$.current.startsOn").value("2026-10-01"))
+                .andExpect(jsonPath("$.change.netProfit").value("0.00"));
+        http.perform(get(path).with(httpBasic("test", "test-only"))).andExpect(status().isOk());
+        http.perform(get(path.replace("previousEndsOn=2026-09-30", "previousEndsOn=2026-10-01")).with(user("reader").roles("REVIEWER")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("The previous period must end before the current period starts."));
+        http.perform(get(path.replace("previousStartsOn=2026-09-01", "previousStartsOn=bad")).with(user("reader").roles("REVIEWER"))).andExpect(status().isBadRequest());
+        http.perform(get(path.replace("&previousEndsOn=2026-09-30", "")).with(user("reader").roles("REVIEWER"))).andExpect(status().isBadRequest());
+    }
 }

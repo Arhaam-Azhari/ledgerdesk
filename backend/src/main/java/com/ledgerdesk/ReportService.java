@@ -24,30 +24,15 @@ public class ReportService {
     public record AgingItem(String id, String reference, String party, LocalDate dueOn, long daysOverdue, String bucket, BigDecimal outstanding) {}
     public record Aging(List<AgingItem> items, Map<String, BigDecimal> buckets, BigDecimal total) {}
     public record Reports(LocalDate startsOn, LocalDate endsOn, ProfitLoss profitLoss, TrialBalance trialBalance, BalanceSheet balanceSheet, Aging receivables, Aging payables) {}
+    public record ProfitPeriod(LocalDate startsOn, LocalDate endsOn, ProfitLoss profitLoss) {}
+    public record ProfitComparison(ProfitPeriod current, ProfitPeriod previous, ProfitLoss change) {}
     public ReportService(JdbcTemplate db) { this.db = db; }
     private static BigDecimal zero() { return new BigDecimal("0.00"); }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Reports reports(LocalDate startsOn, LocalDate endsOn) {
-        if (startsOn == null || endsOn == null || startsOn.getYear() < 1 || endsOn.getYear() > 9999 || startsOn.isAfter(endsOn))
-            throw new IllegalArgumentException("Choose a valid report period, with the start on or before the end.");
-        var period = db.queryForList("""
-            SELECT a.code, a.name, a.kind, COALESCE(SUM(cash.debit-cash.credit), 0) AS balance
-            FROM accounts a LEFT JOIN (
-                SELECT l.* FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
-                WHERE e.business_id = 1 AND e.entry_date BETWEEN ? AND ?
-            ) cash ON cash.account_code = a.code
-            WHERE a.kind IN ('REVENUE', 'EXPENSE') GROUP BY a.code, a.name, a.kind ORDER BY a.code
-            """, startsOn, endsOn);
-        var accounts = new ArrayList<Account>();
-        BigDecimal revenue = zero(), expenses = zero();
-        for (var row : period) {
-            boolean income = row.get("kind").equals("REVENUE");
-            BigDecimal amount = (BigDecimal) row.get("balance");
-            if (income) { amount = amount.negate(); revenue = revenue.add(amount); }
-            else expenses = expenses.add(amount);
-            accounts.add(new Account(row.get("code").toString(), row.get("name").toString(), row.get("kind").toString(), amount.setScale(2)));
-        }
+        validatePeriod(startsOn, endsOn);
+        var profit = profitLoss(startsOn, endsOn);
         var balances = db.queryForList("""
             SELECT a.code, a.name, a.kind, COALESCE(SUM(cash.debit-cash.credit), 0) AS balance
             FROM accounts a LEFT JOIN (
@@ -65,8 +50,56 @@ public class ReportService {
             trial.add(new TrialRow(row.get("code").toString(), row.get("name").toString(), debit, credit));
             debits = debits.add(debit); credits = credits.add(credit);
         }
-        return new Reports(startsOn, endsOn, new ProfitLoss(accounts, revenue, expenses, revenue.subtract(expenses)),
+        return new Reports(startsOn, endsOn, profit,
                 new TrialBalance(trial, debits, credits), balanceSheet(balances), aging(endsOn, true), aging(endsOn, false));
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public ProfitComparison compareProfit(LocalDate startsOn, LocalDate endsOn,
+            LocalDate previousStartsOn, LocalDate previousEndsOn) {
+        validatePeriod(startsOn, endsOn);
+        validatePeriod(previousStartsOn, previousEndsOn);
+        if (!previousEndsOn.isBefore(startsOn))
+            throw new IllegalArgumentException("The previous period must end before the current period starts.");
+        // Both periods read the same database snapshot, even while another user posts work.
+        var current = profitLoss(startsOn, endsOn);
+        var previous = profitLoss(previousStartsOn, previousEndsOn);
+        var previousAmounts = new java.util.HashMap<String, BigDecimal>();
+        for (var account : previous.accounts()) previousAmounts.put(account.code(), account.amount());
+        var changes = new ArrayList<Account>();
+        for (var account : current.accounts())
+            changes.add(new Account(account.code(), account.name(), account.kind(),
+                    account.amount().subtract(previousAmounts.getOrDefault(account.code(), zero()))));
+        var change = new ProfitLoss(changes, current.revenue().subtract(previous.revenue()),
+                current.expenses().subtract(previous.expenses()), current.netProfit().subtract(previous.netProfit()));
+        return new ProfitComparison(new ProfitPeriod(startsOn, endsOn, current),
+                new ProfitPeriod(previousStartsOn, previousEndsOn, previous), change);
+    }
+
+    private void validatePeriod(LocalDate startsOn, LocalDate endsOn) {
+        if (startsOn == null || endsOn == null || startsOn.getYear() < 1 || endsOn.getYear() > 9999 || startsOn.isAfter(endsOn))
+            throw new IllegalArgumentException("Choose a valid report period, with the start on or before the end.");
+    }
+
+    private ProfitLoss profitLoss(LocalDate startsOn, LocalDate endsOn) {
+        var period = db.queryForList("""
+            SELECT a.code, a.name, a.kind, COALESCE(SUM(cash.debit-cash.credit), 0) AS balance
+            FROM accounts a LEFT JOIN (
+                SELECT l.* FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
+                WHERE e.business_id = 1 AND e.entry_date BETWEEN ? AND ?
+            ) cash ON cash.account_code = a.code
+            WHERE a.kind IN ('REVENUE', 'EXPENSE') GROUP BY a.code, a.name, a.kind ORDER BY a.code
+            """, startsOn, endsOn);
+        var accounts = new ArrayList<Account>();
+        BigDecimal revenue = zero(), expenses = zero();
+        for (var row : period) {
+            boolean income = row.get("kind").equals("REVENUE");
+            BigDecimal amount = (BigDecimal) row.get("balance");
+            if (income) { amount = amount.negate(); revenue = revenue.add(amount); }
+            else expenses = expenses.add(amount);
+            accounts.add(new Account(row.get("code").toString(), row.get("name").toString(), row.get("kind").toString(), amount.setScale(2)));
+        }
+        return new ProfitLoss(accounts, revenue, expenses, revenue.subtract(expenses));
     }
 
     private BalanceSheet balanceSheet(List<Map<String, Object>> balances) {
