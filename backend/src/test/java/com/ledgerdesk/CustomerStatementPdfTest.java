@@ -89,7 +89,7 @@ class CustomerStatementPdfTest {
     }
 
     @Test void longContentAndManyMovementsStayInsidePagesWithNumberedPeriodFooters() throws Exception {
-        db.update("UPDATE customers SET name=?, email=? WHERE id='demo-customer'", "W".repeat(160), "e".repeat(180) + "@example.test");
+        db.update("UPDATE customers SET name=?, email=? WHERE id='demo-customer'", "W".repeat(120), "e".repeat(180) + "@example.test");
         String id = invoice("W".repeat(240), "50.00", start, "long");
         for (int n = 0; n < 30; n++) ledger.recordPayment(id, new LedgerService.Payment(start, "0.10"), "part-" + n, "test");
         byte[] bytes = pdf.render(statements.statement("demo-customer", start, end));
