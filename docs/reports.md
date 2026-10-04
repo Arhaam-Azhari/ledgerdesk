@@ -2,7 +2,7 @@
 
 Reporting is read-only; the browser screen includes all five report views and CSV exports. It covers profit and loss, an end-date trial balance and balance sheet, and customer/vendor aging for the single USD business.
 
-The [profit comparison API](profit-comparison.md) adds two-period category and total changes. Its browser editor/export follows separately; this guide describes the existing single-period screen.
+Choose **Compare profit** within Reports for [two-period category/total changes and comparison CSV exports](profit-comparison.md). Choose **Single period reports** for the five views described here.
 
 ## API and dates
 

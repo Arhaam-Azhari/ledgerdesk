@@ -32,6 +32,14 @@ test("reviewer reads reports, cannot post and can lock then switch to owner", as
     path: "reviewer-results/reviewer-reports.png",
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Compare profit", exact: true }).click();
+  await page.getByLabel("Previous start", { exact: true }).fill("2026-09-01");
+  await page.getByLabel("Previous end", { exact: true }).fill("2026-09-30");
+  await page.getByLabel("Current start", { exact: true }).fill("2026-10-01");
+  await page.getByLabel("Current end", { exact: true }).fill("2026-10-31");
+  await page.getByRole("button", { name: "Run comparison", exact: true }).click();
+  await expect(page.locator(".comparison-results")).toContainText("Net profit");
+  await expect(page.getByRole("button", { name: "Export comparison CSV" })).toBeVisible();
   await page
     .getByRole("button", { name: "Cash activity", exact: true })
     .click();

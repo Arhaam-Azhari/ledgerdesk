@@ -315,6 +315,6 @@ With persistent accounts enabled, owners, bookkeepers and reviewers can use **Ch
 
 The [password recovery proof](docs/changed-password-recovery.md) now follows self-changed owner, reviewer and bookkeeper logins through real restarts and separate H2/PostgreSQL restores, preserving roles and rejecting old credentials.
 
-## Profit comparison API
+## Profit comparison
 
-The [profit comparison API](docs/profit-comparison.md) compares two explicit, non-overlapping reporting periods and returns revenue, expense categories, net profit and exact current-minus-previous dollar changes. It uses accrual postings rather than cash collections. The browser editor and comparison CSV export are the next milestone; the existing Reports screen still displays one period at a time.
+Open **Reports** and choose **Compare profit** to compare two explicit, non-overlapping periods. The table shows previous/current revenue, expense categories, net profit and exact current-minus-previous dollar changes. **Export comparison CSV** downloads those displayed amounts with both date ranges. Payments do not recognize income again, and unequal period lengths are clearly identified. See [instructions, worked figures and verification](docs/profit-comparison.md).

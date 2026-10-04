@@ -477,6 +477,9 @@ td code {
 
 .aging-table { min-width: 720px; }
 .report-results h3 { margin-top: 20px; }
+.comparison-table { min-width: 660px; margin-top: 20px; }
+.comparison-total { font-weight: 700; }
+.comparison-results tbody th { color: inherit; background: transparent; text-transform: none; letter-spacing: normal; font-size: 13px; }
 
 .owner-fields { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .owner-fields button { justify-self: start; }

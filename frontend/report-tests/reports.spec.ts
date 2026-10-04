@@ -5,6 +5,7 @@ test("run dated reports, export each view and preserve earlier balances after la
   page,
   request,
 }) => {
+  test.setTimeout(60000);
   const auth = {
     Authorization: `Basic ${Buffer.from("demo:demo-local-only").toString("base64")}`,
   };
@@ -230,6 +231,63 @@ test("run dated reports, export each view and preserve earlier balances after la
     path: "report-results/mobile-reports.png",
     fullPage: true,
   });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("button", { name: "Compare profit", exact: true }).click();
+  await page.getByLabel("Previous start", { exact: true }).fill("2026-10-01");
+  await page.getByLabel("Previous end", { exact: true }).fill("2026-10-31");
+  await page.getByLabel("Current start", { exact: true }).fill("2026-11-01");
+  await page.getByLabel("Current end", { exact: true }).fill("2026-11-01");
+  await page.getByRole("button", { name: "Run comparison", exact: true }).click();
+  const comparison = page.locator(".comparison-results");
+  await expect(comparison).toContainText("Previous: 2026-10-01 to 2026-10-31");
+  await expect(comparison).toContainText("Current: 2026-11-01 to 2026-11-01");
+  const profitRow = comparison.getByRole("row").filter({ hasText: "Net profit" });
+  await expect(profitRow.getByRole("cell").nth(1)).toHaveText("$550.00");
+  await expect(profitRow.getByRole("cell").nth(2)).toHaveText("$25.00");
+  await expect(profitRow.getByRole("cell").nth(3)).toHaveText("-$525.00");
+  await expect(comparison.getByRole("row").filter({ hasText: "Software subscriptions" })).toContainText("-$50.00");
+  await page.screenshot({ path: "report-results/profit-comparison.png", fullPage: true });
+  const comparisonDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export comparison CSV", exact: true }).click();
+  const comparisonFile = await comparisonDownload;
+  expect(comparisonFile.suggestedFilename()).toBe("ledgerdesk-profit-comparison-2026-10-01-2026-10-31-vs-2026-11-01-2026-11-01.csv");
+  const comparisonCsv = await readFile((await comparisonFile.path())!, "utf8");
+  expect(comparisonCsv).toContain('"Previous period","2026-10-01","2026-10-31"');
+  expect(comparisonCsv).toContain('"Current period","2026-11-01","2026-11-01"');
+  expect(comparisonCsv).toContain('"Net profit","Total","550.00","25.00","-525.00"');
+  expect(comparisonCsv).toContain('"Expenses","Total","650.00","0.00","-650.00"');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: "report-results/mobile-profit-comparison.png", fullPage: true });
+  await page.getByLabel("Previous end", { exact: true }).fill("2026-11-01");
+  await expect(comparison).toHaveCount(0);
+  await page.getByRole("button", { name: "Run comparison", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("previous period must end before");
+  await expect(page.getByRole("button", { name: "Export comparison CSV" })).toHaveCount(0);
+  await page.getByLabel("Previous end", { exact: true }).fill("2026-10-31");
+  let comparisonFailed = false;
+  await page.route("**/api/reports/profit-comparison?*", async (route) => {
+    if (!comparisonFailed) {
+      comparisonFailed = true;
+      await route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+    } else await route.continue();
+  });
+  await page.getByRole("button", { name: "Run comparison", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("could not be completed");
+  await expect(comparison).toHaveCount(0);
+  await page.getByRole("button", { name: "Run comparison", exact: true }).click();
+  await expect(comparison).toContainText("-$525.00");
+  await page.unroute("**/api/reports/profit-comparison?*");
+  await page.getByRole("button", { name: "Reload workspace", exact: true }).click();
+  await expect(comparison).toHaveCount(0);
+  await page.getByLabel("Previous start", { exact: true }).fill("2026-08-01");
+  await page.getByLabel("Previous end", { exact: true }).fill("2026-08-31");
+  await page.getByLabel("Current start", { exact: true }).fill("2026-09-01");
+  await page.getByLabel("Current end", { exact: true }).fill("2026-09-30");
+  await page.getByRole("button", { name: "Run comparison", exact: true }).click();
+  await expect(profitRow).toContainText("$0.00");
+  await page.getByRole("button", { name: "Single period reports", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Export CSV", exact: true })).toHaveCount(0);
   const after = await request
     .get("/api/state", { headers: auth })
     .then((r) => r.json());
