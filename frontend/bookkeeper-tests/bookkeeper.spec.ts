@@ -44,7 +44,7 @@ test("bookkeeper posts routine records and cannot use owner controls", async ({ 
   await expect(page.locator(".comparison-results")).toContainText("Net profit");
   await expect(page.getByRole("button", { name: "Export comparison CSV" })).toBeVisible();
   await page.getByRole("button", { name: "Customer statements", exact: true }).click();
-  await page.getByLabel("Statement customer").selectOption("demo-customer");
+  await page.getByRole("combobox", { name: "Statement customer", exact: true }).selectOption("demo-customer");
   await page.getByLabel("Statement start").fill("2026-10-01");
   await page.getByLabel("Statement end").fill("2026-10-31");
   await page.getByRole("button", { name: "Run statement", exact: true }).click();

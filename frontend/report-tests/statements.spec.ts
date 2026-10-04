@@ -31,7 +31,7 @@ test("customer statements retain historical balances, export evidence and clear 
   await page.getByRole("button", { name: "Open workspace" }).click();
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await page.getByRole("button", { name: "Customer statements", exact: true }).click();
-  await page.getByLabel("Statement customer", { exact: true }).selectOption(customer);
+  await page.getByRole("combobox", { name: "Statement customer", exact: true }).selectOption(customer);
   await page.getByLabel("Statement start", { exact: true }).fill("2030-10-01");
   await page.getByLabel("Statement end", { exact: true }).fill("2030-10-31");
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
@@ -50,7 +50,7 @@ test("customer statements retain historical balances, export evidence and clear 
     const downloaded = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export statement CSV", exact: true }).click();
     const file = await downloaded;
-    expect(file.suggestedFilename()).toContain(`ledgerdesk-customer-statement-${await page.getByLabel("Statement customer").inputValue()}`);
+    expect(file.suggestedFilename()).toContain(`ledgerdesk-customer-statement-${await page.getByRole("combobox", { name: "Statement customer", exact: true }).inputValue()}`);
     return readFile((await file.path())!, "utf8");
   }
   const csv = await exported();
@@ -88,10 +88,10 @@ test("customer statements retain historical balances, export evidence and clear 
   await page.unroute("**/api/reports/customers/*/statement?*");
   await page.getByRole("button", { name: "Reload workspace", exact: true }).click();
   await expect(result).toHaveCount(0);
-  await page.getByLabel("Statement customer").selectOption(formulaCustomer);
+  await page.getByRole("combobox", { name: "Statement customer", exact: true }).selectOption(formulaCustomer);
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   expect(await exported()).toContain('"Customer","\'=2+2"');
-  await page.getByLabel("Statement customer").selectOption(customer);
+  await page.getByRole("combobox", { name: "Statement customer", exact: true }).selectOption(customer);
   await expect(result).toHaveCount(0);
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   await page.getByRole("button", { name: "Single period reports", exact: true }).click();
