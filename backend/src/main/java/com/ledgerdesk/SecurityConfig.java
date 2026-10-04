@@ -43,6 +43,7 @@ public class SecurityConfig {
         // CSRF remains enabled, including for authenticated API writes.
         return http.authorizeHttpRequests(auth -> auth.requestMatchers("/api/csrf").permitAll()
                 .requestMatchers("/api/accounts", "/api/accounts/**").hasRole("OWNER")
+                .requestMatchers(HttpMethod.POST, "/api/me/password").hasAnyRole("OWNER", "BOOKKEEPER", "REVIEWER")
                 .requestMatchers(HttpMethod.GET, "/**").authenticated()
                 .requestMatchers(HttpMethod.HEAD, "/**").authenticated()
                 // Only listed routine operations are delegated; new writes stay owner-only.

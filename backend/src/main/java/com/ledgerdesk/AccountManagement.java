@@ -81,4 +81,23 @@ public class AccountManagement {
         db.update("UPDATE app_users SET password_hash=? WHERE id=?",encoder.encode(request.password()),id);
         audit(id,actor,"ACCOUNT_PASSWORD_CHANGED");
     }
+    @Transactional
+    public void ownPassword(Password request,String actor) {
+        if (!persistent) throw new IllegalArgumentException("Password changes require persistent account mode.");
+        db.queryForObject("SELECT id FROM businesses WHERE id=1 FOR UPDATE",Long.class);
+        // Resolve the target from the authenticated name, never from client account IDs.
+        var rows=db.queryForList("SELECT u.id,u.password_hash FROM app_users u JOIN business_memberships m ON m.user_id=u.id WHERE u.username=? AND u.enabled=TRUE AND m.business_id=1",actor);
+        if(rows.size()!=1) throw new IllegalArgumentException("An enabled account in this business is required.");
+        if(request==null) throw new IllegalArgumentException("Enter your current and new passwords.");
+        var previous=rows.get(0);
+        if(request.currentPassword()==null || request.currentPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72
+                || !encoder.matches(request.currentPassword(),previous.get("password_hash").toString()))
+            throw new IllegalArgumentException("Enter your current password to change your own login.");
+        PersistentAccounts.validate(actor,request.password());
+        if(encoder.matches(request.password(),previous.get("password_hash").toString()))
+            throw new IllegalArgumentException("Choose a different new password.");
+        db.update("UPDATE app_users SET password_hash=? WHERE id=?",encoder.encode(request.password()),previous.get("id"));
+        audit(previous.get("id").toString(),actor,"ACCOUNT_SELF_PASSWORD_CHANGED");
+    }
+
 }

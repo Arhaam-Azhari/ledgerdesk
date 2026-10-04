@@ -4,6 +4,7 @@ import {
   type PeriodPreview,
 } from "./AccountingPeriods";
 import { OpeningBankBalance, type OpeningState } from "./OpeningBankBalance";
+import { OwnPassword } from "./OwnPassword";
 import { Accounts, type ManagedAccount } from "./Accounts";
 import { FixedAssets, type AssetState } from "./FixedAssets";
 import { Prepaids, type PrepaidState } from "./Prepaids";
@@ -123,6 +124,7 @@ function App() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [editing, setEditing] = useState<Draft | null>(null);
   const [customerId, setCustomerId] = useState("");
   const requests = useRef(new Map<string, string>());
@@ -138,7 +140,7 @@ function App() {
       const csrf = await csrfResponse.json();
       headers[csrf.headerName] = csrf.token;
       headers["Content-Type"] = "application/json";
-      if (!path.startsWith("/api/accounts")) {
+      if (!path.startsWith("/api/accounts") && path !== "/api/me/password") {
         const signature = path + JSON.stringify(body);
         // Keep the same key after a connection failure, when posting may have succeeded.
         if (!requests.current.has(signature))
@@ -245,6 +247,21 @@ function App() {
       setBusy(false);
     }
   }
+  async function changeOwnPassword(currentPassword: string, password: string) {
+    if (!access?.persistentAccounts) return false;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await api("/api/me/password", { currentPassword, password });
+      setData(null); setCredentials(""); setAccess(null); setPage("Overview");
+      setEditing(null); setCustomerId(""); setChangingPassword(false);
+      requests.current.clear();
+      setNotice("Password changed. Sign in with your new password.");
+      return true;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not change your password.");
+      return false;
+    } finally { setBusy(false); }
+  }
   async function manageAccount(
     path: string,
     body: object,
@@ -258,6 +275,7 @@ function App() {
     try {
       await api(path, body);
       if (lockAfter) {
+        setChangingPassword(false);
         setData(null);
         setCredentials("");
         setAccess(null);
@@ -727,11 +745,17 @@ function App() {
                 setPage("Overview");
                 setEditing(null);
                 setCustomerId("");
+                setChangingPassword(false);
                 requests.current.clear();
               }}
             >
               Lock workspace
             </button>
+            {access?.persistentAccounts && (
+              <button className="secondary" disabled={busy} onClick={() => { setChangingPassword(true); setError(""); setNotice(""); }}>
+                Change my password
+              </button>
+            )}
             <span className="demo-tag">Fictional business · USD</span>
             <button
               className="secondary"
@@ -763,6 +787,9 @@ function App() {
           <div className="notice" role="status">
             {notice}
           </div>
+        )}
+        {changingPassword && access?.persistentAccounts && (
+          <OwnPassword busy={busy} save={changeOwnPassword} cancel={() => { setChangingPassword(false); setError(""); }} />
         )}
         {access?.role === "BOOKKEEPER" && (
           <section className="note" aria-label="Bookkeeper access">
