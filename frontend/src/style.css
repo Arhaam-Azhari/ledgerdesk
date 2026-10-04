@@ -504,3 +504,8 @@ td code {
 .statement-table td:first-child { white-space: nowrap; }
 .statement-table details { min-width: 160px; }
 .statement-table dd { margin: 4px 0 12px; overflow-wrap: anywhere; }
+
+.year-end-table { min-width: 640px; }
+.year-end-references { margin-top: 16px; }
+.year-end-references dd { margin: 4px 0 12px; overflow-wrap: anywhere; }
+.year-end-blockers li { margin-bottom: 8px; }
