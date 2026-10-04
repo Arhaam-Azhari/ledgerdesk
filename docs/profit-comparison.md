@@ -40,4 +40,13 @@ Six new integration tests cover known exact totals/category changes, inclusive b
 
 The API source `7638378c4904ee6d31e7e35e7e2d840284001abf` passed all three jobs in [run 37227961068](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37227961068): 275 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 24 existing Chromium workflows and native PostgreSQL restoration. That checkpoint covers the API and existing screen regressions.
 
-The comparison screen builds locally. Its extended reports workflow checks known prior/current values, later settlement payments, negative changes, downloaded CSV content and dates, unequal lengths, rejected overlap, a failed read/retry, cleared results, empty periods, unchanged books/activity and a 390-pixel layout. Reviewer and bookkeeper workflows also run the comparison. Run `npm run test:reports`, `npm run test:reviewer` and `npm run test:bookkeeper` in `frontend` after packaging the backend and installing Chromium. CI results and reviewed captures for this screen are pending at this checkpoint.
+The comparison screen builds locally. Its extended reports workflow checks known prior/current values, later settlement payments, negative changes, downloaded CSV content and dates, unequal lengths, rejected overlap, a failed read/retry, cleared results, empty periods, unchanged books/activity and a 390-pixel layout. Reviewer and bookkeeper workflows also run the comparison. Run `npm run test:reports`, `npm run test:reviewer` and `npm run test:bookkeeper` in `frontend` after packaging the backend and installing Chromium. Screen source `b909f5220f54d7b4cbd8fb57c75e1af2a3cc0cbf` passed all three jobs in [run 37229027559](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37229027559): 275 integration tests on each database with zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 24 Chromium workflows and native PostgreSQL restoration. The extended reports check includes the comparison and inspected CSV; reviewer and bookkeeper checks use the same editor. Both original screenshots were downloaded and visually reviewed.
+
+
+## Screen evidence
+
+The browser fixture compares October revenue of $1,200 and expenses of $650 (profit $550) with November 1 revenue/profit of $25. November settlement of earlier invoices and bills does not add revenue or expense. The profit change is −$525. These fictional figures are separate from the API example above. The desktop capture shows all amounts; the mobile capture shows the same editor and table, whose amount columns scroll horizontally.
+
+![Previous and current profit with signed category changes](screenshots/profit-comparison.png)
+
+[Mobile comparison editor and scrollable table](screenshots/mobile-profit-comparison.png)

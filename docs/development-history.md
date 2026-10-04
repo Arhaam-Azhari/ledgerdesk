@@ -29,6 +29,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#23](https://github.com/Arhaam-Azhari/ledgerdesk/pull/23) | Let stored accounts change their own password |
 | [#24](https://github.com/Arhaam-Azhari/ledgerdesk/pull/24) | Verify self-changed passwords through restart and database restoration |
 | [#25](https://github.com/Arhaam-Azhari/ledgerdesk/pull/25) | Compare accrual profit and category changes across two periods through the reporting API |
+| [#26](https://github.com/Arhaam-Azhari/ledgerdesk/pull/26) | Add the profit comparison screen and dated CSV export |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 
