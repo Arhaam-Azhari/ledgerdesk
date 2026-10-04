@@ -47,7 +47,7 @@ test("account activity explains debit and credit balances, exports evidence and 
   await movements.first().getByText("Posting references", { exact: true }).click();
   await expect(movements.first()).toContainText(expense);
   await expect(movements.first()).toContainText("$49.96 Dr");
-  await page.screenshot({ path: "report-results/account-activity.png", fullPage: true });
+  await page.screenshot({ path: "account-activity-results/account-activity.png", fullPage: true });
   async function exported() {
     const downloading = page.waitForEvent("download"); await exportButton.click();
     const file = await downloading;
@@ -65,7 +65,7 @@ test("account activity explains debit and credit balances, exports evidence and 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const scroll = result.locator(".account-movements");
   expect(await scroll.evaluate((element) => { element.scrollLeft = element.scrollWidth; return element.scrollLeft; })).toBeGreaterThan(0);
-  await page.screenshot({ path: "report-results/mobile-account-activity.png", fullPage: true });
+  await page.screenshot({ path: "account-activity-results/mobile-account-activity.png", fullPage: true });
   await account.selectOption("4000");
   await expect(result).toHaveCount(0); await expect(exportButton).toHaveCount(0);
   await run.click();
