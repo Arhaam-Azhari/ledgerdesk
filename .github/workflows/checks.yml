@@ -33,6 +33,11 @@ jobs:
           TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/ledgerdesk
           TEST_DATABASE_USER: ledgerdesk
           TEST_DATABASE_PASSWORD: ci-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: statement-pdf-proof
+          path: backend/target/statement-pdf-proof/
+          if-no-files-found: error
   browser:
     runs-on: ubuntu-latest
     steps:

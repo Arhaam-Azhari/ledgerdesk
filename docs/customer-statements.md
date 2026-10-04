@@ -39,7 +39,7 @@ The read uses one repeatable-read transaction. Customer, invoice and entry queri
 
 Six integration tests cover known opening/movement/closing amounts, payment-to-invoice linkage, inclusive boundaries, agreement with dated receivable aging, unchanged accounting/activity/commands, later settlements and reversals, same-day ordering, exact split payments, stable line IDs, empty/date-limit cases, drafts/future invoices, other customers/businesses, authentication/reading roles, cache headers and invalid parameters. Run `mvn -f backend/pom.xml -Dtest=CustomerStatementTest test` against a disposable test database. Source `f6e64af527261dcb29d5dd5a72f40762535f04b1` passed all three jobs in [run 37230201532](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37230201532): 281 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 24 existing Chromium workflows and native PostgreSQL restoration. The initial test annotation import was corrected before this passing checkpoint. At that API checkpoint, browser checks covered existing screens. Statement-screen verification follows below.
 
-This covers the supported invoice/payment/reversal workflow. Opening unpaid-document migration, credit notes, refunds, arbitrary receivable journals, foreign currencies, historical contact versions and delivery remain outside the scope. The screen and CSV are internal accounting tools. PDF statements and customer delivery are separate future workflows.
+This covers the supported invoice/payment/reversal workflow. Opening unpaid-document migration, credit notes, refunds, arbitrary receivable journals, foreign currencies, historical contact versions and delivery remain outside the scope. The screen and CSV are internal accounting tools. The PDF API is described below; its browser download button and customer delivery are separate workflows.
 
 
 ## Screen and CSV
@@ -58,3 +58,29 @@ Cedar Design Partners uses the worked amounts above with fictional September–N
 ![Customer statement with running balances and expanded payment evidence](screenshots/customer-statement.png)
 
 [Mobile statement summary and horizontally scrolled ledger evidence](screenshots/mobile-customer-statement.png)
+
+
+## PDF download API
+
+Use the workspace login with:
+
+```text
+GET /api/reports/customers/demo-customer/statement/pdf?startsOn=2030-10-01&endsOn=2030-10-31
+```
+
+This endpoint downloads `ledgerdesk-customer-statement-2030-10-01-2030-10-31.pdf`. Owners, bookkeepers and reviewers can read it. Anonymous requests return 401; invalid dates and unknown/out-of-scope customers return 400 before rendering. Successful responses use `application/pdf`, attachment disposition, `Cache-Control: no-store` and the security filter's `nosniff` header. The filename uses validated dates rather than contact text.
+
+The PDF carries current customer details, both dates, the five summary amounts, dated invoice/payment/reversal activity, descriptions and running balances. It reads a fresh statement in one repeatable-read transaction. Later-dated payments leave earlier figures intact; a new backdated posting can change a subsequent download. CSV exports the displayed snapshot, while this API reads the books again. Reading or downloading creates no accounting, audit or request-key rows.
+
+The invoice and statement renderers share embedded-font wrapping and pagination. Page footers repeat the selected period and page number. Long names, emails and descriptions wrap; unsupported font characters appear as `[U+XXXX]` with an explanatory note. The PDF is an internal accounting copy: ledger IDs remain available in the screen/CSV, and payment instructions and delivery are not configured. A download button on the statement screen is the next step.
+
+Run `mvn -f backend/pom.xml -Dtest=CustomerStatementPdfTest,LedgerWorkflowTest test` against a disposable test database. Five new PDF tests cover the worked $325.10 historical closing after later settlement, unchanged journal/activity/request keys, empty carried balances, date limits, all reading roles, invalid requests, Unicode/control text and multipage content. The multipage check also measures every glyph against page margins. Existing invoice PDF tests cover number, payment balance, void status, pagination and character fallback after the shared-layout extraction. CI retains `statement-pdf-proof` with a worked statement and a deliberately long multipage fixture for visual review.
+
+
+PDF source `976e5097a068a58d6e1cd0de623cc4fe98afc8a3` passed 286 integration tests on each of H2 and PostgreSQL 17, with zero failures/errors/skips, and 14 backup-tool tests in [run 37233147797](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37233147797). The production frontend build, all 25 existing Chromium workflows and native PostgreSQL restoration also passed. Browser checks are regression evidence here; the PDF button is not yet present. The first fixture used a name above the database's 120-character limit; the corrected checkpoint changes only that test name. Original generated PDF artifacts were downloaded, and the worked page plus all six long-text pages were rendered and visually reviewed. There was no clipping or overlap; selected periods and page numbers remained readable throughout.
+
+### Rendered PDF proof
+
+The [downloadable sample](examples/customer-statement.pdf) is the original PDF from the passing test, using fictional Cedar Design Partners activity in October 2030. Its closing $325.10 remains after November settlement. The preview below is rendered from that PDF, rather than a mockup. The six-page fixture is retained in the run's `statement-pdf-proof` artifact.
+
+![Rendered customer statement PDF with dated activity and a $325.10 closing balance](screenshots/customer-statement-pdf.png)

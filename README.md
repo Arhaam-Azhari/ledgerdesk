@@ -182,7 +182,7 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 281 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-five Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 286 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-five Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
@@ -322,4 +322,4 @@ Open **Reports** and choose **Compare profit** to compare two explicit, non-over
 
 ## Customer statements
 
-Open **Reports**, choose **Customer statements**, select a customer and inclusive dates, then **Run statement**. Review the opening amount owed, invoices, payments, reversals and closing amount. Expand **Ledger references** to inspect the source evidence; **Export statement CSV** downloads the displayed statement with both dates and ledger IDs. Later settlements leave earlier figures intact. See [instructions, worked amounts and verification](docs/customer-statements.md). PDF statements and customer delivery remain future work.
+Open **Reports**, choose **Customer statements**, select a customer and inclusive dates, then **Run statement**. Review the opening amount owed, invoices, payments, reversals and closing amount. Expand **Ledger references** to inspect the source evidence; **Export statement CSV** downloads the displayed statement with both dates and ledger IDs. Later settlements leave earlier figures intact. See [instructions, worked amounts and verification](docs/customer-statements.md). The authenticated PDF API downloads a fresh dated statement; its screen button and customer delivery remain next steps.
