@@ -28,4 +28,4 @@ Source `eaf47a5a11ffa572974cd99271de68aa2573d39f` passed [run 37182387234](https
 
 ![Bookkeeper vendor workspace](screenshots/bookkeeper-vendor.png)
 
-This demonstrates delegated access at the API boundary with permission-aware screens. Bookkeeper-specific backup restoration and existing-database migration fixtures remain further verification work.
+This demonstrates delegated access at the API boundary with permission-aware screens. The subsequent [bookkeeper recovery and populated upgrade fixtures](bookkeeper-recovery.md) verify retained accounts and permissions after actual H2/PostgreSQL restoration and version-21-to-22 migration.

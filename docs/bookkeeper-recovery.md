@@ -14,6 +14,8 @@ Only after the original recovery comparisons finish does the fixture allow delib
 
 The test runs against H2 and PostgreSQL using the same database selection as the integration suite. It does not modify the main test schema. It covers this populated membership upgrade; it is not a general rollback or online deployment migration strategy.
 
-## Verification checkpoint
+## Verification
 
-Python compilation, all 14 backup-tool tests, the frontend production build and diff checks pass locally. Full integration, real H2/PostgreSQL restoration and browser regression runs are pending. No application UI source changes are included; the existing reviewed bookkeeper screenshots continue to illustrate the screen, while process tests provide the recovery evidence.
+Python compilation, all 14 backup-tool tests, the frontend production build and diff checks pass locally. Source `46d2f3ad316fb831d064e419935e8908715b4105` passed [run 37183527264](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37183527264): 261 integration tests on each of H2 and PostgreSQL 17, zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 23 Chromium workflows and the actual PostgreSQL restore job. The populated migration test passed on both databases, and both packaged-backend restore fixtures completed. No application UI source changes are included; the existing reviewed bookkeeper screenshots continue to illustrate the screen, while process tests provide the recovery evidence.
+
+These checks cover graceful offline backups and this specific schema upgrade. They do not establish crash recovery, live backup, server-role restoration or a hosted authentication design.
