@@ -280,3 +280,11 @@ Screen source `f8bd8c032e49d6984aff0d8fb3c7213a0e190d8c` passed all three jobs i
 Updated desktop/mobile captures were downloaded and visually reviewed, replacing the earlier versions at the same paths. Buttons have spacing on desktop and stack on the 390-pixel screen; the page fits while the movement table scrolls independently. The PDF saved by Chromium was extracted and rendered for review and shows the same $325.10 closing, dated movements and contact as the screen. It is retained as `report-results/customer-statement-download.pdf` in the run's `browser-results` artifact. The separate API sample and browser scenario use their own fictional fixtures with the same balances.
 
 See [download instructions and current captures](customer-statements.md#downloading-from-reports). Customer delivery is outside this milestone.
+
+
+## Dated account activity API
+
+
+Source `5c8d3a14a59a028fc061352f484439d33776febd` passed 292 integration tests on each of H2 and PostgreSQL 17, with zero failures/errors/skips, plus 14 backup-tool tests in [run 37235848702](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37235848702). The production frontend build, all 25 existing Chromium workflows and native PostgreSQL restoration also passed. Existing browser checks are regression evidence; there is no account activity screen at this checkpoint. The six account activity tests exercise the actual service and HTTP endpoint on both databases.
+
+New tests explain the $70.16 debit bank closing, retain an unusual $29.84 credit closing, and compare every account closing to its dated trial-balance row. They cover exact split lines, stable date/ID order, source evidence, later settlements/reversals, drafts/future invoices, business scope, empty carried balances, leap/date limits, reading roles, decimal strings and cache/error behavior without writes. See [calculation, signs and reproduction](account-activity.md). The account activity screen and CSV remain the next step.
