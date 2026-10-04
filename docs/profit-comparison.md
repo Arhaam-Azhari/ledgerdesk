@@ -1,6 +1,10 @@
 # Profit comparison
 
-This milestone adds the accounting API for comparing revenue, expense categories and net profit between two periods. It helps a small-business owner see where a change in profit came from. The browser comparison editor and export are the next step; the existing Reports screen still runs one period at a time.
+Profit comparison shows revenue, expense categories and net profit across two periods, so an owner can see where a change in profit came from. Open **Reports**, choose **Compare profit**, enter both date ranges and choose **Run comparison**. **Single period reports** returns to the existing financial reports and aging views.
+
+The defaults compare the current month to date with the previous full month. These lengths differ, so review the ranges before drawing conclusions. The results retain both periods and show previous, current and current-minus-previous USD amounts. The table can be scrolled horizontally on a narrow screen. Owners, bookkeepers and reviewers have the same read-only comparison controls.
+
+**Export comparison CSV** downloads the displayed results with both ranges in the file and filename. It uses UTF-8 with a byte-order mark, quoted fields, CRLF rows and plain decimal amounts. User text is protected against spreadsheet formulas; signed monetary amounts remain numbers. Editing any date, reloading the workspace, changing report modes or a failed comparison clears obsolete results before another export. If a read fails, retry **Run comparison**; it does not post accounting entries.
 
 ## Dates and response
 
@@ -34,4 +38,6 @@ The original report and the comparison share one profit calculation. The compari
 
 Six new integration tests cover known exact totals/category changes, inclusive boundaries, payments/drafts/future entries, unchanged books/activity/commands, dated reversals, unequal periods and gaps, leap-day/single-day ranges, empty categories, date limits, rejected invalid/overlapping periods, authentication, reading roles and cache headers. Run them with `mvn -f backend/pom.xml -Dtest=ReportTest test` against a disposable test database. The regular CI suite runs these with all existing tests on H2 and PostgreSQL 17.
 
-Source `7638378c4904ee6d31e7e35e7e2d840284001abf` passed all three jobs in [run 37227961068](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37227961068): 275 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 24 existing Chromium workflows and native PostgreSQL restoration. No application UI changes or new screenshots are included in this API milestone; the browser results provide regression evidence for existing screens.
+The API source `7638378c4904ee6d31e7e35e7e2d840284001abf` passed all three jobs in [run 37227961068](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37227961068): 275 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 24 existing Chromium workflows and native PostgreSQL restoration. That checkpoint covers the API and existing screen regressions.
+
+The comparison screen builds locally. Its extended reports workflow checks known prior/current values, later settlement payments, negative changes, downloaded CSV content and dates, unequal lengths, rejected overlap, a failed read/retry, cleared results, empty periods, unchanged books/activity and a 390-pixel layout. Reviewer and bookkeeper workflows also run the comparison. Run `npm run test:reports`, `npm run test:reviewer` and `npm run test:bookkeeper` in `frontend` after packaging the backend and installing Chromium. CI results and reviewed captures for this screen are pending at this checkpoint.

@@ -12,6 +12,7 @@ import { Accruals, type AccrualState } from "./Accruals";
 import { Adjustments, type AdjustmentState } from "./Adjustments";
 import { OwnerEquity, type EquityState } from "./OwnerEquity";
 import { Reports, type ReportData } from "./Reports";
+import type { ComparisonData } from "./ProfitComparison";
 import { CashActivity, type CashData } from "./CashActivity";
 import {
   BankReconciliation,
@@ -324,6 +325,17 @@ function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function compareProfit(start: string, end: string, previousStart: string, previousEnd: string): Promise<ComparisonData | null> {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const query = new URLSearchParams({ startsOn: start, endsOn: end, previousStartsOn: previousStart, previousEndsOn: previousEnd });
+      return await api(`/api/reports/profit-comparison?${query}`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not compare profit.");
+      return null;
+    } finally { setBusy(false); }
   }
 
   async function previewPeriod(end: string): Promise<PeriodPreview | null> {
@@ -1501,7 +1513,7 @@ function App() {
             />
           )}
         {page === "Reports" && (
-          <Reports busy={busy} load={loadReports} workspace={data} />
+          <Reports busy={busy} load={loadReports} compare={compareProfit} workspace={data} />
         )}
         {page === "Activity" && (
           <section className="card">

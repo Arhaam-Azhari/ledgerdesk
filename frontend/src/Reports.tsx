@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cents, dollars, today } from "./money";
+import { ProfitComparison, type ComparisonLoader } from "./ProfitComparison";
 
 type Account = { code: string; name: string; kind: string; amount: string };
 type Aging = {
@@ -114,11 +115,14 @@ export function Reports({
   busy,
   load,
   workspace,
+  compare,
 }: {
   workspace: object;
   busy: boolean;
   load: (start: string, end: string) => Promise<ReportData | null>;
+  compare: ComparisonLoader;
 }) {
+  const [comparing, setComparing] = useState(false);
   const [start, setStart] = useState(today().slice(0, 4) + "-01-01");
   const [end, setEnd] = useState(today());
   const [result, setResult] = useState<ReportData | null>(null);
@@ -238,8 +242,14 @@ export function Reports({
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  const modeSelector = <div className="report-tabs">
+    <button className="secondary" disabled={busy} aria-pressed={!comparing} onClick={() => { setComparing(false); setResult(null); }}>Single period reports</button>
+    <button className="secondary" disabled={busy} aria-pressed={comparing} onClick={() => { setComparing(true); setResult(null); }}>Compare profit</button>
+  </div>;
+  if (comparing) return <>{modeSelector}<ProfitComparison busy={busy} workspace={workspace} load={compare} /></>;
   return (
     <>
+      {modeSelector}
       <p className="intro">
         Read the books for a chosen period and inspect what was owed at its end.
         Reports do not post entries or close periods.
