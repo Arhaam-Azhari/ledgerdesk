@@ -499,3 +499,8 @@ td code {
 
 .handoff-preview { border-top: 1px solid #e2e9e8; margin-top: 24px; padding-top: 12px; }
 .linked-bill { margin-top: 16px; }
+
+.statement-table { min-width: 1000px; margin-top: 16px; }
+.statement-table td:first-child { white-space: nowrap; }
+.statement-table details { min-width: 160px; }
+.statement-table dd { margin: 4px 0 12px; overflow-wrap: anywhere; }

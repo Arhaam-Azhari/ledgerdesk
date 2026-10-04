@@ -1,6 +1,6 @@
 # Customer account statements
 
-This API milestone reads a customer's receivable activity for an inclusive date range. It connects an opening amount owed, invoice charges, payments and retained invoice reversals to a closing balance. The statement screen and download are the next step; no customer-facing sending service is included.
+Customer statements connect an opening amount owed, invoice charges, payments and retained invoice reversals to a closing balance for an inclusive period. Open **Reports**, choose **Customer statements**, select a customer and dates, then choose **Run statement**. Owners, bookkeepers and reviewers can use it.
 
 ## Request and response
 
@@ -39,4 +39,13 @@ The read uses one repeatable-read transaction. Customer, invoice and entry queri
 
 Six integration tests cover known opening/movement/closing amounts, payment-to-invoice linkage, inclusive boundaries, agreement with dated receivable aging, unchanged accounting/activity/commands, later settlements and reversals, same-day ordering, exact split payments, stable line IDs, empty/date-limit cases, drafts/future invoices, other customers/businesses, authentication/reading roles, cache headers and invalid parameters. Run `mvn -f backend/pom.xml -Dtest=CustomerStatementTest test` against a disposable test database. Source `f6e64af527261dcb29d5dd5a72f40762535f04b1` passed all three jobs in [run 37230201532](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37230201532): 281 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 24 existing Chromium workflows and native PostgreSQL restoration. The initial test annotation import was corrected before this passing checkpoint. Existing browser checks are regression evidence; no statement screen is included yet.
 
-This covers the supported invoice/payment/reversal workflow. Opening unpaid-document migration, credit notes, refunds, arbitrary receivable journals, foreign currencies, historical contact versions and delivery remain outside the scope. It is an internal accounting statement API; screen captures and exports follow with the UI milestone.
+This covers the supported invoice/payment/reversal workflow. Opening unpaid-document migration, credit notes, refunds, arbitrary receivable journals, foreign currencies, historical contact versions and delivery remain outside the scope. The screen and CSV are internal accounting tools. PDF statements and customer delivery are separate future workflows.
+
+
+## Screen and CSV
+
+The summary shows opening, charges, payments, reversals and closing. Activity rows show the invoice number/description, date, charge/reduction and running balance. Expand **Ledger references** to inspect the invoice, payment and journal IDs. On a phone, scroll the activity table horizontally; summary amounts remain visible above it. The screen explains same-day presentation order and current contact details.
+
+**Export statement CSV** downloads the displayed customer/date context, totals, activity and ledger IDs. The filename uses the customer ID and both dates. Files are UTF-8 with a byte-order mark, quoted fields, CRLF rows and validated decimal money. Formula-looking contact/description text is prefixed with an apostrophe. Customer/date edits, workspace reloads, mode changes and failed reads clear old results before another export. Retry **Run statement** after a failed read; it does not change the books.
+
+The screen builds locally. A new reports browser scenario checks the known $325.10 statement after later settlements, payment linkage, ledger references, CSV content, formula-looking names, a carried balance in an empty period, date errors, failed-read retry, cleared results, unchanged records and mobile horizontal scrolling. Reviewer/bookkeeper scenarios also run statements. Run `npm run test:reports`, `npm run test:reviewer` and `npm run test:bookkeeper` in `frontend` after packaging the backend and installing Chromium. Full CI and reviewed screen captures are pending at this checkpoint.
