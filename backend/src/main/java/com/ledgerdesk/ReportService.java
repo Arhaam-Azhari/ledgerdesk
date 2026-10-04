@@ -81,12 +81,14 @@ public class ReportService {
             throw new IllegalArgumentException("Choose a valid report period, with the start on or before the end.");
     }
 
+    // Closing offsets clear ledger balances, but are not another sale or expense.
     private ProfitLoss profitLoss(LocalDate startsOn, LocalDate endsOn) {
         var period = db.queryForList("""
             SELECT a.code, a.name, a.kind, COALESCE(SUM(cash.debit-cash.credit), 0) AS balance
             FROM accounts a LEFT JOIN (
                 SELECT l.* FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
                 WHERE e.business_id = 1 AND e.entry_date BETWEEN ? AND ?
+                AND NOT EXISTS (SELECT 1 FROM year_end_closes y WHERE y.business_id = e.business_id AND y.entry_id = e.id)
             ) cash ON cash.account_code = a.code
             WHERE a.kind IN ('REVENUE', 'EXPENSE') GROUP BY a.code, a.name, a.kind ORDER BY a.code
             """, startsOn, endsOn);
