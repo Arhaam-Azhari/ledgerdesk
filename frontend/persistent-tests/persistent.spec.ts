@@ -16,9 +16,11 @@ test("stored accounts and accounting data survive restart, recovery and backup r
   let logs = "";
   let spawnError: Error | null = null;
   const owner = "persistent-owner",
-    reviewer = "persistent-reviewer";
+    reviewer = "persistent-reviewer",
+    bookkeeper = "persistent-bookkeeper";
   const ownerPassword = "owner-first-password",
-    reviewerPassword = "reviewer-first-password";
+    reviewerPassword = "reviewer-first-password",
+    bookkeeperPassword = "bookkeeper-first-password";
   const auth = (username: string, password: string) => ({
     Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
   });
@@ -102,9 +104,18 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     expect(firstOwner.ok()).toBe(true);
     expect((await firstOwner.json()).canWrite).toBe(true);
     const csrf = await request.get("/api/csrf").then((r) => r.json());
+    const accountResponse = await request.post("/api/accounts", {
+      headers: { ...auth(owner, ownerPassword), [csrf.headerName]: csrf.token },
+      data: { username: bookkeeper, password: bookkeeperPassword, role: "BOOKKEEPER" },
+    });
+    expect(accountResponse.ok()).toBe(true);
+    const bookkeeperId = (await accountResponse.json()).id as string;
+    const accountsBefore = await request.get("/api/accounts", {
+      headers: auth(owner, ownerPassword),
+    }).then((r) => r.json());
     const vendor = await request.post("/api/vendors", {
       headers: {
-        ...auth(owner, ownerPassword),
+        ...auth(bookkeeper, bookkeeperPassword),
         [csrf.headerName]: csrf.token,
         "Idempotency-Key": "persistent-vendor",
       },
@@ -288,6 +299,9 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     expect(
       (await identity(reviewer, "changed-reviewer-password")).status(),
     ).toBe(401);
+    const restartedBookkeeper = await identity(bookkeeper, bookkeeperPassword);
+    expect(restartedBookkeeper.ok()).toBe(true);
+    expect(await restartedBookkeeper.json()).toMatchObject({ role: "BOOKKEEPER", canWrite: true });
     const storedOwner = await identity(owner, ownerPassword);
     expect(storedOwner.ok()).toBe(true);
     expect((await storedOwner.json()).role).toBe("OWNER");
@@ -436,10 +450,32 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       .get("/api/state", { headers: auth(owner, recoveredPassword) })
       .then((r) => r.json());
     expect(restoredState).toEqual(recoveredState);
+    const restoredBookkeeper = await identity(bookkeeper, bookkeeperPassword);
+    expect(restoredBookkeeper.ok()).toBe(true);
+    expect(await restoredBookkeeper.json()).toMatchObject({ role: "BOOKKEEPER", canWrite: true });
+    expect((await identity(bookkeeper, "wrong-bookkeeper-password")).status()).toBe(401);
+    expect(await request.get("/api/accounts", { headers: auth(owner, recoveredPassword) }).then((r) => r.json())).toEqual(accountsBefore);
+    expect((await request.get("/api/accounts", { headers: auth(bookkeeper, bookkeeperPassword) })).status()).toBe(403);
+    expect(await request.get("/api/state", { headers: auth(bookkeeper, bookkeeperPassword) }).then((r) => r.json())).toEqual(recoveredState);
+    const bookkeeperCsrf = await request.get("/api/csrf").then((r) => r.json());
+    async function bookkeeperPost(path: string, data: object, key: string) {
+      return request.post(path, {
+        headers: { ...auth(bookkeeper, bookkeeperPassword), [bookkeeperCsrf.headerName]: bookkeeperCsrf.token, "Idempotency-Key": key },
+        data,
+      });
+    }
+    const vendorRetry = await bookkeeperPost("/api/vendors", { name: "Retained supplier", email: "accounts@example.test" }, "persistent-vendor");
+    expect(vendorRetry.ok()).toBe(true);
+    expect((await vendorRetry.json()).id).toBe(vendorId);
+    for (const path of ["/api/accounts", "/api/opening-bank-balance", "/api/equity", "/api/accounting-periods", `/api/bank/reconciliations/${bankId}/reopen`])
+      expect((await bookkeeperPost(path, {}, "bookkeeper-blocked")).status()).toBe(403);
+    expect((await bookkeeperPost("/api/expenses", { vendorId, description: "Closed-date bookkeeper expense", spentOn: "2026-10-15", accountCode: "5100", amount: "1.00" }, "bookkeeper-closed")).status()).toBe(400);
+    expect(await request.get("/api/state", { headers: auth(owner, recoveredPassword) }).then((r) => r.json())).toEqual(recoveredState);
     for (const receipt of attachments) {
       for (const credentials of [
         auth(owner, recoveredPassword),
         auth(reviewer, reviewerPassword),
+        auth(bookkeeper, bookkeeperPassword),
       ]) {
         const download = await request.get(`/api/receipts/${receipt.id}`, {
           headers: credentials,
@@ -716,6 +752,21 @@ test("stored accounts and accounting data survive restart, recovery and backup r
           .then((r) => r.json())
       ).equityTransactions,
     ).toHaveLength(1);
+    const newVendor = { name: "Post-restore bookkeeper supplier", email: "new@example.test" };
+    const added = await bookkeeperPost("/api/vendors", newVendor, "bookkeeper-new");
+    expect(added.ok()).toBe(true);
+    const addedId = (await added.json()).id;
+    const afterNew = await request.get("/api/state", { headers: auth(owner, recoveredPassword) }).then((r) => r.json());
+    const repeated = await bookkeeperPost("/api/vendors", newVendor, "bookkeeper-new");
+    expect(repeated.ok()).toBe(true);
+    expect((await repeated.json()).id).toBe(addedId);
+    expect(await request.get("/api/state", { headers: auth(owner, recoveredPassword) }).then((r) => r.json())).toEqual(afterNew);
+    expect(afterNew.ledger).toEqual(recoveredState.ledger);
+    expect(afterNew.audit.some((row: { actor: string; record_id: string }) => row.actor === bookkeeper && row.record_id === addedId)).toBe(true);
+    expect((await restoredPost(`/api/accounts/${bookkeeperId}/access`, { role: "REVIEWER", enabled: true }, "bookkeeper-demote")).ok()).toBe(true);
+    expect((await bookkeeperPost("/api/vendors", newVendor, "bookkeeper-demoted")).status()).toBe(403);
+    expect((await restoredPost(`/api/accounts/${bookkeeperId}/access`, { role: "BOOKKEEPER", enabled: false }, "bookkeeper-disable")).ok()).toBe(true);
+    expect((await identity(bookkeeper, bookkeeperPassword)).status()).toBe(401);
   } finally {
     await stop();
     await rm(folder, { recursive: true, force: true });

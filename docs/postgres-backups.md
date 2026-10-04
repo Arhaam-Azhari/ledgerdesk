@@ -47,3 +47,6 @@ The later [receipt restoration checks](receipt-restoration.md) verify PNG/JPEG a
 
 
 The later [opening balance restoration checks](opening-balance-restoration.md) verify retained opening metadata and keys, a closed first statement, dated reports and cutover protections after an actual separate-database restore.
+
+
+The later [bookkeeper recovery fixture](bookkeeper-recovery.md) also verifies retained account IDs, roles and access limits, receipt reads, original request retries and deliberate new work after restoration.

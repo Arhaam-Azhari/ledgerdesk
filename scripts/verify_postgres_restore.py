@@ -19,6 +19,8 @@ OWNER = 'backup-owner'
 PASSWORD = 'stored-owner-password'
 REVIEWER = 'backup-reviewer'
 REVIEWER_PASSWORD = 'stored-reviewer-password'
+BOOKKEEPER = 'backup-bookkeeper'
+BOOKKEEPER_PASSWORD = 'stored-bookkeeper-password'
 server = None
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 
@@ -98,7 +100,11 @@ def main():
         with (ROOT / 'postgres-restore-backend.log').open('w') as log:
             try:
                 start(SOURCE, log)
-                status, vendor = write('/api/vendors', {'name': 'Restored supplier', 'email': 'supplier@example.test'}, 'pg-backup-vendor')
+                status, bookkeeper_account = write('/api/accounts', {'username': BOOKKEEPER, 'password': BOOKKEEPER_PASSWORD, 'role': 'BOOKKEEPER'}, 'pg-bookkeeper-account')
+                assert status == 200
+                status, accounts_before = api('/api/accounts')
+                assert status == 200
+                status, vendor = write('/api/vendors', {'name': 'Restored supplier', 'email': 'supplier@example.test'}, 'pg-backup-vendor', BOOKKEEPER, BOOKKEEPER_PASSWORD)
                 assert status == 200
                 opening = {'asOf': '2026-09-30', 'balance': '1000.25', 'memo': 'Cleared opening retained in PostgreSQL backup'}
                 status, original_opening = write('/api/opening-bank-balance', opening, 'pg-backup-opening')
@@ -150,9 +156,21 @@ def main():
                 status, reviewer = api('/api/access', REVIEWER, REVIEWER_PASSWORD)
                 assert status == 200 and not reviewer['canWrite']
                 assert api('/api/state')[1] == before
+                status, bookkeeper = api('/api/access', BOOKKEEPER, BOOKKEEPER_PASSWORD)
+                assert status == 200 and bookkeeper['role'] == 'BOOKKEEPER' and bookkeeper['canWrite']
+                assert api('/api/access', BOOKKEEPER, 'wrong-bookkeeper-password')[0] == 401
+                assert api('/api/accounts')[1] == accounts_before
+                assert api('/api/accounts', BOOKKEEPER, BOOKKEEPER_PASSWORD)[0] == 403
+                assert api('/api/state', BOOKKEEPER, BOOKKEEPER_PASSWORD)[1] == before
+                assert write('/api/vendors', {'name': 'Restored supplier', 'email': 'supplier@example.test'}, 'pg-backup-vendor', BOOKKEEPER, BOOKKEEPER_PASSWORD)[1] == vendor
+                for blocked in ['/api/accounts', '/api/opening-bank-balance', '/api/equity', '/api/accounting-periods', '/api/bank/reconciliations/' + bank_record['id'] + '/reopen']:
+                    assert write(blocked, {}, 'pg-bookkeeper-blocked', BOOKKEEPER, BOOKKEEPER_PASSWORD)[0] == 403
+                assert write('/api/expenses', {'vendorId': vendor['id'], 'description': 'Closed-date bookkeeper expense', 'spentOn': '2026-10-15', 'accountCode': '5100', 'amount': '1.00'}, 'pg-bookkeeper-closed', BOOKKEEPER, BOOKKEEPER_PASSWORD)[0] == 400
+                assert api('/api/state')[1] == before
                 for path, name, media_type, key, content, receipt_id, stored in attachments:
                     assert download(receipt_id) == stored
                     assert download(receipt_id, REVIEWER, REVIEWER_PASSWORD) == stored
+                    assert download(receipt_id, BOOKKEEPER, BOOKKEEPER_PASSWORD) == stored
                     assert download(receipt_id, None)[0] == 401
                     assert upload(path, name, media_type, content, key)[1]['id'] == receipt_id
                     assert upload(path, name, media_type, content, 'blocked-' + key, REVIEWER, REVIEWER_PASSWORD)[0] == 403
@@ -198,7 +216,20 @@ def main():
                 for old in before['accountingPeriodCloses']:
                     current = next(row for row in after_reopen['accountingPeriodCloses'] if row['id'] == old['id'])
                     assert current['snapshot'] == old['snapshot'] and current['status'] == 'REOPENED'
-                print('PostgreSQL 17 restore verified: stored roles, exact workspace, PNG/JPEG/PDF receipt bytes and headers, opening balance, closed statement and retained accounting close/reopen history, dated reports, protected writes and retained retries.')
+                # New work is allowed after restoration, with the retained role and actor.
+                new_vendor = {'name': 'Post-restore bookkeeper supplier', 'email': 'new@example.test'}
+                status, new_result = write('/api/vendors', new_vendor, 'pg-bookkeeper-new', BOOKKEEPER, BOOKKEEPER_PASSWORD)
+                assert status == 200
+                after_new = api('/api/state')[1]
+                assert write('/api/vendors', new_vendor, 'pg-bookkeeper-new', BOOKKEEPER, BOOKKEEPER_PASSWORD)[1] == new_result
+                assert api('/api/state')[1] == after_new
+                assert after_new['ledger'] == before['ledger']
+                assert any(row['actor'] == BOOKKEEPER and row['record_id'] == new_result['id'] for row in after_new['audit'])
+                assert write('/api/accounts/' + bookkeeper_account['id'] + '/access', {'role': 'REVIEWER', 'enabled': True}, 'pg-bookkeeper-demote')[0] == 200
+                assert write('/api/vendors', new_vendor, 'pg-bookkeeper-demoted', BOOKKEEPER, BOOKKEEPER_PASSWORD)[0] == 403
+                assert write('/api/accounts/' + bookkeeper_account['id'] + '/access', {'role': 'BOOKKEEPER', 'enabled': False}, 'pg-bookkeeper-disable')[0] == 200
+                assert api('/api/state', BOOKKEEPER, BOOKKEEPER_PASSWORD)[0] == 401
+                print('PostgreSQL 17 restore verified: bookkeeper identity, account IDs, reads, routine retry/posting and denied owner actions; stored roles, exact workspace, PNG/JPEG/PDF receipt bytes and headers, opening balance, closed statement and retained accounting close/reopen history, dated reports, protected writes and retained retries.')
             finally:
                 stop()
 
