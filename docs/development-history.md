@@ -26,6 +26,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#20](https://github.com/Arhaam-Azhari/ledgerdesk/pull/20) | Add accounting period review, close/reopen history and restoration proof |
 | [#21](https://github.com/Arhaam-Azhari/ledgerdesk/pull/21) | Delegate routine accounting to stored bookkeeper accounts |
 | [#22](https://github.com/Arhaam-Azhari/ledgerdesk/pull/22) | Verify bookkeeper accounts after populated upgrade and database restoration |
+| [#23](https://github.com/Arhaam-Azhari/ledgerdesk/pull/23) | Let stored accounts change their own password |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 
