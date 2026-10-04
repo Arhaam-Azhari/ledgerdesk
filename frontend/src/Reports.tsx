@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { cents, dollars, today } from "./money";
 import { ProfitComparison, type ComparisonLoader } from "./ProfitComparison";
-import { CustomerStatements, type StatementCustomer, type StatementLoader } from "./CustomerStatements";
+import { CustomerStatements, type StatementCustomer, type StatementLoader, type StatementDownloader } from "./CustomerStatements";
 
 type Account = { code: string; name: string; kind: string; amount: string };
 type Aging = {
@@ -119,6 +119,7 @@ export function Reports({
   compare,
   customers,
   statement,
+  statementPdf,
 }: {
   workspace: object;
   busy: boolean;
@@ -126,6 +127,7 @@ export function Reports({
   compare: ComparisonLoader;
   customers: StatementCustomer[];
   statement: StatementLoader;
+  statementPdf: StatementDownloader;
 }) {
   const [mode, setMode] = useState<"single" | "compare" | "statement">("single");
   const [start, setStart] = useState(today().slice(0, 4) + "-01-01");
@@ -252,7 +254,7 @@ export function Reports({
     <button className="secondary" disabled={busy} aria-pressed={mode === "compare"} onClick={() => { setMode("compare"); setResult(null); }}>Compare profit</button>
     <button className="secondary" disabled={busy} aria-pressed={mode === "statement"} onClick={() => { setMode("statement"); setResult(null); }}>Customer statements</button>
   </div>;
-  if (mode === "statement") return <>{modeSelector}<CustomerStatements busy={busy} customers={customers} workspace={workspace} load={statement} /></>;
+  if (mode === "statement") return <>{modeSelector}<CustomerStatements busy={busy} customers={customers} workspace={workspace} load={statement} download={statementPdf} /></>;
   if (mode === "compare") return <>{modeSelector}<ProfitComparison busy={busy} workspace={workspace} load={compare} /></>;
   return (
     <>

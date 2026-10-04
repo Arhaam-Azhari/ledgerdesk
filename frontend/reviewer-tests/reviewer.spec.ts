@@ -47,6 +47,10 @@ test("reviewer reads reports, cannot post and can lock then switch to owner", as
   await page.getByRole("button", { name: "Run statement", exact: true }).click();
   await expect(page.locator(".statement-results")).toContainText("Closing amount owed");
   await expect(page.getByRole("button", { name: "Export statement CSV" })).toBeVisible();
+  const statementDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download statement PDF", exact: true }).click();
+  expect((await statementDownload).suggestedFilename()).toBe("ledgerdesk-customer-statement-2026-10-01-2026-10-31.pdf");
+
   await page
     .getByRole("button", { name: "Cash activity", exact: true })
     .click();
