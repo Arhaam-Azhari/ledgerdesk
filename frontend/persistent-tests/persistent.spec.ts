@@ -18,7 +18,7 @@ test("stored accounts and accounting data survive restart, recovery and backup r
   const owner = "persistent-owner",
     reviewer = "persistent-reviewer",
     bookkeeper = "persistent-bookkeeper";
-  const ownerPassword = "owner-first-password",
+  let ownerPassword = "owner-first-password",
     reviewerPassword = "reviewer-first-password",
     bookkeeperPassword = "bookkeeper-first-password";
   const auth = (username: string, password: string) => ({
@@ -110,6 +110,41 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     });
     expect(accountResponse.ok()).toBe(true);
     const bookkeeperId = (await accountResponse.json()).id as string;
+    const initialLogins = [
+      { username: owner, initial: ownerPassword, replacement: "self-changed-owner-password", role: "OWNER" },
+      { username: reviewer, initial: reviewerPassword, replacement: "self-changed-reviewer-password", role: "REVIEWER" },
+      { username: bookkeeper, initial: bookkeeperPassword, replacement: "self-changed-bookkeeper-password", role: "BOOKKEEPER" },
+    ];
+    const beforePasswordChanges = await request.get("/api/state", { headers: auth(owner, ownerPassword) }).then((r) => r.json());
+    for (const login of initialLogins) {
+      const changed = await request.post("/api/me/password", {
+        headers: { ...auth(login.username, login.initial), [csrf.headerName]: csrf.token },
+        data: { currentPassword: login.initial, password: login.replacement },
+      });
+      expect(changed.ok()).toBe(true);
+      expect((await identity(login.username, login.initial)).status()).toBe(401);
+      const current = await identity(login.username, login.replacement);
+      expect(current.ok()).toBe(true);
+      expect((await current.json()).role).toBe(login.role);
+    }
+    ownerPassword = initialLogins[0].replacement;
+    reviewerPassword = initialLogins[1].replacement;
+    bookkeeperPassword = initialLogins[2].replacement;
+    const afterPasswordChanges = await request.get("/api/state", { headers: auth(owner, ownerPassword) }).then((r) => r.json());
+    expect(afterPasswordChanges.ledger).toEqual(beforePasswordChanges.ledger);
+    for (const login of initialLogins) {
+      expect(afterPasswordChanges.audit.filter((row: { actor: string; action: string }) => row.actor === login.username && row.action === "ACCOUNT_SELF_PASSWORD_CHANGED")).toHaveLength(1);
+      expect(JSON.stringify(afterPasswordChanges)).not.toContain(login.initial);
+      expect(JSON.stringify(afterPasswordChanges)).not.toContain(login.replacement);
+    }
+    async function retainedLogins(ownerSecret: string) {
+      for (const login of initialLogins) {
+        expect((await identity(login.username, login.initial)).status()).toBe(401);
+        const retained = await identity(login.username, login.username === owner ? ownerSecret : login.replacement);
+        expect(retained.ok()).toBe(true);
+        expect((await retained.json()).role).toBe(login.role);
+      }
+    }
     const accountsBefore = await request.get("/api/accounts", {
       headers: auth(owner, ownerPassword),
     }).then((r) => r.json());
@@ -293,6 +328,7 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     });
     await stop();
     await start("changed-owner-password", "changed-reviewer-password");
+    await retainedLogins(ownerPassword);
     expect((await identity(owner, "changed-owner-password")).status()).toBe(
       401,
     );
@@ -355,7 +391,7 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       fullPage: true,
     });
     await stop();
-    const recoveredPassword = "offline-recovered-password";
+    let recoveredPassword = "offline-recovered-password";
     const recoveryProcess = spawn(
       "java",
       [
@@ -400,10 +436,22 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     expect(recoveryLog).toContain("Owner access recovered");
     expect(recoveryLog).not.toContain(recoveredPassword);
     await start("changed-owner-password", "changed-reviewer-password");
+    await retainedLogins(recoveredPassword);
     expect((await identity(owner, ownerPassword)).status()).toBe(401);
     const recovered = await identity(owner, recoveredPassword);
     expect(recovered.ok()).toBe(true);
     expect((await recovered.json()).canWrite).toBe(true);
+    // Keep offline recovery in this scenario, then back up a password changed by the owner.
+    const recoveredCsrf = await request.get("/api/csrf").then((r) => r.json());
+    const finalOwnerPassword = "self-changed-recovered-owner-password";
+    const finalOwnerChange = await request.post("/api/me/password", {
+      headers: { ...auth(owner, recoveredPassword), [recoveredCsrf.headerName]: recoveredCsrf.token },
+      data: { currentPassword: recoveredPassword, password: finalOwnerPassword },
+    });
+    expect(finalOwnerChange.ok()).toBe(true);
+    expect((await identity(owner, recoveredPassword)).status()).toBe(401);
+    recoveredPassword = finalOwnerPassword;
+    await retainedLogins(recoveredPassword);
     const recoveredState = await request
       .get("/api/state", { headers: auth(owner, recoveredPassword) })
       .then((r) => r.json());
@@ -441,6 +489,7 @@ test("stored accounts and accounting data survive restart, recovery and backup r
     ]);
     // Opening a separate restored file proves more than reopening the original.
     await start("changed-owner-password", "changed-reviewer-password");
+    await retainedLogins(recoveredPassword);
     expect((await identity(owner, ownerPassword)).status()).toBe(401);
     expect((await identity(owner, recoveredPassword)).ok()).toBe(true);
     const restoredReviewer = await identity(reviewer, reviewerPassword);
@@ -450,6 +499,8 @@ test("stored accounts and accounting data survive restart, recovery and backup r
       .get("/api/state", { headers: auth(owner, recoveredPassword) })
       .then((r) => r.json());
     expect(restoredState).toEqual(recoveredState);
+    expect((await identity(owner, "offline-recovered-password")).status()).toBe(401);
+    expect(JSON.stringify(restoredState)).not.toContain(recoveredPassword);
     const restoredBookkeeper = await identity(bookkeeper, bookkeeperPassword);
     expect(restoredBookkeeper.ok()).toBe(true);
     expect(await restoredBookkeeper.json()).toMatchObject({ role: "BOOKKEEPER", canWrite: true });

@@ -312,3 +312,5 @@ The [bookkeeper recovery checks](docs/bookkeeper-recovery.md) verify stored role
 ## Change your own password
 
 With persistent accounts enabled, owners, bookkeepers and reviewers can use **Change my password** in the header. Enter the current password and a confirmed replacement; a successful save locks the workspace for sign-in with the new password. Accounting permissions remain unchanged. See [instructions, connection-failure recovery, reviewed desktop/mobile captures and verification](docs/own-password.md).
+
+The [password recovery proof](docs/changed-password-recovery.md) now follows self-changed owner, reviewer and bookkeeper logins through real restarts and separate H2/PostgreSQL restores, preserving roles and rejecting old credentials.

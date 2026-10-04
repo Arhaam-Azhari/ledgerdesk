@@ -21,4 +21,4 @@ Source `34ee4556de713a685639bd69de6aeb3823f4ed09` passed [run 37184170212](https
 
 ![Change your own password](screenshots/password-editor.png)
 
-The existing restore scenarios passed as regressions. A self-changed password followed through restart and backup is not part of this new browser fixture.
+The subsequent [self-changed password recovery checks](changed-password-recovery.md) follow actual owner, reviewer and bookkeeper changes through process restart and separate H2/PostgreSQL restoration. The password-form browser workflow remains the screen evidence.
