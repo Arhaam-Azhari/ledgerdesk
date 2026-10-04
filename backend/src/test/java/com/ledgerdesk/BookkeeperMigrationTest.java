@@ -38,9 +38,11 @@ class BookkeeperMigrationTest {
             for(String table:tables) before.put(table,db.queryForList("SELECT * FROM "+table+" ORDER BY 1,2"));
             assertThatThrownBy(() -> db.update("INSERT INTO business_memberships VALUES ('old-reviewer',2,'BOOKKEEPER')"))
                     .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
-            assertThat(latest.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(Flyway.configure().dataSource(source).schemas(schema).defaultSchema(schema).target("22").load().migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(latest.migrate().migrationsExecuted).isPositive();
             db.execute("SET SCHEMA '"+schema+"'");
             for(String table:tables) assertThat(db.queryForList("SELECT * FROM "+table+" ORDER BY 1,2")).isEqualTo(before.get(table));
+            assertThat(db.queryForObject("SELECT name FROM accounts WHERE code = '3300' AND kind = 'EQUITY'", String.class)).isEqualTo("Retained earnings");
             var accounts=new PersistentAccounts(db);
             accounts.bootstrap("replacement-owner","replacement-password","","",encoder);
             assertThat(accounts.load("retained-owner").getPassword()).isEqualTo(ownerHash);
