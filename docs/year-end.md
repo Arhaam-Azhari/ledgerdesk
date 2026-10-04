@@ -1,6 +1,6 @@
 # Calendar-year earnings preview
 
-This API prepares a read-only review of the revenue and expense balances for January 1 through December 31. It shows the offsets that would clear that year's activity and transfer net profit or loss to retained earnings account 3300. It does not post a closing entry. The browser screen, posting/history and preservation of profit reports after posting are later work.
+This API prepares a read-only review of the revenue and expense balances for January 1 through December 31. It shows the offsets that would clear that year's activity and transfer net profit or loss to retained earnings account 3300. It does not post a closing entry. The browser screen supports the same read-only review. Posting/history and preservation of profit reports after posting are later work.
 
 ## Run a preview
 
@@ -20,7 +20,7 @@ The integration fixture starts with a cleared $1,000.25 bank opening on December
 | Account | Debit | Credit |
 | --- | ---: | ---: |
 | 4000 Service revenue | 100.10 | 0.00 |
-| 5000 Supplies expense | 0.00 | 40.04 |
+| 5000 Office supplies | 0.00 | 40.04 |
 | 3300 Retained earnings | 0.00 | 60.06 |
 | Total | 100.10 | 100.10 |
 
@@ -38,8 +38,34 @@ The calculation runs in a repeatable-read transaction and reuses the period-revi
 
 ## Evidence
 
-`YearEndTest` exercises the actual services and authenticated HTTP endpoint on H2 and PostgreSQL. It checks the worked draft against real bank and accounting closes, unchanged ledger/audit/request-key records, loss and contra sides, zero activity, older individual balances, outstanding scheduled months, unbalanced books, future and foreign entries, calendar limits and all reading roles. Existing browser workflows remain regression evidence; there is no new screen or screenshot for this API milestone.
+`YearEndTest` exercises the actual services and authenticated HTTP endpoint on H2 and PostgreSQL. It checks the worked draft against real bank and accounting closes, unchanged ledger/audit/request-key records, loss and contra sides, zero activity, older individual balances, outstanding scheduled months, unbalanced books, future and foreign entries, calendar limits and all reading roles. At the PR #33 API checkpoint, existing browser workflows provided regression evidence. The later screen milestone adds a dedicated browser workflow and screenshots.
 
 The accounting basis is the treatment of revenue and expenses as temporary accounts and retained earnings as permanent equity described in [OpenStax, closing entries](https://openstax.org/books/principles-financial-accounting/pages/5-1-describe-and-prepare-closing-entries-for-a-business). This draft combines the offsets and net earnings transfer into one balanced proposal rather than exposing an intermediate income-summary account. The project demonstrates accrual reporting, sign-correct ledger offsets, prerequisite controls, historical cutoffs and transactional read consistency.
 
 Source `fe1b246cf0086bc533d4921f36946dcc9a3ba5bb` passed 298 integration tests on each database, 14 backup-tool tests, the production build, all 26 existing Chromium workflows and native PostgreSQL restoration in [run 37238292917](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37238292917).
+
+
+## Review in the browser
+
+Open **Reports → Year-end preview**, enter a whole calendar year between 1 and 9999, and click **Run year-end preview**. The result shows the annual accrual revenue/expenses and net profit or loss, the corresponding retained-earnings change, and each temporary account's opening, year activity and closing. Dr/Cr presentation preserves credit and unusual account balances.
+
+Read **Review prerequisites** before using the proposal. Missing/reopened December 31 reviews and unfinished scheduled adjustments appear alongside earlier earnings balances and any accounting differences. Active close IDs can be inspected under **Year-end review references**. **Preview prerequisites met** means these checks passed; it does not mean a closing entry was posted. There is no posting button.
+
+The proposed debit/credit lines and totals appear below the balances. A year without activity has no proposed lines; it can still have blockers from earlier years. Profit increases retained earnings, while a negative change indicates a loss. Owner transfers and permanent account balances are retained separately.
+
+Changing the year, reloading the workspace or leaving this report clears the result. During a request, year and mode controls are disabled. A failed request clears the old proposal and displays an error; run it again after resolving the failure. This is an on-screen review; a dedicated year-end export is not implemented.
+
+The balances table scrolls horizontally on a narrow screen; the rest of the review fits the viewport. Owner, bookkeeper and reviewer accounts can run this screen.
+
+
+## Screen proof
+
+Screen source `c2a994c6fe68f4c7ae325496411229ff1c37ba21` passed all three jobs in [run 37239595097](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37239595097): 298 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production build, all 27 Chromium workflows and native PostgreSQL restoration.
+
+The isolated browser fixture uses a fresh H2 process with a December 31, 2032 opening and the same $100.10 invoice, $40.04 unpaid bill and $60.06 profit as the API example, shifted to 2033. It first shows the missing review blockers, then creates real bank and accounting closes and checks their IDs and balanced proposed lines. Later 2034 loss and 2036 revenue postings do not alter the earlier 2033 preview. The 2034 loss debits retained earnings by $10.10 but remains blocked by earlier temporary balances. The empty 2035 year also retains those blockers.
+
+The test checks invalid whole-year inputs, failed-read retry, disabled controls while loading, clearing after year/reload/mode changes and an unchanged complete workspace after reading. Reviewer and bookkeeper scenarios also run the preview. Original captures from the successful workflow were downloaded and visually reviewed; the mobile balances table was actually scrolled right to show closing amounts. No entries are posted by the preview.
+
+![Year-end review with balanced proposed closing lines](screenshots/year-end-preview.png)
+
+![Mobile year-end review with the balances table scrolled right](screenshots/mobile-year-end-preview.png)
