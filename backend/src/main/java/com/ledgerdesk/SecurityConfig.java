@@ -45,6 +45,20 @@ public class SecurityConfig {
                 .requestMatchers("/api/accounts", "/api/accounts/**").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/**").authenticated()
                 .requestMatchers(HttpMethod.HEAD, "/**").authenticated()
+                // Only listed routine operations are delegated; new writes stay owner-only.
+                .requestMatchers(HttpMethod.POST,
+                        "/api/customers", "/api/vendors", "/api/invoices", "/api/invoices/*/payments", "/api/invoices/*/void",
+                        "/api/drafts", "/api/drafts/*", "/api/drafts/*/post", "/api/drafts/*/discard",
+                        "/api/bills", "/api/bills/*/payments", "/api/bills/*/void", "/api/bills/*/receipts",
+                        "/api/expenses", "/api/expenses/*/reverse", "/api/expenses/*/receipts",
+                        "/api/adjustments", "/api/adjustments/*/reverse",
+                        "/api/accruals", "/api/accruals/*/reverse", "/api/accruals/*/bill",
+                        "/api/prepaid", "/api/prepaid/*/recognize", "/api/prepaid/*/cancel", "/api/prepaid/*/correct",
+                        "/api/assets", "/api/assets/*/depreciate", "/api/assets/*/correct", "/api/assets/*/retire",
+                        "/api/bank/imports", "/api/bank/imports/preview",
+                        "/api/bank/transactions/*/match", "/api/bank/transactions/*/unmatch",
+                        "/api/bank/reconciliations", "/api/bank/reconciliations/preview")
+                .hasAnyRole("OWNER", "BOOKKEEPER")
                 .anyRequest().hasRole("OWNER")).httpBasic(Customizer.withDefaults()).build();
     }
 }

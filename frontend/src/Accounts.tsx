@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 export type ManagedAccount = {
   id: string;
   username: string;
-  role: "OWNER" | "REVIEWER";
+  role: "OWNER" | "BOOKKEEPER" | "REVIEWER";
   enabled: boolean;
 };
 type Props = {
@@ -30,7 +30,7 @@ export function Accounts({ busy, username, workspace, load, command }: Props) {
     <>
       <p className="intro">
         Manage access to this business. Owners can post and manage accounts;
-        reviewers can inspect reports and ledger activity. Keep at least one
+        bookkeepers handle routine accounting; reviewers can inspect reports and ledger activity. Keep at least one
         enabled owner.
       </p>
       <section className="card">
@@ -76,6 +76,7 @@ export function Accounts({ busy, username, workspace, load, command }: Props) {
               New account role
               <select aria-label="New account role" value={role} onChange={(e) => setRole(e.target.value)}>
                 <option value="REVIEWER">Reviewer · read only</option>
+                <option value="BOOKKEEPER">Bookkeeper · routine accounting</option>
                 <option value="OWNER">
                   Owner · posting and administration
                 </option>
@@ -172,6 +173,7 @@ function AccountRow({
                 }
               >
                 <option value="REVIEWER">Reviewer</option>
+                <option value="BOOKKEEPER">Bookkeeper</option>
                 <option value="OWNER">Owner</option>
               </select>
             </label>

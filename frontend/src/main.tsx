@@ -169,6 +169,8 @@ function App() {
     const workspace = await api("/api/state", undefined, auth);
     setAccess(identity);
     setData(workspace);
+    if (identity.role !== "OWNER" && ["Accounts", "Opening bank balance", "Owner transfers"].includes(page))
+      setPage("Reports");
     if (!identity.canWrite)
       setPage((current) =>
         [
@@ -249,7 +251,7 @@ function App() {
     success: string,
     lockAfter = false,
   ) {
-    if (!access?.canWrite || !access.persistentAccounts) return false;
+    if (access?.role !== "OWNER" || !access.persistentAccounts) return false;
     setBusy(true);
     setError("");
     setNotice("");
@@ -586,8 +588,7 @@ function App() {
     "Period close",
     "Reports",
     "Cash activity",
-    "Owner transfers",
-    ...(access?.canWrite ? ["Opening bank balance"] : []),
+    ...(access?.role === "OWNER" ? ["Owner transfers", "Opening bank balance"] : []),
     "Adjustments",
     "Accruals",
     "Prepaid expenses",
@@ -595,7 +596,7 @@ function App() {
     "General ledger",
     "Trial balance",
     "Activity",
-    ...(access?.canWrite && access.persistentAccounts ? ["Accounts"] : []),
+    ...(access?.role === "OWNER" && access.persistentAccounts ? ["Accounts"] : []),
   ];
   const unpaid = data.invoices.filter(
     (i) => i.status === "POSTED" && cents(i.amount) > cents(i.paid),
@@ -763,13 +764,21 @@ function App() {
             {notice}
           </div>
         )}
+        {access?.role === "BOOKKEEPER" && (
+          <section className="note" aria-label="Bookkeeper access">
+            <h2>Bookkeeper workspace</h2>
+            <p>Signed in as {access.username}. Handle routine accounting and bank reconciliation.
+              Ask an owner to manage accounts, record opening balances or owner transfers,
+              close accounting periods, or reopen protected statements.</p>
+          </section>
+        )}
         {!access?.canWrite && (
           <section className="note" aria-label="Reviewer access">
             <h2>Read-only reviewer workspace</h2>
             <p>
               Signed in as {access?.username}. You can inspect reports, download
               report CSVs, and review ledger activity. Posting and editing are
-              reserved for the owner.
+              available to owners and bookkeepers.
             </p>
           </section>
         )}
@@ -1406,10 +1415,10 @@ function App() {
         {page === "Adjustments" && (
           <Adjustments data={data} busy={busy} act={act} />
         )}
-        {page === "Opening bank balance" && access?.canWrite && (
+        {page === "Opening bank balance" && access?.role === "OWNER" && (
           <OpeningBankBalance data={data} busy={busy} act={act} />
         )}
-        {page === "Owner transfers" && (
+        {page === "Owner transfers" && access?.role === "OWNER" && (
           <OwnerEquity data={data} busy={busy} act={act} />
         )}
         {page === "Bank imports" && (
@@ -1436,6 +1445,7 @@ function App() {
           <BankReconciliation
             data={data}
             busy={busy}
+            canReopen={access?.role === "OWNER"}
             preview={previewReconciliation}
             act={act}
           />
@@ -1444,7 +1454,7 @@ function App() {
           <AccountingPeriods
             data={data}
             busy={busy}
-            canWrite={!!access?.canWrite}
+            canWrite={access?.role === "OWNER"}
             preview={previewPeriod}
             act={act}
           />
@@ -1453,7 +1463,7 @@ function App() {
           <CashActivity busy={busy} load={loadCashActivity} workspace={data} />
         )}
         {page === "Accounts" &&
-          access?.canWrite &&
+          access?.role === "OWNER" &&
           access.persistentAccounts && (
             <Accounts
               busy={busy}

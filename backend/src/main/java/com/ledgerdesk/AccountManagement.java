@@ -31,7 +31,7 @@ public class AccountManagement {
         owner(actor);
     }
     private static void role(String role) {
-        if (role==null || !List.of("OWNER","REVIEWER").contains(role)) throw new IllegalArgumentException("Choose OWNER or REVIEWER.");
+        if (role==null || !List.of("OWNER","BOOKKEEPER","REVIEWER").contains(role)) throw new IllegalArgumentException("Choose OWNER, BOOKKEEPER or REVIEWER.");
     }
     private Map<String,Object> account(String id) {
         var rows=db.queryForList("SELECT u.id,u.username,u.password_hash,u.enabled,m.role FROM app_users u JOIN business_memberships m ON m.user_id=u.id WHERE u.id=? AND m.business_id=1",id);

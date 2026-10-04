@@ -92,6 +92,7 @@ function Summary({ result }: { result: ReconciliationPreview }) {
 export function BankReconciliation({
   data,
   busy,
+  canReopen,
   preview,
   act,
 }: {
@@ -101,6 +102,7 @@ export function BankReconciliation({
       ledger: { entry_date: string }[];
     };
   busy: boolean;
+  canReopen: boolean;
   preview: (statement: Statement) => Promise<ReconciliationPreview | null>;
   act: (path: string, body: object, success: string) => Promise<boolean>;
 }) {
@@ -319,7 +321,7 @@ export function BankReconciliation({
                 result={JSON.parse(record.snapshot) as ReconciliationPreview}
               />
             </details>
-            {latest?.id === record.id && (
+            {canReopen && latest?.id === record.id && (
               <form
                 onSubmit={async (event) => {
                   event.preventDefault();
