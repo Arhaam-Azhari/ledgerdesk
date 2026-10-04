@@ -23,7 +23,8 @@
     "test:periods": "playwright test --config playwright.periods.config.ts",
     "test:bookkeeper": "playwright test --config playwright.bookkeeper.config.ts",
     "test:password": "playwright test --config playwright.password.config.ts",
-    "test:account-activity": "playwright test --config playwright.account-activity.config.ts"
+    "test:account-activity": "playwright test --config playwright.account-activity.config.ts",
+    "test:year-end": "playwright test --config playwright.year-end.config.ts"
   },
   "dependencies": {
     "react": "^19.1.1",
