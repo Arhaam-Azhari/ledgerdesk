@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { cents, dollars, today } from "./money";
 import { ProfitComparison, type ComparisonLoader } from "./ProfitComparison";
+import { CustomerStatements, type StatementCustomer, type StatementLoader } from "./CustomerStatements";
 
 type Account = { code: string; name: string; kind: string; amount: string };
 type Aging = {
@@ -116,13 +117,17 @@ export function Reports({
   load,
   workspace,
   compare,
+  customers,
+  statement,
 }: {
   workspace: object;
   busy: boolean;
   load: (start: string, end: string) => Promise<ReportData | null>;
   compare: ComparisonLoader;
+  customers: StatementCustomer[];
+  statement: StatementLoader;
 }) {
-  const [comparing, setComparing] = useState(false);
+  const [mode, setMode] = useState<"single" | "compare" | "statement">("single");
   const [start, setStart] = useState(today().slice(0, 4) + "-01-01");
   const [end, setEnd] = useState(today());
   const [result, setResult] = useState<ReportData | null>(null);
@@ -243,10 +248,12 @@ export function Reports({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   const modeSelector = <div className="report-tabs">
-    <button className="secondary" disabled={busy} aria-pressed={!comparing} onClick={() => { setComparing(false); setResult(null); }}>Single period reports</button>
-    <button className="secondary" disabled={busy} aria-pressed={comparing} onClick={() => { setComparing(true); setResult(null); }}>Compare profit</button>
+    <button className="secondary" disabled={busy} aria-pressed={mode === "single"} onClick={() => { setMode("single"); setResult(null); }}>Single period reports</button>
+    <button className="secondary" disabled={busy} aria-pressed={mode === "compare"} onClick={() => { setMode("compare"); setResult(null); }}>Compare profit</button>
+    <button className="secondary" disabled={busy} aria-pressed={mode === "statement"} onClick={() => { setMode("statement"); setResult(null); }}>Customer statements</button>
   </div>;
-  if (comparing) return <>{modeSelector}<ProfitComparison busy={busy} workspace={workspace} load={compare} /></>;
+  if (mode === "statement") return <>{modeSelector}<CustomerStatements busy={busy} customers={customers} workspace={workspace} load={statement} /></>;
+  if (mode === "compare") return <>{modeSelector}<ProfitComparison busy={busy} workspace={workspace} load={compare} /></>;
   return (
     <>
       {modeSelector}

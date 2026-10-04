@@ -43,6 +43,13 @@ test("bookkeeper posts routine records and cannot use owner controls", async ({ 
   await page.getByRole("button", { name: "Run comparison", exact: true }).click();
   await expect(page.locator(".comparison-results")).toContainText("Net profit");
   await expect(page.getByRole("button", { name: "Export comparison CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Customer statements", exact: true }).click();
+  await page.getByRole("combobox", { name: "Statement customer", exact: true }).selectOption("demo-customer");
+  await page.getByLabel("Statement start").fill("2026-10-01");
+  await page.getByLabel("Statement end").fill("2026-10-31");
+  await page.getByRole("button", { name: "Run statement", exact: true }).click();
+  await expect(page.locator(".statement-results")).toContainText("Closing amount owed");
+  await expect(page.getByRole("button", { name: "Export statement CSV" })).toBeVisible();
   for (const path of ["/api/accounts", "/api/equity", "/api/opening-bank-balance", "/api/accounting-periods", "/api/bank/reconciliations/example/reopen"])
     expect((await request.post(path, { headers: { ...bookkeeper, [csrf.headerName]: csrf.token }, data: {} })).status()).toBe(403);
   expect((await request.get("/api/accounts", { headers: bookkeeper })).status()).toBe(403);
