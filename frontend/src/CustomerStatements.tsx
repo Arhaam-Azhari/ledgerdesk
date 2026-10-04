@@ -91,8 +91,10 @@ export function CustomerStatements({ busy, customers, workspace, load, download 
     {result && <section className="card statement-results">
       <h2>Customer account statement</h2>
       <p><strong>{result.customer.name}</strong><br />{result.customer.email}<br />{result.startsOn} to {result.endsOn} · {result.currency}</p>
-      <button className="secondary" disabled={busy} onClick={exportCsv}>Export statement CSV</button>
-      <button className="secondary" disabled={busy} onClick={() => void download(result)}>Download statement PDF</button>
+      <div className="button-row">
+        <button className="secondary" disabled={busy} onClick={exportCsv}>Export statement CSV</button>
+        <button className="secondary" disabled={busy} onClick={() => void download(result)}>Download statement PDF</button>
+      </div>
       <p>PDF reads the books again for these dates. A new backdated posting can change its figures; CSV keeps the displayed statement. Neither download sends anything to the customer.</p>
       <div className="table-wrap"><table>
         <thead><tr><th>Calculation</th><th>USD</th></tr></thead>
