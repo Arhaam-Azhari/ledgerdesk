@@ -15,10 +15,13 @@ public class ReportController {
     private final ReportService reports;
     private final CustomerStatementService statements;
     private final CustomerStatementPdf pdf;
-    public ReportController(ReportService reports, CustomerStatementService statements, CustomerStatementPdf pdf) {
+    private final AccountActivityService accounts;
+    public ReportController(ReportService reports, CustomerStatementService statements, CustomerStatementPdf pdf,
+            AccountActivityService accounts) {
         this.reports = reports;
         this.statements = statements;
         this.pdf = pdf;
+        this.accounts = accounts;
     }
     @GetMapping ResponseEntity<ReportService.Reports> reports(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
@@ -27,6 +30,13 @@ public class ReportController {
     }
     @ExceptionHandler(IllegalArgumentException.class) @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) { return Map.of("message", error.getMessage()); }
+
+    @GetMapping("/accounts/{code}/activity") ResponseEntity<AccountActivityService.Activity> accountActivity(
+            @PathVariable String code,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endsOn) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(accounts.activity(code, startsOn, endsOn));
+    }
 
     @GetMapping("/customers/{customerId}/statement") ResponseEntity<CustomerStatementService.Statement> statement(
             @PathVariable String customerId,
