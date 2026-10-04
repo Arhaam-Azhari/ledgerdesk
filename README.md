@@ -107,7 +107,7 @@ Numbers increase within this one business and are not reused after voiding. The 
 
 Choose **PDF** next to a posted invoice. The PDF includes the customer, service description, total, recorded payments, and current amount due. A voided copy clearly says **VOID** and shows zero due. The embedded DejaVu font supports common Latin and other characters; unsupported glyphs appear as explicit Unicode codes rather than disappearing. Long descriptions wrap, and payment histories continue across pages.
 
-On **Customers**, balances exclude drafts and voided invoices. Select a customer name to inspect their posted invoices. These are all-time balances. Reports provides dated aging; the customer statement API below adds dated activity, with its screen and download following separately.
+On **Customers**, balances exclude drafts and voided invoices. Select a customer name to inspect their posted invoices. These are all-time balances. Reports provides dated aging and customer statements with activity and CSV downloads.
 
 Screenshots: [saved drafts](docs/screenshots/drafts.png), [customer balances](docs/screenshots/customer-balances.png), [narrow-screen overview](docs/screenshots/mobile-overview.png), and an [example invoice PDF](docs/invoice-example.pdf). All use fictional data.
 
@@ -182,7 +182,7 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 281 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-four Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 281 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-five Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
@@ -320,6 +320,6 @@ The [password recovery proof](docs/changed-password-recovery.md) now follows sel
 Open **Reports** and choose **Compare profit** to compare two explicit, non-overlapping periods. The table shows previous/current revenue, expense categories, net profit and exact current-minus-previous dollar changes. **Export comparison CSV** downloads those displayed amounts with both date ranges. Payments do not recognize income again, and unequal period lengths are clearly identified. See [instructions, worked figures and verification](docs/profit-comparison.md).
 
 
-## Customer statement API
+## Customer statements
 
-The [dated customer statement API](docs/customer-statements.md) carries an opening receivable balance through invoices, allocated payments and retained reversals to a closing amount owed. Each movement links to its invoice and journal evidence. Later settlements leave earlier statement figures intact. This milestone adds the accounting API; the statement screen and download follow separately.
+Open **Reports**, choose **Customer statements**, select a customer and inclusive dates, then **Run statement**. Review the opening amount owed, invoices, payments, reversals and closing amount. Expand **Ledger references** to inspect the source evidence; **Export statement CSV** downloads the displayed statement with both dates and ledger IDs. Later settlements leave earlier figures intact. See [instructions, worked amounts and verification](docs/customer-statements.md). PDF statements and customer delivery remain future work.
