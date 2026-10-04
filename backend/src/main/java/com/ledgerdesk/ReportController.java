@@ -1,6 +1,8 @@
 package com.ledgerdesk;
 
 import java.time.LocalDate;
+import java.io.IOException;
+import org.springframework.http.MediaType;
 import java.util.Map;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -12,9 +14,11 @@ import org.springframework.web.bind.annotation.*;
 public class ReportController {
     private final ReportService reports;
     private final CustomerStatementService statements;
-    public ReportController(ReportService reports, CustomerStatementService statements) {
+    private final CustomerStatementPdf pdf;
+    public ReportController(ReportService reports, CustomerStatementService statements, CustomerStatementPdf pdf) {
         this.reports = reports;
         this.statements = statements;
+        this.pdf = pdf;
     }
     @GetMapping ResponseEntity<ReportService.Reports> reports(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
@@ -29,6 +33,19 @@ public class ReportController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endsOn) {
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(statements.statement(customerId, startsOn, endsOn));
+    }
+
+    @GetMapping("/customers/{customerId}/statement/pdf") ResponseEntity<byte[]> statementPdf(
+            @PathVariable String customerId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endsOn) throws IOException {
+        var statement = statements.statement(customerId, startsOn, endsOn);
+        // Keep contact text out of response headers; the document identifies the customer.
+        String filename = "ledgerdesk-customer-statement-" + startsOn + "-" + endsOn + ".pdf";
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
+                .header("Cache-Control", "no-store")
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(pdf.render(statement));
     }
 
     @GetMapping("/profit-comparison") ResponseEntity<ReportService.ProfitComparison> comparison(
