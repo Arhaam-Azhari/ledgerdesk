@@ -2,6 +2,8 @@
 
 Reporting is read-only; the browser screen includes all five report views and CSV exports. It covers profit and loss, an end-date trial balance and balance sheet, and customer/vendor aging for the single USD business.
 
+The [profit comparison API](profit-comparison.md) adds two-period category and total changes. Its browser editor/export follows separately; this guide describes the existing single-period screen.
+
 ## API and dates
 
 `GET /api/reports?startsOn=2026-10-01&endsOn=2026-10-31` requires the workspace login and returns `Cache-Control: no-store`. Dates are inclusive and must form a valid period. Money is returned as decimal strings, as elsewhere in the application. All parts of the response use one repeatable-read transaction.

@@ -19,4 +19,13 @@ public class ReportController {
     }
     @ExceptionHandler(IllegalArgumentException.class) @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) { return Map.of("message", error.getMessage()); }
+
+    @GetMapping("/profit-comparison") ResponseEntity<ReportService.ProfitComparison> comparison(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startsOn,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endsOn,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate previousStartsOn,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate previousEndsOn) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store")
+                .body(reports.compareProfit(startsOn, endsOn, previousStartsOn, previousEndsOn));
+    }
 }

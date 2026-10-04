@@ -6,6 +6,7 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | --- | --- |
 | Sales and purchases | Invoices, bills, direct expenses, payments, retained corrections and receipt attachments implemented |
 | Ledger and reports | Balanced entries, trial balance, dated financial reports, customer/vendor aging, cash activity and CSV exports implemented |
+| Profit comparison | Two-period accounting API implemented; browser comparison editor and export remain |
 | Bank evidence | CSV import, reviewed matching, statement reconciliation and closed-date protections implemented |
 | Accounting adjustments | Owner transfers, expense reclassification, accruals and bill handoff, prepaid schedules and straight-line asset depreciation implemented |
 | Local access | Stored owner/bookkeeper/reviewer accounts, account administration, self-service password changes, last-owner protection and offline owner recovery implemented |
