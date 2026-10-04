@@ -288,3 +288,11 @@ See [download instructions and current captures](customer-statements.md#download
 Source `5c8d3a14a59a028fc061352f484439d33776febd` passed 292 integration tests on each of H2 and PostgreSQL 17, with zero failures/errors/skips, plus 14 backup-tool tests in [run 37235848702](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37235848702). The production frontend build, all 25 existing Chromium workflows and native PostgreSQL restoration also passed. Existing browser checks are regression evidence; there is no account activity screen at this checkpoint. The six account activity tests exercise the actual service and HTTP endpoint on both databases.
 
 New tests explain the $70.16 debit bank closing, retain an unusual $29.84 credit closing, and compare every account closing to its dated trial-balance row. They cover exact split lines, stable date/ID order, source evidence, later settlements/reversals, drafts/future invoices, business scope, empty carried balances, leap/date limits, reading roles, decimal strings and cache/error behavior without writes. See [calculation, signs and reproduction](account-activity.md). The account activity screen and CSV remain the next step.
+
+
+## Account activity screen and CSV
+
+
+Screen source `89ad7b3af3fb4068a8900a5725e2dbe852a188ce` passed all three jobs in [run 37236724400](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37236724400): 292 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production frontend build, all 26 Chromium workflows and native PostgreSQL restoration. The account activity fixture runs against its own fresh H2 process; reviewer and bookkeeper checks also run activity and export. Original desktop/mobile captures were downloaded and visually reviewed. The summary fits the 390-pixel screen, and the postings table was actually scrolled to its evidence column.
+
+The new browser workflow checks the $70.16 bank debit closing after later settlement/reversal, $300.30 revenue credit closing, signed CSV balances/context/filename, formula-looking memo protection, source IDs, carried empty periods, invalid dates, failed-read retry, clearing on edits/reload/mode changes and unchanged ledger/trial balance/audit. Original desktop/mobile evidence is in the [instructions and screen guide](account-activity.md).

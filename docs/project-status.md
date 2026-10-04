@@ -6,7 +6,7 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | --- | --- |
 | Sales and purchases | Invoices, bills, direct expenses, payments, retained corrections and receipt attachments implemented |
 | Ledger and reports | Balanced entries, trial balance, dated financial reports, customer/vendor aging, cash activity and CSV exports implemented |
-| Account activity | Dated account opening/movements/closing API implemented; selector, screen and CSV remain |
+| Account activity | Dated account opening/movements/closing API, selector, posting evidence and signed CSV implemented |
 | Customer statements | Dated opening/activity/closing API, customer selector, movement evidence, CSV export and PDF download implemented |
 | Profit comparison | Two-period accounting API, browser editor, category/total changes and dated CSV export implemented |
 | Bank evidence | CSV import, reviewed matching, statement reconciliation and closed-date protections implemented |
