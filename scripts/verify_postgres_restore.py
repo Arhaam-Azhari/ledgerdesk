@@ -63,8 +63,10 @@ def start(database, log):
         if server.poll() is not None:
             raise RuntimeError('Backend exited before readiness; inspect the CI backend log.')
         try:
-            if api('/api/csrf')[0] == 200:
-                return
+            # Readiness must not depend on a password that the fixture will change.
+            with opener.open(BASE + '/api/csrf', timeout=3) as response:
+                if response.status == 200:
+                    return
         except (OSError, urllib.error.URLError):
             pass
         time.sleep(0.3)
