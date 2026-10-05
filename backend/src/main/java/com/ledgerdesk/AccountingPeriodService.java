@@ -91,9 +91,9 @@ public class AccountingPeriodService {
         if (closed.isEmpty() || !closed.get(0).get("id").equals(id)
                 || ((Number) closed.get(0).get("version")).intValue() != request.version())
             throw new IllegalArgumentException("Only the latest closed accounting period can be reopened. Reload before trying again.");
-        if (db.queryForObject("SELECT COUNT(*) FROM year_end_closes WHERE business_id = 1 AND ends_on >= ?",
+        if (db.queryForObject("SELECT COUNT(*) FROM year_end_closes WHERE business_id = 1 AND status = 'CLOSED' AND ends_on >= ?",
                 Integer.class, closed.get(0).get("ends_on")) != 0)
-            throw new IllegalArgumentException("This period supports a closed earnings year. Year-end reopening is not available yet.");
+            throw new IllegalArgumentException("This period supports a closed earnings year. Reopen the latest earnings close first.");
         db.update("UPDATE accounting_period_closes SET status = 'REOPENED', version = version + 1, reopened_by = ?, reopened_at = ?, reopen_reason = ? WHERE id = ?",
                 actor, LocalDateTime.now(), reason, id);
         ledger.complete(key, hash, id, actor, "ACCOUNTING_PERIOD_REOPENED");

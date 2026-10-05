@@ -182,7 +182,7 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 306 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-seven Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 315 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-seven Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
@@ -329,4 +329,4 @@ Open **Reports**, choose **Customer statements**, select a customer and inclusiv
 
 The account activity API connects one ledger account's opening balance, period debit/credit lines and closing balance to source evidence. Its signed debit-minus-credit convention preserves credit and unusual balances, and closing agrees with the dated trial balance. The [worked example and API instructions](docs/account-activity.md) explain the calculation. Open **Reports → Account activity**, select an account and dates, then run it. Balances show Dr/Cr; expand posting references or export signed CSV evidence.
 
-The [calendar-year earnings preview](docs/year-end.md) prepares balanced revenue/expense offsets and a retained-earnings transfer through an authenticated read-only API. It checks earlier balances, year-end reviews and due adjustments. Open **Reports → Year-end preview** to inspect the draft and supporting review references. The [owner posting API](docs/year-end-posting.md) closes the reviewed earnings, retains the proposal and preserves operating profit reports. Browser posting/history controls and year-end reopening remain later steps.
+The [calendar-year earnings preview](docs/year-end.md) prepares balanced revenue/expense offsets and a retained-earnings transfer through an authenticated read-only API. It checks earlier balances, year-end reviews and due adjustments. Open **Reports → Year-end preview** to inspect the draft and supporting review references. The [owner posting API](docs/year-end-posting.md) closes the reviewed earnings, retains the proposal and preserves operating profit reports. The latest active earnings close can be reopened with a version and reason while retaining its reversal and original review. Browser posting/history/reopening controls remain later steps.

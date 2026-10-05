@@ -52,8 +52,8 @@ public class LedgerService {
     }
 
     void requireOpenDate(LocalDate date) {
-        if (db.queryForObject("SELECT COUNT(*) FROM year_end_closes WHERE business_id = 1 AND ends_on >= ?", Integer.class, date) != 0)
-            throw new IllegalArgumentException("This date belongs to a closed earnings year. Year-end reopening is not available yet.");
+        if (db.queryForObject("SELECT COUNT(*) FROM year_end_closes WHERE business_id = 1 AND status = 'CLOSED' AND ends_on >= ?", Integer.class, date) != 0)
+            throw new IllegalArgumentException("This date belongs to a closed earnings year. Reopen the latest earnings close before changing it.");
         if (db.queryForObject("SELECT COUNT(*) FROM accounting_period_closes WHERE business_id = 1 AND status = 'CLOSED' AND ends_on >= ?", Integer.class, date) != 0)
             throw new IllegalArgumentException("This date belongs to a closed accounting period. Reopen the latest accounting period before changing it.");
         if (db.queryForObject("SELECT COUNT(*) FROM opening_bank_balances WHERE business_id = 1 AND as_of >= ?", Integer.class, date) != 0)

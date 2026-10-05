@@ -26,6 +26,7 @@ public class YearEndService {
     private final JdbcTemplate db;
     private final ReportService reports;
     public record Close(int year, String reviewNote) {}
+    public record Reopen(int version, String reason) {}
     private final AccountingPeriodService periods;
     private final LedgerService ledger;
     private final ObjectMapper json;
@@ -37,7 +38,7 @@ public class YearEndService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Preview preview(int year) {
         if (year < 1 || year > 9999) throw new IllegalArgumentException("Choose a calendar year from 1 to 9999.");
-        var retained = db.queryForList("SELECT id, snapshot FROM year_end_closes WHERE business_id = 1 AND calendar_year = ?", year);
+        var retained = db.queryForList("SELECT id, snapshot FROM year_end_closes WHERE business_id = 1 AND status = 'CLOSED' AND calendar_year = ?", year);
         if (!retained.isEmpty()) {
             Preview original;
             try { original = json.readValue(retained.get(0).get("snapshot").toString(), Preview.class); }
@@ -124,17 +125,51 @@ public class YearEndService {
         }
         db.update("""
             INSERT INTO year_end_closes (id, business_id, calendar_year, starts_on, ends_on, entry_id,
-                accounting_period_id, bank_reconciliation_id, review_note, snapshot, closed_by, closed_at)
-            VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                accounting_period_id, bank_reconciliation_id, review_note, snapshot, closed_by, closed_at, active_year)
+            VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, id, request.year(), review.startsOn(), review.endsOn(), entry, review.accountingPeriodId(),
-                review.bankReconciliationId(), note, snapshot, actor, LocalDateTime.now());
+                review.bankReconciliationId(), note, snapshot, actor, LocalDateTime.now(), request.year());
         ledger.complete(key, hash, id, actor, "YEAR_END_CLOSED");
         return id;
     }
 
+    @Transactional
+    public String reopen(String id, Reopen request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("A version and reopening reason are required.");
+        String closeId = LedgerService.text(id, 36, "Year-end close ID");
+        String reason = LedgerService.text(request.reason(), 240, "Year-end reopening reason");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("year-end-reopen", closeId, request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        var latest = db.queryForList("SELECT * FROM year_end_closes WHERE business_id = 1 AND status = 'CLOSED' ORDER BY calendar_year DESC, id");
+        if (latest.isEmpty() || !latest.get(0).get("id").equals(closeId)
+                || ((Number) latest.get(0).get("version")).intValue() != request.version())
+            throw new IllegalArgumentException("Only the latest closed earnings year can be reopened. Reload before trying again.");
+        var original = latest.get(0);
+        LocalDate end = ((java.sql.Date) original.get("ends_on")).toLocalDate();
+        if (db.queryForObject("SELECT COUNT(*) FROM accounting_period_closes WHERE business_id = 1 AND status = 'CLOSED' AND ends_on > ?", Integer.class, end) != 0)
+            throw new IllegalArgumentException("Reopen later accounting period reviews before reopening this earnings year.");
+        String reversal = null;
+        if (original.get("entry_id") != null) {
+            reversal = ledger.id();
+            // Reverse the actual closing lines on their original date; leave operating postings alone.
+            db.update("INSERT INTO journal_entries VALUES (?, 1, ?, ?, ?)", reversal, end, "Earnings close reversal for " + original.get("calendar_year"), closeId);
+            var lines = db.queryForList("SELECT account_code, debit, credit FROM journal_lines WHERE entry_id = ? ORDER BY id", original.get("entry_id"));
+            for (var line : lines)
+                db.update("INSERT INTO journal_lines VALUES (?, ?, ?, ?, ?)", ledger.id(), reversal, line.get("account_code"), line.get("credit"), line.get("debit"));
+        }
+        db.update("""
+            UPDATE year_end_closes SET status = 'REOPENED', version = version + 1, active_year = NULL,
+                reversal_entry_id = ?, reopened_by = ?, reopened_at = ?, reopen_reason = ? WHERE id = ?
+            """, reversal, actor, LocalDateTime.now(), reason, closeId);
+        ledger.complete(key, hash, closeId, actor, "YEAR_END_REOPENED");
+        return closeId;
+    }
+
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Map<String, Object> history() {
-        return Map.of("yearEndCloses", db.queryForList("SELECT * FROM year_end_closes WHERE business_id = 1 ORDER BY calendar_year DESC, id"));
+        return Map.of("yearEndCloses", db.queryForList("SELECT * FROM year_end_closes WHERE business_id = 1 ORDER BY calendar_year DESC, closed_at DESC, id"));
     }
 
 }

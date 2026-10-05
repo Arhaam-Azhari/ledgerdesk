@@ -21,6 +21,10 @@ public class YearEndController {
             @RequestHeader("Idempotency-Key") String key, Principal user) {
         return Map.of("id", service.close(body, key, user.getName()));
     }
+    @PostMapping("/{id}/reopen") Map<String, String> reopen(@PathVariable String id, @RequestBody YearEndService.Reopen body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", service.reopen(id, body, key, user.getName()));
+    }
     @ExceptionHandler(IllegalArgumentException.class) @ResponseStatus(HttpStatus.BAD_REQUEST)
     Map<String, String> invalid(IllegalArgumentException error) { return Map.of("message", error.getMessage()); }
 }
