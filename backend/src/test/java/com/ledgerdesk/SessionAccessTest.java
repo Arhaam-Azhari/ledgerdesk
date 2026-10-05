@@ -76,11 +76,14 @@ class SessionAccessTest {
     }
     @Test void passwordChangesInvalidateExistingSessions() throws Exception {
         var first = login("test", "owner-test-password"); var second = login("test", "owner-test-password");
+        var staleReload = login("test", "owner-test-password");
         accounts.ownPassword(new AccountManagement.Password("replacement-password", "owner-test-password"), "test");
         for (var session : new MockHttpSession[]{first, second}) {
             http.perform(get("/api/state").session(session)).andExpect(status().isUnauthorized());
             assertThat(session.isInvalid()).isTrue();
         }
+        http.perform(get("/api/auth").session(staleReload)).andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("session"));
+        assertThat(staleReload.isInvalid()).isTrue();
         http.perform(get("/api/state").session(login("test", "replacement-password"))).andExpect(status().isOk());
     }
     @Test void roleChangesAndDisabledAccountsInvalidateSessions() throws Exception {

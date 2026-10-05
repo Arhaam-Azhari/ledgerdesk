@@ -18,7 +18,7 @@ COMPONENTS = {
     'YearEnd': ['year-end', 'year-end-controls'],
 }
 TEST_DIRS = {
-    'tests': 'e2e', 'report-tests': 'reports', 'accounts-tests': 'accounts',
+    'session-tests': 'session', 'tests': 'e2e', 'report-tests': 'reports', 'accounts-tests': 'accounts',
     'asset-tests': 'assets', 'year-end-control-tests': 'year-end-controls',
     'period-tests': 'periods', 'opening-tests': 'opening', 'opening-books-tests': 'opening-books',
     'reconciliation-tests': 'reconciliation', 'equity-tests': 'equity',

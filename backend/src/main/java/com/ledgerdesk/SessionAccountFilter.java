@@ -25,6 +25,11 @@ final class SessionAccountFilter extends OncePerRequestFilter {
                 var session = request.getSession(false);
                 if (session != null) session.invalidate();
                 SecurityContextHolder.clearContext();
+                // Public login setup must still work after an old account session expires.
+                if (request.getMethod().equals("GET") && (request.getServletPath().equals("/api/auth") || request.getServletPath().equals("/api/csrf"))) {
+                    chain.doFilter(request, response);
+                    return;
+                }
                 SecurityConfig.sessionResponse(response, 401, "Sign in again.");
                 return;
             }
