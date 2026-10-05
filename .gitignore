@@ -52,3 +52,5 @@ frontend/session-results/
 deploy/secrets/
 
 frontend/hosted-results/
+
+*.age

@@ -2,7 +2,7 @@ name: Hosted installation check
 on:
   workflow_dispatch:
   pull_request:
-    paths: [deploy/**, compose.hosted.yaml, .dockerignore, .github/workflows/hosted.yml, scripts/verify_hosted.py, frontend/hosted-tests/**, frontend/playwright.hosted.config.ts]
+    paths: [deploy/**, compose.hosted.yaml, .dockerignore, .github/workflows/hosted.yml, scripts/verify_hosted.py, scripts/encrypted_backup.py, scripts/test_encrypted_backup.py, frontend/hosted-tests/**, frontend/playwright.hosted.config.ts]
 permissions:
   contents: read
 concurrency:
@@ -18,6 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y age
+          python3 -m unittest discover -s scripts -p 'test_encrypted_backup.py'
           mkdir -p deploy/secrets
           chmod 700 deploy/secrets
           openssl rand -hex 32 > deploy/secrets/database-password

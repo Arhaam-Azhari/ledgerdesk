@@ -13,3 +13,5 @@ backend/demo-data
 docs/*
 !docs/examples
 attachments
+
+**/*.age

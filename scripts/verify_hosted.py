@@ -6,6 +6,9 @@ from pathlib import Path
 import ssl
 import subprocess
 import time
+import tempfile
+from encrypted_backup import encrypt, decrypt
+from postgres_backup import backup, restore
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -68,9 +71,31 @@ def main():
     assert request('/api/state')[0] == 401
     login()
     assert request('/api/state')[2] == before
+    # Stop the sole writer, then recover the encrypted archive into a fresh database.
+    subprocess.run(['docker', 'compose', '-f', 'compose.hosted.yaml', 'stop', 'api'], check=True, stdout=subprocess.DEVNULL)
+    container = subprocess.check_output(['docker', 'compose', '-f', 'compose.hosted.yaml', 'ps', '-q', 'database'], text=True).strip()
+    os.environ['LEDGERDESK_PG_CONTAINER'] = container
+    os.environ['PGUSER'] = 'ledgerdesk'
+    with tempfile.TemporaryDirectory(prefix='ledgerdesk-hosted-recovery-') as temp:
+        folder = Path(temp)
+        identity = folder / 'identity'
+        subprocess.run(['age-keygen', '-o', str(identity)], check=True, stderr=subprocess.DEVNULL)
+        recipients = folder / 'recipients'
+        recipients.write_bytes(subprocess.check_output(['age-keygen', '-y', str(identity)]))
+        saved = backup('ledgerdesk', folder / 'original')
+        encrypted = encrypt(saved, folder / 'backup.age', recipients)
+        checked = decrypt(encrypted, folder / 'checked', identity)
+        restore(checked, 'restored_installation')
+        override = folder / 'recovery.json'
+        override.write_text(json.dumps({'services': {'api': {'environment': {'DATABASE_URL': 'jdbc:postgresql://database:5432/restored_installation'}}}}))
+        subprocess.run(['docker', 'compose', '-f', 'compose.hosted.yaml', '-f', str(override), 'up', '-d', '--no-deps', '--no-build', 'api'], check=True, stdout=subprocess.DEVNULL)
+        ready()
+        assert request('/api/state')[0] == 401
+        login()
+        assert request('/api/state')[2] == before
     assert request('/api/session/logout', {})[0] == 200
     assert request('/api/state')[0] == 401
-    print('Hosted HTTPS sign-in, secure cookie, private reads, restart persistence and logout verified.')
+    print('Hosted HTTPS sign-in, secure cookie, private reads, restart persistence, encrypted database recovery and logout verified.')
 
 if __name__ == '__main__':
     main()
