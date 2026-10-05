@@ -1,8 +1,8 @@
-# Opening books: preview and posting
+# Opening books: review, import and history
 
 The existing [opening bank setup](opening-bank-balance.md) carries one cleared bank amount. A business with unpaid invoices or bills needs more: its carried receivable/payable balances must agree with documents that can later be collected or paid. This preview checks those relationships and the trial balance before importing anything.
 
-The owner can preview and post through the API. Preview is read-only: `ready: true` means the supported draft passes its current checks, not that an import has occurred. Posting rechecks the request under the business lock, then creates the reviewed opening setup, carried documents and journals in one transaction. Browser import controls remain a later milestone.
+The owner can preview and post through the browser or API. Preview is read-only: `ready: true` means the supported draft passes its current checks, not that an import has occurred. Posting rechecks the request under the business lock, then creates the reviewed opening setup, carried documents and journals in one transaction.
 
 ## Supported draft
 
@@ -117,7 +117,7 @@ All authenticated reading roles can inspect `GET /api/opening-books`; the respon
 
 Use those native IDs for `POST /api/invoices/{invoiceId}/payments` or `POST /api/bills/{billId}/payments`, with CSRF, a new stable payment key, and `{"paidOn":"2026-01-01","amount":"..."}`. Owner and bookkeeper permissions for these routine payments remain the same. Payment dates must be after the opening cutoff; overpayment is rejected. Receipts can use the existing bill attachment workflow. Snapshot figures remain the record of the original import, not a live unpaid balance.
 
-Browser import/history controls and a populated opening-books backup/restore scenario remain later checkpoints. The existing general and earnings restoration tests do not populate these new import tables, so they are regression evidence rather than proof of opening-import recovery.
+A populated opening-books backup/restore scenario remains a later checkpoint. The existing general and earnings restoration tests do not populate these new import tables, so they are regression evidence rather than proof of opening-import recovery.
 
 ## Posting verification
 
@@ -126,3 +126,22 @@ PR #41 source `a00cd2f59cfa95a7dbd2956c82a02949f646b813` passed [run 37346392467
 The tests verify exact reviewed account balances, individually balanced journals, original source/entry references, snapshot/actor retention, zero earlier aging, subsequent customer opening statements, ordinary new operating work, partial/full settlement without duplicated profit, bank carry-forward, protected cutover dates, ordinary-void and overpayment denials, original-key retries, changed/duplicate setup denials, rollback including numbering, zero/loss/large bridges, competing imports, multiple parties and owner/CSRF/key permissions. The first run caught the first-bank-review guard treating noncash cutover journals as earlier operating activity. The corrected path retains their exact journal IDs and the test verifies that a different earlier journal sharing a document source ID is still rejected.
 
 There is no new UI or opening-import restoration fixture in this milestone; those remain the next verification stages.
+
+
+## Browser workflow
+
+1. On fresh books, add the customers and vendors first. Sign in as the owner and open **Opening books**.
+2. Enter the last date covered by prior books and a review note. Copy the debit and credit balances for the supported seven accounts; leave unused balances at zero. The bank amount must be cleared at cutover.
+3. Use **Add unpaid invoice** and **Add unpaid bill** for fully unpaid originals. Select the party and enter the external reference, description, original issue/due dates and amount. Historical partial payments, scheduled assets and other unsupported balances need a separate migration approach.
+4. Click **Preview opening books**. Check the debit/credit totals, control/document differences, operating start date and every displayed source. Resolve any blockers. Editing any field or removing a document clears the preview and requires another review.
+5. Click **Import opening books**, then confirm only if the reviewed figures are correct. The server rechecks them before posting. There is no opening-import correction or reversal workflow yet. If a response fails, keep the displayed reviewed request and retry the same action; its request key survives until the import and workspace refresh both succeed.
+6. Click **Load opening history**. Expand **Original opening review** for the retained cutover figures, and **Opening evidence references** for native document and journal IDs. Current document settlement shows later payments separately from the immutable original review. A failed history load clears the previous display.
+7. Collect/pay the imported documents using the ordinary Invoices and Bills pages. Reload the workspace and history to see current settlement. Owner, bookkeeper and reviewer can read history; only the owner sees preparation, preview and import controls.
+
+An already recorded opening hides the editor, including a prior bank-only setup. Bank-only setup has no opening-books import record. Other existing accounting activity is rejected by server preview checks. This page does not quietly turn old operating activity into fresh books.
+
+### Browser fixture awaiting execution
+
+The fictional browser fixture uses a 2039-12-31 cutover: bank $1,000.25, receivables $100.10, payables $40.04, owner capital $1,000.25 and retained earnings $60.06. Both trial-balance sides total $1,100.35. The unpaid sources are OLD-INV-7 and OLD-BILL-9, with January 2040 due dates. The later full settlements leave both unpaid balances at zero while the original review retains its import figures.
+
+The Chromium fixture is prepared to capture desktop and 390-pixel preview/history images. These captures are not yet published: the corrected browser check is waiting for a GitHub runner. Prepared tests and screenshots are not passing evidence.

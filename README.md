@@ -186,7 +186,7 @@ All 333 backend integration tests passed on each of H2 and PostgreSQL 17, alongs
 
 ## Next milestones
 
-1. Opening books beyond the bank balance, with supported source records and restoration evidence.
+1. Populated opening-books restoration and final operator review for the supported import model.
 2. Secure hosted sessions, HTTPS deployment, protected backups and retention, first-use workflow and release acceptance.
 
 The [first-release plan](docs/first-release-plan.md) defines the finish line: one small service business per installation, USD and calendar-year accounting. Multi-company SaaS and additional accounting families are later scope. The remaining work is estimated at roughly 10–15 focused build cycles, subject to implementation and deployment findings.
@@ -338,4 +338,4 @@ The [calendar-year earnings preview](docs/year-end.md) prepares balanced revenue
 
 ## Opening-books preview
 
-The [owner opening-books preview](docs/opening-books.md) validates an explicit cutover trial balance against fully unpaid customer and supplier documents. It checks account sides, source parties, normalized references, exact differences and fresh accounting data without creating records or silently balancing the draft. Bank, receivables, payables and equity are supported; scheduled balances and historical partial payments need separate models. Owners can post the reviewed request through the controlled API. The import retains its snapshot, original document references and cleared bank cutoff; later collections/payments settle native documents without new operating profit. Browser import controls remain to add.
+The [owner opening-books preview](docs/opening-books.md) validates an explicit cutover trial balance against fully unpaid customer and supplier documents. It checks account sides, source parties, normalized references, exact differences and fresh accounting data without creating records or silently balancing the draft. Bank, receivables, payables and equity are supported; scheduled balances and historical partial payments need separate models. Owners can post the reviewed request through the controlled API. The import retains its snapshot, original document references and cleared bank cutoff; later collections/payments settle native documents without new operating profit. The Opening books screen provides reviewed import and shared retained history. Populated opening-import restoration remains the next checkpoint.

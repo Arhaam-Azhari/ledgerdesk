@@ -45,6 +45,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#39](https://github.com/Arhaam-Azhari/ledgerdesk/pull/39) | Define the first-release finish line and opening-books design checklist |
 | [#40](https://github.com/Arhaam-Azhari/ledgerdesk/pull/40) | Preview opening balances and reconciled unpaid documents without posting |
 | [#41](https://github.com/Arhaam-Azhari/ledgerdesk/pull/41) | Import reviewed opening books with preserved sources, cutoff and later settlements without duplicated profit |
+| [#42](https://github.com/Arhaam-Azhari/ledgerdesk/pull/42) | Add opening-books browser review/import, recover lost responses and inspect shared retained history |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 
