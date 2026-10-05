@@ -22,11 +22,12 @@ public class SecurityConfig {
                             @Value("${app.reviewer.username:}") String reviewer,
                             @Value("${app.reviewer.password:}") String reviewerPassword,
                             @Value("${app.accounts.persistent:false}") boolean persistent,
+                            @Value("${app.auth.mode:basic}") String mode,
                             PersistentAccounts accounts,
                             PasswordEncoder encoder) {
         if (persistent) {
             accounts.bootstrap(username, password, reviewer, reviewerPassword, encoder);
-            return accounts::load;
+            return mode.equals("session") ? name -> new SessionAccount(accounts.load(name)) : accounts::load;
         }
         var users = new InMemoryUserDetailsManager(User.withUsername(username)
                 .password(encoder.encode(password)).roles("OWNER").build());
@@ -39,9 +40,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain security(HttpSecurity http) throws Exception {
+    SecurityFilterChain security(HttpSecurity http, PersistentAccounts accounts,
+            @Value("${app.auth.mode:basic}") String mode,
+            @Value("${app.accounts.persistent:false}") boolean persistent) throws Exception {
+        if (!mode.equals("basic") && !mode.equals("session")) throw new IllegalArgumentException("Choose basic or session authentication.");
+        if (mode.equals("session") && !persistent) throw new IllegalArgumentException("Session login requires stored accounts.");
         // CSRF remains enabled, including for authenticated API writes.
-        return http.authorizeHttpRequests(auth -> auth.requestMatchers("/api/csrf").permitAll()
+        http.authorizeHttpRequests(auth -> auth.requestMatchers("/api/csrf", "/api/auth").permitAll()
                 .requestMatchers("/api/accounts", "/api/accounts/**").hasRole("OWNER")
                 .requestMatchers(HttpMethod.POST, "/api/me/password").hasAnyRole("OWNER", "BOOKKEEPER", "REVIEWER")
                 .requestMatchers(HttpMethod.GET, "/**").authenticated()
@@ -60,6 +65,29 @@ public class SecurityConfig {
                         "/api/bank/transactions/*/match", "/api/bank/transactions/*/unmatch",
                         "/api/bank/reconciliations", "/api/bank/reconciliations/preview")
                 .hasAnyRole("OWNER", "BOOKKEEPER")
-                .anyRequest().hasRole("OWNER")).httpBasic(Customizer.withDefaults()).build();
+                .anyRequest().hasRole("OWNER"));
+        if (mode.equals("basic")) return http.httpBasic(Customizer.withDefaults()).build();
+        http.httpBasic(basic -> basic.disable())
+                .requestCache(cache -> cache.disable())
+                .sessionManagement(session -> session.sessionFixation(fixation -> fixation.changeSessionId()))
+                .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, error) -> sessionResponse(response, 401, "Sign in to continue.")))
+                .formLogin(login -> login.loginPage("/").loginProcessingUrl("/api/session/login")
+                        .successHandler((request, response, user) -> sessionResponse(response, 200, "Signed in."))
+                        .failureHandler((request, response, error) -> {
+                            var session = request.getSession(false);
+                            if (session != null) session.invalidate();
+                            sessionResponse(response, 401, "Check your username and password.");
+                        })
+                        .permitAll())
+                .logout(logout -> logout.logoutUrl("/api/session/logout").deleteCookies("JSESSIONID")
+                        .logoutSuccessHandler((request, response, user) -> sessionResponse(response, 200, "Signed out.")));
+        http.addFilterBefore(new SessionAccountFilter(accounts), org.springframework.security.web.access.intercept.AuthorizationFilter.class);
+        return http.build();
+    }
+    static void sessionResponse(jakarta.servlet.http.HttpServletResponse response, int status, String message) throws java.io.IOException {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.setHeader("Cache-Control", "no-store");
+        response.getWriter().write("{\"message\":\"" + message + "\"}");
     }
 }
