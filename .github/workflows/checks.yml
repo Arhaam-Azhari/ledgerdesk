@@ -53,6 +53,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: mvn -B package -DskipTests
         working-directory: backend
+      - run: python3 scripts/verify_year_end_restore.py --database h2
       - run: java -jar target/ledgerdesk-0.1.0.jar --spring.profiles.active=demo > backend.log 2>&1 &
         working-directory: backend
       - run: npm ci && npm run build && npx playwright install --with-deps chromium && npm run test:e2e && npm run test:password && npm run test:bookkeeper && npm run test:periods && npm run test:reconciliation && npm run test:reports && npm run test:account-activity && npm run test:year-end && npm run test:year-end-controls && npm run test:equity && npm run test:adjustments && npm run test:accruals && npm run test:handoff && npm run test:prepaid && npm run test:assets && npm run test:cash && npm run test:reviewer && npm run test:persistent && npm run test:accounts && npm run test:opening
@@ -82,6 +83,11 @@ jobs:
             frontend/period-results/
             frontend/bookkeeper-results/
             frontend/password-results/
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: year-end-h2-restore-log
+          path: year-end-h2-restore.log
 
   postgres-restore:
     runs-on: ubuntu-latest
@@ -109,8 +115,15 @@ jobs:
           LEDGERDESK_PG_CONTAINER: ${{ job.services.postgres.id }}
           PGUSER: ledgerdesk
           DATABASE_PASSWORD: ci-only
+      - run: python3 scripts/verify_year_end_restore.py --database postgres
+        env:
+          LEDGERDESK_PG_CONTAINER: ${{ job.services.postgres.id }}
+          PGUSER: ledgerdesk
+          DATABASE_PASSWORD: ci-only
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: postgres-restore-log
-          path: postgres-restore-backend.log
+          path: |
+            postgres-restore-backend.log
+            year-end-postgres-restore.log
