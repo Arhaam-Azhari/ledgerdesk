@@ -18,7 +18,7 @@ class CheckSelectionTest(unittest.TestCase):
 
     def test_unknown_frontend_and_policy_changes_keep_all_browser_checks(self):
         for path in ('frontend/src/money.ts', 'frontend/package.json'):
-            self.assertEqual(set(plan([path], self.scripts)['browser_checks'].split()), {s for s in self.scripts if s.startswith('test:')})
+            self.assertEqual(set(plan([path], self.scripts)['browser_checks'].split()), {s for s in self.scripts if s.startswith('test:') and s != 'test:hosted'})
 
     def test_recovery_fixture_does_not_rerun_unrelated_application_suites(self):
         result = plan(['scripts/verify_opening_books_restore.py', '.github/workflows/checks.yml'], self.scripts)
@@ -31,6 +31,11 @@ class CheckSelectionTest(unittest.TestCase):
             self.assertTrue(result['backend'])
             self.assertTrue(result['restore'])
             self.assertTrue(result['browser'])
+
+    def test_hosted_browser_uses_its_own_installation_job(self):
+        result = plan(['frontend/hosted-tests/hosted.spec.ts', 'frontend/playwright.hosted.config.ts'], self.scripts)
+        self.assertFalse(result['browser'])
+        self.assertNotIn('test:hosted', plan(['backend/src/main/java/com/ledgerdesk/SecurityConfig.java'], self.scripts)['browser_checks'].split())
 
 if __name__ == '__main__':
     unittest.main()

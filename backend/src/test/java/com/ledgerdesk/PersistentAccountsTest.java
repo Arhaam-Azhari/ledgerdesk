@@ -60,7 +60,7 @@ class PersistentAccountsTest {
         assertThat(encoder.matches("x".repeat(72),accounts.load("owner").getPassword())).isTrue();
     }
     @Test void persistentSecurityProviderUsesStoredHashesAndRoles() {
-        var provider = new SecurityConfig().users("owner",secret,"reviewer","reviewer-test-password",true,accounts,encoder);
+        var provider = new SecurityConfig().users("owner",secret,"reviewer","reviewer-test-password",true,"basic",accounts,encoder);
         assertThat(encoder.matches(secret,provider.loadUserByUsername("owner").getPassword())).isTrue();
         assertThat(provider.loadUserByUsername("reviewer").getAuthorities()).extracting(a -> a.getAuthority()).containsExactly("ROLE_REVIEWER");
         assertThatThrownBy(() -> db.update("UPDATE business_memberships SET role='ADMIN'")).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);

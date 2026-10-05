@@ -50,3 +50,5 @@ frontend/opening-books-results/
 frontend/session-results/
 
 deploy/secrets/
+
+frontend/hosted-results/

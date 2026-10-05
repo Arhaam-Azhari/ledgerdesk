@@ -36,6 +36,9 @@ def plan(paths, scripts, full=False):
     selected = set()
     all_browser = full or backend
     for p in code:
+        # Hosted browser checks need the Compose installation and run in hosted.yml.
+        if p.startswith('frontend/hosted-tests/') or p == 'frontend/playwright.hosted.config.ts':
+            continue
         parts = p.split('/')
         if not p.startswith('frontend/'):
             # Policy tests cover the selector; application code has not changed here.
@@ -55,7 +58,7 @@ def plan(paths, scripts, full=False):
             selected.add('e2e' if name == 'config.ts' else name)
         else:
             all_browser = True
-    available = {key.removeprefix('test:') for key in scripts if key.startswith('test:')}
+    available = {key.removeprefix('test:') for key in scripts if key.startswith('test:') and key != 'test:hosted'}
     if all_browser or not selected.issubset(available):
         selected = available
     return {'backend': backend, 'restore': recovery, 'browser': bool(selected),

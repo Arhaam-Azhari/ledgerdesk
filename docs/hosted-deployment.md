@@ -1,6 +1,6 @@
 # Hosted deployment (prepared, not yet verified)
 
-This Compose setup builds the frontend and Java service, keeps PostgreSQL private, and serves the browser and API from one HTTPS address through Caddy. It is for one business per installation. It has not been run yet; it is not a completed deployment or recovery milestone. The hosted-installation workflow builds both images and checks HTTPS login, cookie flags, private reads, logout and record persistence after an API restart. Its disposable localhost check accepts Caddy's private certificate; public deployments must use a trusted certificate.
+This Compose setup builds the frontend and Java service, keeps PostgreSQL private, and serves the browser and API from one HTTPS address through Caddy. It is for one business per installation. It has not been run yet; it is not a completed deployment or recovery milestone. The hosted-installation workflow builds both images and checks HTTPS login, cookie flags, private reads, logout and record persistence after an API restart. It also checks the real browser on desktop and mobile, saving screenshots as the `hosted-browser-proof` artifact. Its disposable localhost check accepts Caddy's private certificate; public deployments must use a trusted certificate.
 
 ## Prepare a Linux host
 
