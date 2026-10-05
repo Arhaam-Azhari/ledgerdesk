@@ -1,3 +1,4 @@
+import { OpeningBooks, type OpeningBooksRequest, type OpeningBooksPreview, type OpeningBooksHistory } from "./OpeningBooks";
 import {
   AccountingPeriods,
   type PeriodState,
@@ -183,6 +184,7 @@ function App() {
           "Reports",
           "Cash activity",
           "Period close",
+          "Opening books",
           "General ledger",
           "Trial balance",
           "Activity",
@@ -339,6 +341,22 @@ function App() {
       setError(error instanceof Error ? error.message : "Could not compare profit.");
       return null;
     } finally { setBusy(false); }
+  }
+
+  async function previewOpeningBooks(body: OpeningBooksRequest): Promise<OpeningBooksPreview | null> {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const result = await api("/api/opening-books/preview", body);
+      requests.current.delete("/api/opening-books/preview" + JSON.stringify(body));
+      return result;
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not preview opening books."); return null; }
+    finally { setBusy(false); }
+  }
+  async function loadOpeningBooks(): Promise<OpeningBooksHistory | null> {
+    setBusy(true); setError(""); setNotice("");
+    try { return await api("/api/opening-books"); }
+    catch (error) { setError(error instanceof Error ? error.message : "Could not load opening history."); return null; }
+    finally { setBusy(false); }
   }
 
   async function loadYearEndHistory(): Promise<YearEndHistory | null> {
@@ -684,6 +702,7 @@ function App() {
     "Bank matching",
     "Reconciliation",
     "Period close",
+          "Opening books",
     "Reports",
     "Cash activity",
     ...(access?.role === "OWNER" ? ["Owner transfers", "Opening bank balance"] : []),
@@ -783,6 +802,7 @@ function App() {
                   "Reports",
                   "Cash activity",
                   "Period close",
+          "Opening books",
                   "General ledger",
                   "Trial balance",
                   "Activity",
@@ -1522,6 +1542,7 @@ function App() {
         {page === "Adjustments" && (
           <Adjustments data={data} busy={busy} act={act} />
         )}
+        {page === "Opening books" && <OpeningBooks data={data} owner={access?.role === "OWNER"} busy={busy} preview={previewOpeningBooks} loadHistory={loadOpeningBooks} act={act} />}
         {page === "Opening bank balance" && access?.role === "OWNER" && (
           <OpeningBankBalance data={data} busy={busy} act={act} />
         )}
