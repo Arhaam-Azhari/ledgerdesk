@@ -84,7 +84,7 @@ public class LedgerService {
         db.update("INSERT INTO audit_events VALUES (?, ?, ?, ?, ?)", id(), LocalDateTime.now(), actor, action, result);
     }
 
-    void journal(String source, LocalDate date, String memo, String debitAccount,
+    String journal(String source, LocalDate date, String memo, String debitAccount,
                          String creditAccount, BigDecimal amount) {
         requireOpenDate(date);
         String entry = id();
@@ -92,6 +92,7 @@ public class LedgerService {
         db.update("INSERT INTO journal_lines VALUES (?, ?, ?, ?, 0)", id(), entry, debitAccount, amount);
         db.update("INSERT INTO journal_lines VALUES (?, ?, ?, 0, ?)", id(), entry, creditAccount, amount);
         // All supported postings create a debit and credit from the same exact amount.
+        return entry;
     }
 
     @Transactional
@@ -254,6 +255,8 @@ public class LedgerService {
         String previous = retry(key, hash);
         if (previous != null) return previous;
         Map<String, Object> invoice = invoice(invoiceId);
+        if (db.queryForObject("SELECT COUNT(*) FROM opening_book_invoices WHERE invoice_id = ?", Integer.class, invoiceId) != 0)
+            throw new IllegalArgumentException("Imported opening invoices cannot be voided as current sales. A separate opening correction workflow is required.");
         if (date == null || date.isBefore(((java.sql.Date) invoice.get("issued_on")).toLocalDate()))
             throw new IllegalArgumentException("Reversal date must be on or after the invoice date.");
         if (!invoice.get("status").equals("POSTED") || ((BigDecimal) invoice.get("paid")).signum() != 0)

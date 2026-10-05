@@ -1,8 +1,8 @@
-# Opening-books preview
+# Opening books: preview and posting
 
 The existing [opening bank setup](opening-bank-balance.md) carries one cleared bank amount. A business with unpaid invoices or bills needs more: its carried receivable/payable balances must agree with documents that can later be collected or paid. This preview checks those relationships and the trial balance before importing anything.
 
-This milestone implements an API preview only. It does not post opening books, create documents or add a browser form. `ready: true` means the supported draft passes the current preview checks; it is not evidence that an import has occurred. Posting will recheck the draft while holding the business lock in a later milestone.
+The owner can preview and post through the API. Preview is read-only: `ready: true` means the supported draft passes its current checks, not that an import has occurred. Posting rechecks the request under the business lock, then creates the reviewed opening setup, carried documents and journals in one transaction. Browser import controls remain a later milestone.
 
 ## Supported draft
 
@@ -63,7 +63,7 @@ curl --include --user demo:demo-local-only \
 
 These published credentials are only for the local demo profile. Use your configured owner login in other local installations. Successful responses have `Cache-Control: no-store`; returned decimal totals are strings. Valid drafts with differences or existing activity return HTTP 200 with blockers and `ready: false`. Malformed amounts, dates, account sides, references, source parties or missing/oversized lists return HTTP 400. Unauthorized roles and missing CSRF tokens cannot run the preview.
 
-There is no `POST /api/opening-books` posting implementation yet. Do not use ordinary invoice/bill posting to imitate this import: that would record historical revenue/expenses in the operating books. The later controlled posting path must preserve source references and settle imported documents without duplicating profit.
+Use the controlled posting endpoint below. Do not use ordinary invoice/bill posting to imitate an opening import: that would record historical revenue/expenses in the operating books.
 
 ## What this demonstrates
 
@@ -76,3 +76,53 @@ The preview separates arithmetic balance from document completeness: an equal de
 PR #40 source `89c31aa54a5c6ea6591c83b47d8c86e8ecaad972` passed [run 37284772514](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37284772514): all 324 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production frontend build and all 28 existing Chromium workflows. All nine opening-books tests passed on both databases. Native PostgreSQL and separate H2 earnings recovery, plus the existing receipt/password recovery checks, also passed.
 
 Those browser/recovery checks are regression evidence. The new preview is tested through the service and authenticated HTTP fixtures; no opening-books posting or UI recovery is claimed. No browser screen changed in this milestone, so there are no new opening-books screenshots.
+
+## Post the reviewed opening
+
+After reviewing the preview, submit the same request file to the owner posting endpoint with a stable request key. Use the cookie jar and actual CSRF values obtained above:
+
+```sh
+curl --include --user demo:demo-local-only \
+  --cookie /tmp/ledgerdesk-opening-cookies \
+  --header "$opening_csrf_header: $opening_csrf_token" \
+  --header 'Content-Type: application/json' \
+  --header 'Idempotency-Key: opening-books-2025-reviewed' \
+  --data @opening-preview.json \
+  http://localhost:8080/api/opening-books
+```
+
+The response is `{"id":"..."}`. Posting locks the business, checks the original key first, revalidates the preview, and writes the native documents, cutover journals, bank cutoff, retained snapshot, source references, actor/time and audit/key together. Any failed write rolls them back, including invoice numbering. A second setup with a new key is blocked; an exact original retry returns the original ID, even after documents have been paid. Changed details with the original key are rejected.
+
+The opening books and the earlier bank-only setup are alternatives. Existing bank setup blocks a full import; the full import records its own cleared bank balance and prevents a second bank setup. Zero books retain the reviewed cutoff with a null permanent-entry ID and no zero journal lines.
+
+## Retained sources and posting treatment
+
+The worked draft creates one invoice and one bill with their original issue/due dates and unpaid amounts. The invoice receives a stable internal `INV-...` number; its original external reference stays in `opening_book_invoices`. The bill retains its original reference in the native bill. Both source links retain the exact cutover journal ID. The import snapshot keeps the original reviewed, unpaid figures; current source amounts paid can later change.
+
+The invoice's cutover entry debits receivables $100.10 and credits opening equity $100.10. The bill's cutover entry debits opening equity $40.04 and credits payables $40.04. A separate permanent-account entry carries bank and the reviewed equity balances, with the opposite opening-equity offsets. Final account balances equal the reviewed trial balance; opening-equity document bridges cancel without touching revenue or expenses. Each journal balances individually. Offsets stay as separate supported amount lines so their aggregation cannot overflow one stored monetary line.
+
+This is why the import preserves both journals and source records. Customer statements and aging use those document-specific entries at cutover, so the $100.10 appears as a subsequent statement's opening receivable, rather than a new sale. Reports before cutover do not invent earlier balances from the historical issue dates. The first bank statement carries $1,000.25 without an outstanding deposit. The document exemption uses exact retained cutover journal IDs; an unrelated earlier journal remains blocked even if it shares a document source ID.
+
+For the worked figures, subsequent full collection of $100.10 and payment of $40.04 leave bank $1,060.31, receivables/payables zero, operating profit zero and total equity $1,060.31. Partial settlements work through the ordinary payment endpoints. New operating invoices and bills after cutover still post their normal revenue and expense.
+
+Ordinary invoice/bill void actions are blocked on imported sources. Reversing them as current sales/purchases would create a revenue/expense reversal for profit the import never recorded. Editing/reversing the opening import and correcting imported documents need a separate workflow; they are not supported by this milestone. Review the originals and preview carefully before posting.
+
+## Read the import and settle its documents
+
+All authenticated reading roles can inspect `GET /api/opening-books`; the response is `Cache-Control: no-store`. It contains:
+
+- `openingBooks`: retained import, cutover, review note, original snapshot string, permanent entry, bank-opening reference and actor/time.
+- `receivables`: native invoice IDs, original external references, customer IDs, cutover entry IDs and current document amounts/status.
+- `payables`: native bill IDs, original references, vendor IDs, cutover entry IDs and current document amounts/status.
+
+Use those native IDs for `POST /api/invoices/{invoiceId}/payments` or `POST /api/bills/{billId}/payments`, with CSRF, a new stable payment key, and `{"paidOn":"2026-01-01","amount":"..."}`. Owner and bookkeeper permissions for these routine payments remain the same. Payment dates must be after the opening cutoff; overpayment is rejected. Receipts can use the existing bill attachment workflow. Snapshot figures remain the record of the original import, not a live unpaid balance.
+
+Browser import/history controls and a populated opening-books backup/restore scenario remain later checkpoints. The existing general and earnings restoration tests do not populate these new import tables, so they are regression evidence rather than proof of opening-import recovery.
+
+## Posting verification
+
+PR #41 source `a00cd2f59cfa95a7dbd2956c82a02949f646b813` passed [run 37346392467](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37346392467): 333 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production build and all 28 existing Chromium workflows. All nine posting tests passed on both databases. General native PostgreSQL and populated earnings restoration on H2/PostgreSQL also passed as regression checks.
+
+The tests verify exact reviewed account balances, individually balanced journals, original source/entry references, snapshot/actor retention, zero earlier aging, subsequent customer opening statements, ordinary new operating work, partial/full settlement without duplicated profit, bank carry-forward, protected cutover dates, ordinary-void and overpayment denials, original-key retries, changed/duplicate setup denials, rollback including numbering, zero/loss/large bridges, competing imports, multiple parties and owner/CSRF/key permissions. The first run caught the first-bank-review guard treating noncash cutover journals as earlier operating activity. The corrected path retains their exact journal IDs and the test verifies that a different earlier journal sharing a document source ID is still rejected.
+
+There is no new UI or opening-import restoration fixture in this milestone; those remain the next verification stages.

@@ -2,6 +2,7 @@ package com.ledgerdesk;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -36,7 +37,11 @@ public class OpeningBooksService {
             "1000", "ASSET", "1100", "ASSET", "2000", "LIABILITY", "3000", "EQUITY",
             "3100", "EQUITY", "3200", "EQUITY", "3300", "EQUITY");
     private final JdbcTemplate db;
-    public OpeningBooksService(JdbcTemplate db) { this.db = db; }
+    private final LedgerService ledger;
+    private final com.fasterxml.jackson.databind.ObjectMapper json;
+    public OpeningBooksService(JdbcTemplate db, LedgerService ledger, com.fasterxml.jackson.databind.ObjectMapper json) {
+        this.db = db; this.ledger = ledger; this.json = json;
+    }
     private static BigDecimal zero() { return new BigDecimal("0.00"); }
     private static BigDecimal amount(String value) {
         if (value == null || !value.matches("[0-9]{1,12}(\\.[0-9]{1,2})?"))
@@ -122,6 +127,7 @@ public class OpeningBooksService {
         if (supplierDifference.signum() != 0) blockers.add("Payable balance must equal the supported unpaid supplier documents.");
         int existing = db.queryForObject("""
             SELECT (SELECT COUNT(*) FROM opening_bank_balances WHERE business_id = 1)
+                 + (SELECT COUNT(*) FROM opening_book_imports WHERE business_id = 1)
                  + (SELECT COUNT(*) FROM journal_entries WHERE business_id = 1)
                  + (SELECT COUNT(*) FROM bank_imports WHERE business_id = 1)
                  + (SELECT COUNT(*) FROM bank_reconciliations WHERE business_id = 1)
@@ -135,5 +141,94 @@ public class OpeningBooksService {
                 List.copyOf(receivables), List.copyOf(payables), debits, credits, difference, bank,
                 receivable, customerTotal, customerDifference, payable, supplierTotal, supplierDifference,
                 List.copyOf(blockers), blockers.isEmpty());
+    }
+
+    private record PostingLine(String code, BigDecimal debit, BigDecimal credit) {}
+
+    @Transactional
+    public String post(Request request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("Opening details are required.");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("opening-books", request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        Preview review = preview(request);
+        if (!review.ready()) throw new IllegalArgumentException("Resolve the opening preview blockers before importing books.");
+        ledger.requireOpenDate(review.asOf());
+        String snapshot;
+        try { snapshot = json.writeValueAsString(review); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException error) { throw new IllegalStateException(error); }
+        String id = ledger.id();
+        var invoiceIds = new ArrayList<String>(); var billIds = new ArrayList<String>();
+        var invoiceEntries = new ArrayList<String>(); var billEntries = new ArrayList<String>();
+        var base = new ArrayList<PostingLine>();
+        for (Line line : review.lines())
+            if (!line.code().equals("1100") && !line.code().equals("2000")
+                    && (line.debit().signum() > 0 || line.credit().signum() > 0))
+                base.add(new PostingLine(line.code(), line.debit(), line.credit()));
+        for (Document row : review.receivables()) {
+            String invoice = ledger.id();
+            db.update("INSERT INTO invoices VALUES (?, 1, ?, ?, ?, ?, ?, 0, 'POSTED')", invoice,
+                    row.partyId(), row.description(), row.issuedOn(), row.dueOn(), row.amount());
+            long number = db.queryForObject("SELECT next_invoice_number FROM businesses WHERE id = 1", Long.class);
+            db.update("INSERT INTO invoice_numbers VALUES (?, ?)", invoice, number);
+            db.update("UPDATE businesses SET next_invoice_number = next_invoice_number + 1 WHERE id = 1");
+            // Original dates stay on the document; its carried balance enters the ledger at cutover.
+            invoiceEntries.add(ledger.journal(invoice, review.asOf(), "Opening receivable: " + row.reference(), "1100", "3200", row.amount()));
+            invoiceIds.add(invoice);
+            base.add(new PostingLine("3200", row.amount(), zero()));
+        }
+        for (Document row : review.payables()) {
+            String bill = ledger.id();
+            db.update("""
+                INSERT INTO bills (id, business_id, vendor_id, reference, reference_key, description,
+                    issued_on, due_on, account_code, amount)
+                VALUES (?, 1, ?, ?, ?, ?, ?, ?, '3200', ?)
+                """, bill, row.partyId(), row.reference(), row.reference().toUpperCase(java.util.Locale.ROOT),
+                    row.description(), row.issuedOn(), row.dueOn(), row.amount());
+            billEntries.add(ledger.journal(bill, review.asOf(), "Opening payable: " + row.reference(), "3200", "2000", row.amount()));
+            billIds.add(bill);
+            base.add(new PostingLine("3200", zero(), row.amount()));
+        }
+        String entry = null;
+        if (!base.isEmpty()) {
+            // Offset the document equity bridges so final account balances equal the reviewed trial balance.
+            // Keep amounts separate: aggregating many large documents could exceed one NUMERIC(14,2) line.
+            BigDecimal debits = zero(), credits = zero();
+            for (PostingLine line : base) { debits = debits.add(line.debit()); credits = credits.add(line.credit()); }
+            if (debits.compareTo(credits) != 0) throw new IllegalStateException("Opening posting does not balance.");
+            entry = ledger.id();
+            db.update("INSERT INTO journal_entries VALUES (?, 1, ?, ?, ?)", entry, review.asOf(), "Opening books: " + review.reviewNote(), id);
+            for (PostingLine line : base)
+                db.update("INSERT INTO journal_lines VALUES (?, ?, ?, ?, ?)", ledger.id(), entry, line.code(), line.debit(), line.credit());
+        }
+        // Store the cutoff last so the controlled cutover postings cannot bypass a recorded opening.
+        db.update("INSERT INTO opening_bank_balances VALUES (?, 1, ?, ?, ?)", id, review.asOf(), review.bankBalance(), review.reviewNote());
+        db.update("INSERT INTO opening_book_imports VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?)",
+                id, review.asOf(), review.reviewNote(), snapshot, entry, id, actor, LocalDateTime.now());
+        for (int i = 0; i < invoiceIds.size(); i++) {
+            Document row = review.receivables().get(i);
+            db.update("INSERT INTO opening_book_invoices VALUES (?, ?, ?, ?, ?, ?)", invoiceIds.get(i), id,
+                    row.partyId(), row.reference(), row.reference().toUpperCase(java.util.Locale.ROOT), invoiceEntries.get(i));
+        }
+        for (int i = 0; i < billIds.size(); i++)
+            db.update("INSERT INTO opening_book_bills VALUES (?, ?, ?)", billIds.get(i), id, billEntries.get(i));
+        ledger.complete(key, hash, id, actor, "OPENING_BOOKS_IMPORTED");
+        return id;
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Map<String, Object> history() {
+        return Map.of("openingBooks", db.queryForList("SELECT * FROM opening_book_imports WHERE business_id = 1 ORDER BY as_of, id"),
+                "receivables", db.queryForList("""
+                    SELECT o.*, i.description, i.issued_on, i.due_on, i.amount, i.paid, i.status
+                    FROM opening_book_invoices o JOIN opening_book_imports b ON b.id = o.opening_books_id
+                    JOIN invoices i ON i.id = o.invoice_id WHERE b.business_id = 1 AND i.business_id = 1
+                    ORDER BY o.original_reference, o.invoice_id
+                    """), "payables", db.queryForList("""
+                    SELECT o.*, i.vendor_id, i.reference, i.description, i.issued_on, i.due_on, i.amount, i.paid, i.status
+                    FROM opening_book_bills o JOIN opening_book_imports b ON b.id = o.opening_books_id
+                    JOIN bills i ON i.id = o.bill_id WHERE b.business_id = 1 AND i.business_id = 1 ORDER BY i.reference, i.id
+                    """));
     }
 }
