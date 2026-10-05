@@ -26,7 +26,8 @@ final class SessionAccountFilter extends OncePerRequestFilter {
                 if (session != null) session.invalidate();
                 SecurityContextHolder.clearContext();
                 // Public login setup must still work after an old account session expires.
-                if (request.getMethod().equals("GET") && (request.getServletPath().equals("/api/auth") || request.getServletPath().equals("/api/csrf"))) {
+                String path = request.getRequestURI().substring(request.getContextPath().length());
+                if (request.getMethod().equals("GET") && (path.equals("/api/auth") || path.equals("/api/csrf"))) {
                     chain.doFilter(request, response);
                     return;
                 }
