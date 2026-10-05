@@ -40,6 +40,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#34](https://github.com/Arhaam-Azhari/ledgerdesk/pull/34) | Review year-end earnings, balances, proposed closing lines and prerequisites in Reports |
 | [#35](https://github.com/Arhaam-Azhari/ledgerdesk/pull/35) | Post reviewed earnings closes, retain history and preserve operating profit reports |
 | [#36](https://github.com/Arhaam-Azhari/ledgerdesk/pull/36) | Reopen the latest earnings close with retained reversals, reviewed corrections and replacement closes |
+| [#37](https://github.com/Arhaam-Azhari/ledgerdesk/pull/37) | Post and reopen earnings in Reports with shared retained history and lost-response recovery |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 

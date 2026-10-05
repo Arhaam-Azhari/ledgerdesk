@@ -1,6 +1,6 @@
 # Calendar-year earnings preview
 
-This API prepares a read-only review of the revenue and expense balances for January 1 through December 31. It shows the offsets that would clear that year's activity and transfer net profit or loss to retained earnings account 3300. The browser screen supports read-only review. The [owner posting API](year-end-posting.md) now posts the reviewed proposal, retains closing history and preserves operating profit reports. Browser posting/history/reopening controls remain later work.
+This API prepares a read-only review of the revenue and expense balances for January 1 through December 31. It shows the offsets that would clear that year's activity and transfer net profit or loss to retained earnings account 3300. Running the preview itself is read-only; owners can separately post or reopen earnings from this screen. The [owner posting API](year-end-posting.md) now posts the reviewed proposal, retains closing history and preserves operating profit reports. The browser also shows retained closing history and owner posting/reopening controls.
 
 ## Run a preview
 
@@ -49,13 +49,13 @@ Source `fe1b246cf0086bc533d4921f36946dcc9a3ba5bb` passed 298 integration tests o
 
 Open **Reports → Year-end preview**, enter a whole calendar year between 1 and 9999, and click **Run year-end preview**. The result shows the annual accrual revenue/expenses and net profit or loss, the corresponding retained-earnings change, and each temporary account's opening, year activity and closing. Dr/Cr presentation preserves credit and unusual account balances.
 
-Read **Review prerequisites** before using the proposal. Missing/reopened December 31 reviews and unfinished scheduled adjustments appear alongside earlier earnings balances and any accounting differences. Active close IDs can be inspected under **Year-end review references**. **Preview prerequisites met** means these checks passed; it does not mean a closing entry was posted. There is no posting button.
+Read **Review prerequisites** before using the proposal. Missing/reopened December 31 reviews and unfinished scheduled adjustments appear alongside earlier earnings balances and any accounting differences. Active close IDs can be inspected under **Year-end review references**. **Preview prerequisites met** means these checks passed; it does not mean a closing entry was posted. Owners can separately enter a review note and confirm **Close year-end earnings**.
 
 The proposed debit/credit lines and totals appear below the balances. A year without activity has no proposed lines; it can still have blockers from earlier years. Profit increases retained earnings, while a negative change indicates a loss. Owner transfers and permanent account balances are retained separately.
 
 Changing the year, reloading the workspace or leaving this report clears the result. During a request, year and mode controls are disabled. A failed request clears the old proposal and displays an error; run it again after resolving the failure. This is an on-screen review; a dedicated year-end export is not implemented.
 
-The balances table scrolls horizontally on a narrow screen; the rest of the review fits the viewport. Owner, bookkeeper and reviewer accounts can run this screen.
+The balances table scrolls horizontally on a narrow screen; the rest of the review fits the viewport. Owner, bookkeeper and reviewer accounts can run previews and inspect history. Posting and reopening controls are owner-only.
 
 
 ## Screen proof
@@ -71,3 +71,5 @@ The test checks invalid whole-year inputs, failed-read retry, disabled controls 
 ![Mobile year-end review with the balances table scrolled right](screenshots/mobile-year-end-preview.png)
 
 The [posting guide](year-end-posting.md) explains the new owner API, retained history, report treatment, repeat-request behavior and latest-year reopening controls. For a closed year, this screen displays the retained pre-posting proposal with an already-closed blocker.
+
+The current preview captures above were refreshed from browser-controls source `efe17823c9dd86d3889eb2aa815e4f25afe2e041` in [run 37247930933](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37247930933). They now include the owner review-note/confirmation controls and shared history section. The earlier captures were replaced. See [posting and history screen proof](year-end-posting.md#browser-proof) for recorded and reopened closes.

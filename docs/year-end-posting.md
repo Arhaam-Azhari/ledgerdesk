@@ -1,6 +1,6 @@
 # Posting a calendar-year earnings close
 
-The owner API can now post the proposal reviewed under **Reports → Year-end preview**. The browser currently supports review only; posting and history controls are separate work. A posted close clears revenue and expense balances, transfers profit or loss to retained earnings, and retains the figures and supporting review IDs used for the decision.
+Owners can post the proposal reviewed under **Reports → Year-end preview** and inspect or reopen recorded closes from its history section. The owner API supports the same operations. A posted close clears revenue and expense balances, transfers profit or loss to retained earnings, and retains the figures and supporting review IDs used for the decision.
 
 ## Prepare and post
 
@@ -55,7 +55,7 @@ The business posting lock serializes closing and competing writes. The proposal,
 
 The closing journal is a controlled exception to the already reviewed period's posting cutoff. Ordinary backdated entries remain blocked. A supporting accounting period cannot be reopened while its earnings close is active, so its bank reconciliation remains protected too. Year-end reopening reverses the actual closing lines while preserving operating reports and original review history, as described below.
 
-This remains a local, single-business USD application with calendar-year earnings closing. Custom fiscal years, dividend closing, tax filing, complete opening trial-balance migration and browser posting/history/reopening controls are not implemented. Existing general database restoration checks are regression evidence; restoring a populated year-end close is a separate recovery fixture still to add.
+This remains a local, single-business USD application with calendar-year earnings closing. Custom fiscal years, dividend closing, tax filing, complete opening trial-balance migration are not implemented. Existing general database restoration checks are regression evidence; restoring a populated year-end close is a separate recovery fixture still to add.
 
 `YearEndPostingTest` covers the worked profit, loss/zero/empty cases, report preservation, retained evidence, consecutive years, exact retries, duplicates, protected dates, rollback, concurrent requests and authenticated read/owner-write permissions on both databases. The [preview guide](year-end.md) provides the accounting basis and reviewed screen captures.
 
@@ -87,4 +87,36 @@ For the worked $60.06 profit, reopening restores $100.10 credit revenue, $40.04 
 The migration retains populated closing rows and replaces the original one-record-per-year uniqueness rule with one active close per year. The active-year key is cleared on reopening. Reversal, history, request key and audit changes remain one transaction under the business posting lock; failed or competing requests cannot leave a partial or duplicate reversal.
 
 
-Reopening source `c5468e410570bc2f9b64ae259f6d84bca029765c` passed 315 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production build, all 27 existing Chromium workflows and native PostgreSQL restoration in [run 37246856587](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37246856587). Eight reopening tests and one populated-migration test exercise the new behavior on both databases. These checks verify reversing profit/loss/empty closes, preserved full reports and comparisons, retained snapshots, ordered later-year/period controls, corrections and repeated closes, exact retries, invalid versions/reasons, rollback, concurrency, owner-only writes and preservation of existing V24 closing rows. Browser checks remain regression evidence; browser reopening and populated year-end recovery fixtures are later work.
+Reopening source `c5468e410570bc2f9b64ae259f6d84bca029765c` passed 315 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production build, all 27 existing Chromium workflows and native PostgreSQL restoration in [run 37246856587](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37246856587). Eight reopening tests and one populated-migration test exercise the new behavior on both databases. These checks verify reversing profit/loss/empty closes, preserved full reports and comparisons, retained snapshots, ordered later-year/period controls, corrections and repeated closes, exact retries, invalid versions/reasons, rollback, concurrency, owner-only writes and preservation of existing V24 closing rows. Browser checks remain regression evidence; the later browser controls milestone adds end-to-end UI evidence; populated year-end recovery fixtures remain later work.
+
+
+## Post, inspect and reopen in Reports
+
+Owners can run **Reports → Year-end preview**, resolve the blockers and inspect the proposed lines. Enter a **Year-end review note**, click **Close year-end earnings**, and confirm the year. The button is disabled until prerequisites pass and the note is nonblank. A successful operation refreshes the workspace and clears the old proposal.
+
+Click **Load closing history** to inspect recorded cycles. Each record shows its year, dates, status, version, review note, closing identity/time and any reopening reason/identity/time. Expand **Closing evidence references** for the close, journal, accounting review, bank review and reversal IDs. Expand **Retained earnings review** for the original accrual figures and balanced proposed lines. These are the saved pre-posting figures, not today's account balances.
+
+Only the latest active close offers **Reopen earnings year** to owners. Enter a **Year-end reopening reason** and confirm. Later accounting reviews must be reopened first; a server rejection retains your reason so you can resolve the blocker and retry. Successful reopening refreshes the workspace and clears old history. Load it again to inspect the retained reversal. Its supporting accounting and bank reviews remain closed until separately reopened.
+
+If posting or reopening loses its response, keep the same note/reason and retry. The form retains those details, and the shared request handler keeps the same key until both the operation and workspace refresh succeed. A successful reclose creates a new record; earlier reopened cycles remain in history. Changing the year clears the proposal and review note. A workspace reload clears proposal/history and any selected reopening. Leaving this report resets its local forms.
+
+Bookkeepers and reviewers can run previews and inspect retained history without posting or reopening controls. Busy state disables inputs, confirmations and report modes. Failed history reads clear old history and show the error; **Load closing history** retries the read. There is no separate year-end export yet.
+
+
+## Browser proof
+
+Controls source `efe17823c9dd86d3889eb2aa815e4f25afe2e041` passed 315 integration tests on each of H2 and PostgreSQL 17 with zero failures/errors/skips, 14 backup-tool tests, production build, all 28 Chromium workflows and native PostgreSQL restoration in [run 37247930933](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37247930933).
+
+The new isolated controls fixture uses a December 31, 2039 bank opening, a $100.10 unpaid invoice and a $40.04 unpaid bill during 2040, and real December 31 bank/accounting closes. It posts $60.06 earnings, inspects the retained proposal and references, reopens with a reason, and closes again with one active and one retained reopened record. The dates are fictional accounting dates; the closing timestamps show when the test actually ran.
+
+The browser deliberately receives a 503 after the server has successfully posted a close, then retries with the same note and request key. It repeats that loss-after-commit check for reopening. Both recoveries retain one close/reversal and preserve the original snapshot. The workflow also checks missing prerequisites, blank-note/reason gating, confirmation cancellation, history read failure/retry, clearing after workspace refresh, 390-pixel layout, and unchanged $60.06 operating profit and balanced reports after reclose. Reviewer and bookkeeper fixtures load history and verify that write controls are absent; their history fixture is empty, while the owner fixture exercises populated history.
+
+Original desktop/mobile captures were downloaded and visually reviewed. The preview captures in the [review guide](year-end.md) were replaced with this run's current controls. The following show distinct recorded and reopened states:
+
+![Closed earnings history with retained proposal and source references](screenshots/year-end-closing-history.png)
+
+![Mobile closed earnings history](screenshots/mobile-year-end-closing-history.png)
+
+![Mobile reopened earnings history with preserved review and reversal reference](screenshots/mobile-year-end-reopened-history.png)
+
+A populated year-end restore fixture remains the next recovery check; general PostgreSQL restoration in this run does not yet populate these closing records.
