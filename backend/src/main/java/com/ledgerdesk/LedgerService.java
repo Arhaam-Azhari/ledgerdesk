@@ -254,6 +254,8 @@ public class LedgerService {
         String previous = retry(key, hash);
         if (previous != null) return previous;
         Map<String, Object> invoice = invoice(invoiceId);
+        if (db.queryForObject("SELECT COUNT(*) FROM opening_book_invoices WHERE invoice_id = ?", Integer.class, invoiceId) != 0)
+            throw new IllegalArgumentException("Imported opening invoices cannot be voided as current sales. A separate opening correction workflow is required.");
         if (date == null || date.isBefore(((java.sql.Date) invoice.get("issued_on")).toLocalDate()))
             throw new IllegalArgumentException("Reversal date must be on or after the invoice date.");
         if (!invoice.get("status").equals("POSTED") || ((BigDecimal) invoice.get("paid")).signum() != 0)

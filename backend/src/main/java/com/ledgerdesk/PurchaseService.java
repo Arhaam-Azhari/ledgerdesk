@@ -130,6 +130,8 @@ public class PurchaseService {
         String previous = ledger.retry(key, hash);
         if (previous != null) return previous;
         var bill = document("bills", billId);
+        if (db.queryForObject("SELECT COUNT(*) FROM opening_book_bills WHERE bill_id = ?", Integer.class, billId) != 0)
+            throw new IllegalArgumentException("Imported opening bills cannot be voided as current purchases. A separate opening correction workflow is required.");
         if (date == null || date.isBefore(((java.sql.Date) bill.get("issued_on")).toLocalDate()))
             throw new IllegalArgumentException("Reversal date must be on or after the bill date.");
         if (!bill.get("status").equals("POSTED") || ((BigDecimal) bill.get("paid")).signum() != 0)
