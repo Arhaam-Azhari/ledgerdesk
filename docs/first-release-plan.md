@@ -18,7 +18,7 @@ Opening books comes first because the current setup records only a cleared bank 
 
 ## Opening-books design to resolve next
 
-Before writing the posting path, define the supported import fields and reconciliation rules:
+The [opening-books preview](opening-books.md) now validates supported balances, fully unpaid documents, cutover and fresh-data rules without posting. Remaining posting design and verification work includes:
 
 - Pick an explicit cutover date. Operating activity begins afterward; historical income must not appear as new operating revenue simply because books were imported.
 - Represent outstanding customer and supplier amounts with retained source records that remain payable/collectible. Reconcile their totals with the corresponding control-account balances.

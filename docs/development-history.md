@@ -43,6 +43,7 @@ Ledgerdesk grew from an invoicing workspace into a local accounting application.
 | [#37](https://github.com/Arhaam-Azhari/ledgerdesk/pull/37) | Post and reopen earnings in Reports with shared retained history and lost-response recovery |
 | [#38](https://github.com/Arhaam-Azhari/ledgerdesk/pull/38) | Restore populated earnings history on H2 and PostgreSQL, preserving reports, request keys and deliberate reopening |
 | [#39](https://github.com/Arhaam-Azhari/ledgerdesk/pull/39) | Define the first-release finish line and opening-books design checklist |
+| [#40](https://github.com/Arhaam-Azhari/ledgerdesk/pull/40) | Preview opening balances and reconciled unpaid documents without posting |
 
 The descriptions record the supported scope and remaining work at that milestone. For example, the reviewer PR used configured logins; the later account PR added database-backed users. Read the current README and feature guides for today's behavior.
 
