@@ -18,7 +18,7 @@ Opening books comes first because the current setup records only a cleared bank 
 
 ## Opening-books design to resolve next
 
-The [opening-books preview](opening-books.md) now validates supported balances, fully unpaid documents, cutover and fresh-data rules without posting. Remaining posting design and verification work includes:
+The [opening-books preview](opening-books.md) now validates and posts supported balances and fully unpaid documents, retaining the reviewed sources and cutoff. Settlements and accounting controls have service/API tests; browser import, populated recovery and final operator review remain. The design and acceptance checklist is:
 
 - Pick an explicit cutover date. Operating activity begins afterward; historical income must not appear as new operating revenue simply because books were imported.
 - Represent outstanding customer and supplier amounts with retained source records that remain payable/collectible. Reconcile their totals with the corresponding control-account balances.
