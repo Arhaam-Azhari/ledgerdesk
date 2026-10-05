@@ -1,9 +1,34 @@
 name: Accounting workflow checks
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**/*.md', '.gitignore']
+  pull_request:
+    paths-ignore: ['docs/**', '**/*.md', '.gitignore']
+  workflow_dispatch:
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 permissions:
   contents: read
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.scope.outputs.backend }}
+      restore: ${{ steps.scope.outputs.restore }}
+      browser: ${{ steps.scope.outputs.browser }}
+      browser_checks: ${{ steps.scope.outputs.browser_checks }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - run: python3 -m unittest discover -s scripts -p test_ci_scope.py
+      - id: scope
+        run: python3 scripts/ci_scope.py
   backend:
+    needs: scope
+    if: needs.scope.outputs.backend == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -39,6 +64,8 @@ jobs:
           path: backend/target/statement-pdf-proof/
           if-no-files-found: error
   browser:
+    needs: scope
+    if: needs.scope.outputs.browser == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -53,10 +80,19 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: mvn -B package -DskipTests
         working-directory: backend
-      - run: python3 scripts/verify_year_end_restore.py --database h2
+      - if: needs.scope.outputs.restore == 'true'
+        run: python3 scripts/verify_year_end_restore.py --database h2
       - run: java -jar target/ledgerdesk-0.1.0.jar --spring.profiles.active=demo > backend.log 2>&1 &
         working-directory: backend
-      - run: npm ci && npm run build && npx playwright install --with-deps chromium && npm run test:opening-books && npm run test:e2e && npm run test:password && npm run test:bookkeeper && npm run test:periods && npm run test:reconciliation && npm run test:reports && npm run test:account-activity && npm run test:year-end && npm run test:year-end-controls && npm run test:equity && npm run test:adjustments && npm run test:accruals && npm run test:handoff && npm run test:prepaid && npm run test:assets && npm run test:cash && npm run test:reviewer && npm run test:persistent && npm run test:accounts && npm run test:opening
+      - run: |
+          npm ci
+          npm run build
+          npx playwright install --with-deps chromium
+          for check in $BROWSER_CHECKS; do
+            npm run "$check" || exit 1
+          done
+        env:
+          BROWSER_CHECKS: ${{ needs.scope.outputs.browser_checks }}
         working-directory: frontend
       - uses: actions/upload-artifact@v4
         if: always()
@@ -91,6 +127,8 @@ jobs:
           path: year-end-h2-restore.log
 
   postgres-restore:
+    needs: scope
+    if: needs.scope.outputs.restore == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
