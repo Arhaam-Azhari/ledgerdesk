@@ -1,6 +1,6 @@
 # Calendar-year earnings preview
 
-This API prepares a read-only review of the revenue and expense balances for January 1 through December 31. It shows the offsets that would clear that year's activity and transfer net profit or loss to retained earnings account 3300. The browser screen supports read-only review. The [owner posting API](year-end-posting.md) now posts the reviewed proposal, retains closing history and preserves operating profit reports. Browser posting/history controls and year-end reopening remain later work.
+This API prepares a read-only review of the revenue and expense balances for January 1 through December 31. It shows the offsets that would clear that year's activity and transfer net profit or loss to retained earnings account 3300. The browser screen supports read-only review. The [owner posting API](year-end-posting.md) now posts the reviewed proposal, retains closing history and preserves operating profit reports. Browser posting/history/reopening controls remain later work.
 
 ## Run a preview
 
@@ -70,4 +70,4 @@ The test checks invalid whole-year inputs, failed-read retry, disabled controls 
 
 ![Mobile year-end review with the balances table scrolled right](screenshots/mobile-year-end-preview.png)
 
-The [posting guide](year-end-posting.md) explains the new owner API, retained history, report treatment, repeat-request behavior and current reopening limit. For a closed year, this screen displays the retained pre-posting proposal with an already-closed blocker.
+The [posting guide](year-end-posting.md) explains the new owner API, retained history, report treatment, repeat-request behavior and latest-year reopening controls. For a closed year, this screen displays the retained pre-posting proposal with an already-closed blocker.
