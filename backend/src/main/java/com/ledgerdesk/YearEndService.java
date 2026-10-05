@@ -2,6 +2,9 @@ package com.ledgerdesk;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,15 +25,29 @@ public class YearEndService {
             List<String> blockers, boolean ready) {}
     private final JdbcTemplate db;
     private final ReportService reports;
+    public record Close(int year, String reviewNote) {}
     private final AccountingPeriodService periods;
-    public YearEndService(JdbcTemplate db, ReportService reports, AccountingPeriodService periods) {
-        this.db = db; this.reports = reports; this.periods = periods;
+    private final LedgerService ledger;
+    private final ObjectMapper json;
+    public YearEndService(JdbcTemplate db, ReportService reports, AccountingPeriodService periods, LedgerService ledger, ObjectMapper json) {
+        this.db = db; this.reports = reports; this.periods = periods; this.ledger = ledger; this.json = json;
     }
     private static BigDecimal zero() { return new BigDecimal("0.00"); }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Preview preview(int year) {
         if (year < 1 || year > 9999) throw new IllegalArgumentException("Choose a calendar year from 1 to 9999.");
+        var retained = db.queryForList("SELECT id, snapshot FROM year_end_closes WHERE business_id = 1 AND calendar_year = ?", year);
+        if (!retained.isEmpty()) {
+            Preview original;
+            try { original = json.readValue(retained.get(0).get("snapshot").toString(), Preview.class); }
+            catch (com.fasterxml.jackson.core.JsonProcessingException error) { throw new IllegalStateException(error); }
+            return new Preview(original.year(), original.startsOn(), original.endsOn(), original.currency(),
+                    original.profitLoss(), original.temporaryAccounts(), original.proposedLines(), original.retainedEarningsChange(),
+                    original.proposedDebits(), original.proposedCredits(), original.accountingPeriodId(), original.bankReconciliationId(),
+                    original.pendingPrepaidMonths(), original.pendingDepreciationMonths(),
+                    List.of("Earnings already closed for this year. Retained close ID: " + retained.get(0).get("id")), false);
+        }
         LocalDate start = LocalDate.of(year, 1, 1), end = LocalDate.of(year, 12, 31);
         var financial = reports.reports(start, end);
         var rows = db.queryForList("""
@@ -83,4 +100,41 @@ public class YearEndService {
                 banks.isEmpty() ? null : banks.get(0).get("id").toString(), prepaid, depreciation,
                 List.copyOf(blockers), blockers.isEmpty());
     }
+
+    @Transactional
+    public String close(Close request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("Year-end details are required.");
+        String note = LedgerService.text(request.reviewNote(), 240, "Year-end review note");
+        ledger.lockBusiness();
+        String hash = ledger.fingerprint(List.of("year-end-close", request));
+        String previous = ledger.retry(key, hash);
+        if (previous != null) return previous;
+        Preview review = preview(request.year());
+        if (!review.ready()) throw new IllegalArgumentException("Resolve the year-end preview blockers before closing earnings.");
+        String snapshot;
+        try { snapshot = json.writeValueAsString(review); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException error) { throw new IllegalStateException(error); }
+        String id = ledger.id(), entry = null;
+        if (!review.proposedLines().isEmpty()) {
+            entry = ledger.id();
+            // This controlled entry clears earnings after period review; ordinary backdated postings stay blocked.
+            db.update("INSERT INTO journal_entries VALUES (?, 1, ?, ?, ?)", entry, review.endsOn(), "Earnings close for " + request.year(), id);
+            for (var line : review.proposedLines())
+                db.update("INSERT INTO journal_lines VALUES (?, ?, ?, ?, ?)", ledger.id(), entry, line.code(), line.debit(), line.credit());
+        }
+        db.update("""
+            INSERT INTO year_end_closes (id, business_id, calendar_year, starts_on, ends_on, entry_id,
+                accounting_period_id, bank_reconciliation_id, review_note, snapshot, closed_by, closed_at)
+            VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, id, request.year(), review.startsOn(), review.endsOn(), entry, review.accountingPeriodId(),
+                review.bankReconciliationId(), note, snapshot, actor, LocalDateTime.now());
+        ledger.complete(key, hash, id, actor, "YEAR_END_CLOSED");
+        return id;
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Map<String, Object> history() {
+        return Map.of("yearEndCloses", db.queryForList("SELECT * FROM year_end_closes WHERE business_id = 1 ORDER BY calendar_year DESC, id"));
+    }
+
 }

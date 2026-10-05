@@ -182,7 +182,7 @@ npm run test:reconciliation
 
 Keep ports 8081 and 5174 free. Playwright starts and stops both isolated servers. This workflow covers reconciliation preview, close, refresh-failure retry, closed-period protection, saved calculations, reopening, and mobile layout.
 
-All 298 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-seven Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
+All 306 backend integration tests passed on each of H2 and PostgreSQL 17, alongside 14 backup-tool tests, twenty-seven Chromium workflows and a real PostgreSQL backup/restore process check on GitHub Actions. See [verification notes](docs/verification.md) for the checks completed locally and on GitHub Actions.
 
 ## Next milestones
 
@@ -299,7 +299,7 @@ A $1,000.25 balance at September 30 becomes bank and opening balance equity, wit
 
 Open **Period close**, choose a month-end and preview the reporting period. Close the supporting bank statement and post due prepaid/depreciation work first. Review profit, assets, liabilities, trial balance, cash and unpaid balances, then supply a review note and confirm. The saved record retains the reports and protects posting dates without creating another journal.
 
-Owners can reopen the latest close with a reason; the original review remains in history. Reclosing creates a new record. Reviewers can inspect previews and history without write controls. This demonstrates accounting cutoffs, retained report evidence, transactional safeguards, version checks and reliable request retries. Fiscal-year closing and tax filing remain outside this workflow. See [instructions, reviewed desktop/mobile captures and database restoration proof](docs/accounting-period-close.md).
+Owners can reopen the latest close with a reason unless it supports an already closed earnings year; the original review remains in history. Reclosing creates a new record. Reviewers can inspect previews and history without write controls. This demonstrates accounting cutoffs, retained report evidence, transactional safeguards, version checks and reliable request retries. Fiscal-year closing and tax filing remain outside this workflow. See [instructions, reviewed desktop/mobile captures and database restoration proof](docs/accounting-period-close.md).
 
 Run `npm run test:periods` in `frontend` after packaging the backend and installing Chromium; keep ports 8095 and 5187 free.
 
@@ -329,4 +329,4 @@ Open **Reports**, choose **Customer statements**, select a customer and inclusiv
 
 The account activity API connects one ledger account's opening balance, period debit/credit lines and closing balance to source evidence. Its signed debit-minus-credit convention preserves credit and unusual balances, and closing agrees with the dated trial balance. The [worked example and API instructions](docs/account-activity.md) explain the calculation. Open **Reports → Account activity**, select an account and dates, then run it. Balances show Dr/Cr; expand posting references or export signed CSV evidence.
 
-The [calendar-year earnings preview](docs/year-end.md) prepares balanced revenue/expense offsets and a retained-earnings transfer through an authenticated read-only API. It checks earlier balances, year-end reviews and due adjustments. Open **Reports → Year-end preview** to inspect the draft and supporting review references. Posting remains a separate step.
+The [calendar-year earnings preview](docs/year-end.md) prepares balanced revenue/expense offsets and a retained-earnings transfer through an authenticated read-only API. It checks earlier balances, year-end reviews and due adjustments. Open **Reports → Year-end preview** to inspect the draft and supporting review references. The [owner posting API](docs/year-end-posting.md) closes the reviewed earnings, retains the proposal and preserves operating profit reports. Browser posting/history controls and year-end reopening remain later steps.

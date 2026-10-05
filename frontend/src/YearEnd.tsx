@@ -42,7 +42,7 @@ export function YearEnd({ busy, workspace, load }: { busy: boolean; workspace: o
           <button disabled={busy}>Run year-end preview</button>
         </fieldset>
       </form>
-      <p>The review covers January 1 through December 31 in USD. Closing entry posting is not available yet.</p>
+      <p>The review covers January 1 through December 31 in USD.</p>
     </section>
     {!result && <p className="empty">Choose a year and run the preview to inspect its earnings, proposed entries and prerequisites.</p>}
     {result && <section className="card year-end-results">
