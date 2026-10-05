@@ -29,14 +29,14 @@ test("review opening books, recover a lost import response and read unchanged hi
   await page.getByLabel("3000 credit", { exact: true }).fill("1000.25");
   await page.getByLabel("3300 credit", { exact: true }).fill("60.06");
   await page.getByRole("button", { name: "Add unpaid invoice", exact: true }).click();
-  await page.getByLabel("Invoice 1 customer", { exact: true }).selectOption("demo-customer");
+  await page.getByRole("combobox", { name: "Invoice 1 customer", exact: true }).selectOption("demo-customer");
   await page.getByLabel("Invoice 1 reference", { exact: true }).fill("OLD-INV-7");
   await page.getByLabel("Invoice 1 description", { exact: true }).fill("Prior design work");
   await page.getByLabel("Invoice 1 unpaid amount", { exact: true }).fill("99.10");
   await page.getByLabel("Invoice 1 issued on", { exact: true }).fill("2039-12-01");
   await page.getByLabel("Invoice 1 due on", { exact: true }).fill("2040-01-15");
   await page.getByRole("button", { name: "Add unpaid bill", exact: true }).click();
-  await page.getByLabel("Bill 1 vendor", { exact: true }).selectOption(vendor);
+  await page.getByRole("combobox", { name: "Bill 1 vendor", exact: true }).selectOption(vendor);
   await page.getByLabel("Bill 1 reference", { exact: true }).fill("OLD-BILL-9");
   await page.getByLabel("Bill 1 description", { exact: true }).fill("Prior supplies");
   await page.getByLabel("Bill 1 unpaid amount", { exact: true }).fill("40.04");

@@ -375,3 +375,6 @@ CI now picks browser workflows from changed frontend files. Navigation/style edi
 ## Opening-import recovery fixture (pending)
 
 The new process fixture restores populated opening books on H2/PostgreSQL, including partial payments and a first bank review. It compares retained evidence and dated reports, retries original commands, checks protected operations and reading roles, then settles the restored documents without new operating profit. Local Python compilation, workflow parsing and 19 tool tests passed. Actual restoration and browser screenshots remain pending GitHub execution. Recovery-script changes now run recovery jobs without unrelated backend/browser suites; full manual runs remain available.
+
+
+The opening-books H2 process scenario passed in [run 37367361649](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37367361649), including actual backup/restore and subsequent full settlement. Browser execution reached the editor and caught an exact label lookup that included dropdown option text; the selector now uses the displayed combobox name. PostgreSQL execution and the corrected browser workflow remain pending.
