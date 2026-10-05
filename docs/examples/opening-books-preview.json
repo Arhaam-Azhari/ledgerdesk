@@ -1,0 +1,31 @@
+{
+  "asOf": "2025-12-31",
+  "reviewNote": "Reviewed prior books and unpaid documents",
+  "balances": [
+    { "code": "1000", "debit": "1000.25", "credit": "0.00" },
+    { "code": "1100", "debit": "100.10", "credit": "0.00" },
+    { "code": "2000", "debit": "0.00", "credit": "40.04" },
+    { "code": "3000", "debit": "0.00", "credit": "1000.25" },
+    { "code": "3300", "debit": "0.00", "credit": "60.06" }
+  ],
+  "receivables": [
+    {
+      "customerId": "demo-customer",
+      "reference": "OLD-SALE",
+      "description": "Unpaid design invoice from prior books",
+      "issuedOn": "2025-12-21",
+      "dueOn": "2026-01-15",
+      "amount": "100.10"
+    }
+  ],
+  "payables": [
+    {
+      "vendorId": "REPLACE_WITH_VENDOR_ID",
+      "reference": "OLD-BILL",
+      "description": "Unpaid supplies bill from prior books",
+      "issuedOn": "2025-12-26",
+      "dueOn": "2026-01-10",
+      "amount": "40.04"
+    }
+  ]
+}
