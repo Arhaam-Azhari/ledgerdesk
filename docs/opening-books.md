@@ -145,3 +145,10 @@ An already recorded opening hides the editor, including a prior bank-only setup.
 The fictional browser fixture uses a 2039-12-31 cutover: bank $1,000.25, receivables $100.10, payables $40.04, owner capital $1,000.25 and retained earnings $60.06. Both trial-balance sides total $1,100.35. The unpaid sources are OLD-INV-7 and OLD-BILL-9, with January 2040 due dates. The later full settlements leave both unpaid balances at zero while the original review retains its import figures.
 
 The Chromium fixture is prepared to capture desktop and 390-pixel preview/history images. These captures are not yet published: the corrected browser check is waiting for a GitHub runner. Prepared tests and screenshots are not passing evidence.
+
+
+## Opening-import recovery check (prepared)
+
+`scripts/verify_opening_books_restore.py --database h2` or `--database postgres` runs against the packaged backend. It creates fresh source/restored databases, imports the worked balances, collects $40.04 and pays $10.01, and closes a January bank review before the actual backup/restore commands. It compares history, source/journal references, workspace and dated reports after restoration, then checks old request retries and role/date protections. A bookkeeper completes the remaining $60.06 collection and $30.03 payment in February; January figures and the original opening snapshot must stay unchanged.
+
+The expected final bank is $1,060.31, unpaid controls zero and operating profit zero. Both database runs are configured in CI. Python syntax and the local tool tests pass; the packaged-backend scenarios have not run yet because GitHub jobs are queued. This is prepared recovery coverage, not proof of a successful restore. No existing database is dropped or overwritten.

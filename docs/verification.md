@@ -369,4 +369,9 @@ The pending isolated workflow checks control/document mismatch, invalidated prev
 
 ## Check selection
 
-CI now picks browser workflows from changed frontend files. Navigation/style edits keep basic owner, reviewer and bookkeeper coverage; shared money, dependencies and unknown frontend files keep all browser checks. Backend edits keep both database suites, while schema, account/security and backup changes also keep recovery checks. Manual workflow runs remain full checks. Documentation-only commits do not need application checks. Four local policy tests passed; GitHub execution is still needed before merging this workflow change.
+CI now picks browser workflows from changed frontend files. Navigation/style edits keep basic owner, reviewer and bookkeeper coverage; shared money, dependencies and unknown frontend files keep all browser checks. Backend edits keep both database suites, while schema, account/security and backup changes also keep recovery checks. Manual workflow runs remain full checks. Documentation-only commits do not need application checks. Five local selection tests pass; GitHub execution is still needed before merging this workflow change.
+
+
+## Opening-import recovery fixture (pending)
+
+The new process fixture restores populated opening books on H2/PostgreSQL, including partial payments and a first bank review. It compares retained evidence and dated reports, retries original commands, checks protected operations and reading roles, then settles the restored documents without new operating profit. Local Python compilation, workflow parsing and 19 tool tests passed. Actual restoration and browser screenshots remain pending GitHub execution. Recovery-script changes now run recovery jobs without unrelated backend/browser suites; full manual runs remain available.

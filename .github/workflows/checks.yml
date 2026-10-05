@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - run: python3 -m unittest discover -s scripts -p test_ci_scope.py
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
       - id: scope
         run: python3 scripts/ci_scope.py
   backend:
@@ -65,7 +65,7 @@ jobs:
           if-no-files-found: error
   browser:
     needs: scope
-    if: needs.scope.outputs.browser == 'true'
+    if: needs.scope.outputs.browser == 'true' || needs.scope.outputs.restore == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -73,7 +73,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: actions/setup-node@v5
+      - if: needs.scope.outputs.browser == 'true'
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -81,10 +82,14 @@ jobs:
       - run: mvn -B package -DskipTests
         working-directory: backend
       - if: needs.scope.outputs.restore == 'true'
-        run: python3 scripts/verify_year_end_restore.py --database h2
-      - run: java -jar target/ledgerdesk-0.1.0.jar --spring.profiles.active=demo > backend.log 2>&1 &
+        run: |
+          python3 scripts/verify_year_end_restore.py --database h2
+          python3 scripts/verify_opening_books_restore.py --database h2
+      - if: needs.scope.outputs.browser == 'true'
+        run: java -jar target/ledgerdesk-0.1.0.jar --spring.profiles.active=demo > backend.log 2>&1 &
         working-directory: backend
-      - run: |
+      - if: needs.scope.outputs.browser == 'true'
+        run: |
           npm ci
           npm run build
           npx playwright install --with-deps chromium
@@ -124,7 +129,9 @@ jobs:
         if: failure()
         with:
           name: year-end-h2-restore-log
-          path: year-end-h2-restore.log
+          path: |
+            year-end-h2-restore.log
+            opening-books-h2-restore.log
 
   postgres-restore:
     needs: scope
@@ -154,7 +161,9 @@ jobs:
           LEDGERDESK_PG_CONTAINER: ${{ job.services.postgres.id }}
           PGUSER: ledgerdesk
           DATABASE_PASSWORD: ci-only
-      - run: python3 scripts/verify_year_end_restore.py --database postgres
+      - run: |
+          python3 scripts/verify_year_end_restore.py --database postgres
+          python3 scripts/verify_opening_books_restore.py --database postgres
         env:
           LEDGERDESK_PG_CONTAINER: ${{ job.services.postgres.id }}
           PGUSER: ledgerdesk
@@ -166,3 +175,4 @@ jobs:
           path: |
             postgres-restore-backend.log
             year-end-postgres-restore.log
+            opening-books-postgres-restore.log

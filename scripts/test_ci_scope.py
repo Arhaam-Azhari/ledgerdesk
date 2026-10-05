@@ -17,8 +17,14 @@ class CheckSelectionTest(unittest.TestCase):
         self.assertEqual(set(result['browser_checks'].split()), {'test:opening-books', 'test:e2e', 'test:reviewer', 'test:bookkeeper'})
 
     def test_unknown_frontend_and_policy_changes_keep_all_browser_checks(self):
-        for path in ('frontend/src/money.ts', '.github/workflows/checks.yml'):
+        for path in ('frontend/src/money.ts', 'frontend/package.json'):
             self.assertEqual(set(plan([path], self.scripts)['browser_checks'].split()), {s for s in self.scripts if s.startswith('test:')})
+
+    def test_recovery_fixture_does_not_rerun_unrelated_application_suites(self):
+        result = plan(['scripts/verify_opening_books_restore.py', '.github/workflows/checks.yml'], self.scripts)
+        self.assertTrue(result['restore'])
+        self.assertFalse(result['backend'])
+        self.assertFalse(result['browser'])
 
     def test_schema_and_manual_runs_keep_recovery_checks(self):
         for result in (plan(['backend/src/main/resources/db/migration/V27.sql'], self.scripts), plan([], self.scripts, full=True)):

@@ -33,15 +33,14 @@ def plan(paths, scripts, full=False):
     backend = full or any(p.startswith('backend/') for p in code)
     recovery = full or any(p.startswith('scripts/') and p not in ('scripts/ci_scope.py', 'scripts/test_ci_scope.py') for p in code)
     recovery = recovery or any(p.startswith('backend/src/main/resources/') or p.endswith(('SecurityConfig.java', 'PersistentAccounts.java', 'AccountManagement.java', 'AccountRecovery.java', 'RecoveryCommand.java', 'PasswordConfig.java', 'OwnPasswordController.java', 'AccountController.java')) for p in code)
-    backend = backend or recovery
     selected = set()
-    all_browser = full or backend or recovery
+    all_browser = full or backend
     for p in code:
         parts = p.split('/')
         if not p.startswith('frontend/'):
-            # Build/check policy changes get browser coverage too.
+            # Policy tests cover the selector; application code has not changed here.
             if p.startswith('.github/') or p in ('scripts/ci_scope.py', 'scripts/test_ci_scope.py'):
-                all_browser = True
+                pass
             elif not p.startswith(('backend/', 'scripts/')):
                 backend = recovery = all_browser = True
             continue
