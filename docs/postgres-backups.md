@@ -53,3 +53,6 @@ The later [bookkeeper recovery fixture](bookkeeper-recovery.md) also verifies re
 
 
 The later [self-changed password scenario](changed-password-recovery.md) verifies final owner/reviewer/bookkeeper logins after restart and restore. An older backup can contain older password hashes; review account access and subsequent password changes during an operator recovery.
+
+
+The later [earnings recovery scenario](year-end-restoration.md) verifies populated closing/reopening history, original snapshots and references, operating reports, request retries and intentional replacement closing after a separate database restore.
