@@ -10,5 +10,6 @@ deploy/secrets
 **/*.dump
 **/__pycache__
 backend/demo-data
-docs
+docs/*
+!docs/examples
 attachments

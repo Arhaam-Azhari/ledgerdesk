@@ -37,5 +37,9 @@ class CheckSelectionTest(unittest.TestCase):
         self.assertFalse(result['browser'])
         self.assertNotIn('test:hosted', plan(['backend/src/main/java/com/ledgerdesk/SecurityConfig.java'], self.scripts)['browser_checks'].split())
 
+    def test_hosted_files_do_not_start_database_restore_suites(self):
+        result = plan(['deploy/Dockerfile', 'compose.hosted.yaml', '.dockerignore', 'scripts/verify_hosted.py'], self.scripts)
+        self.assertFalse(any(result[key] for key in ('backend', 'restore', 'browser')))
+
 if __name__ == '__main__':
     unittest.main()

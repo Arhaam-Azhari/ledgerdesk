@@ -31,18 +31,18 @@ TEST_DIRS = {
 def plan(paths, scripts, full=False):
     code = [p for p in paths if not (p.startswith('docs/') or p.endswith('.md') or p == '.gitignore')]
     backend = full or any(p.startswith('backend/') for p in code)
-    recovery = full or any(p.startswith('scripts/') and p not in ('scripts/ci_scope.py', 'scripts/test_ci_scope.py') for p in code)
+    recovery = full or any(p.startswith('scripts/') and p not in ('scripts/ci_scope.py', 'scripts/test_ci_scope.py', 'scripts/verify_hosted.py') for p in code)
     recovery = recovery or any(p.startswith('backend/src/main/resources/') or p.endswith(('SecurityConfig.java', 'PersistentAccounts.java', 'AccountManagement.java', 'AccountRecovery.java', 'RecoveryCommand.java', 'PasswordConfig.java', 'OwnPasswordController.java', 'AccountController.java')) for p in code)
     selected = set()
     all_browser = full or backend
     for p in code:
         # Hosted browser checks need the Compose installation and run in hosted.yml.
-        if p.startswith('frontend/hosted-tests/') or p == 'frontend/playwright.hosted.config.ts':
+        if p.startswith(('frontend/hosted-tests/', 'deploy/')) or p in ('frontend/playwright.hosted.config.ts', 'compose.hosted.yaml', '.dockerignore', 'scripts/verify_hosted.py'):
             continue
         parts = p.split('/')
         if not p.startswith('frontend/'):
             # Policy tests cover the selector; application code has not changed here.
-            if p.startswith('.github/') or p in ('scripts/ci_scope.py', 'scripts/test_ci_scope.py'):
+            if p.startswith('.github/') or p in ('scripts/ci_scope.py', 'scripts/test_ci_scope.py', 'scripts/verify_hosted.py'):
                 pass
             elif not p.startswith(('backend/', 'scripts/')):
                 backend = recovery = all_browser = True
