@@ -186,8 +186,10 @@ All 315 backend integration tests passed on each of H2 and PostgreSQL 17, alongs
 
 ## Next milestones
 
-1. A broader accounting period workflow and additional adjustment types.
-2. Bookkeeper permissions, business isolation, hardened deployment, encrypted backup storage, scheduled retention and broader restore fixtures.
+1. Opening books beyond the bank balance, with supported source records and restoration evidence.
+2. Secure hosted sessions, HTTPS deployment, protected backups and retention, first-use workflow and release acceptance.
+
+The [first-release plan](docs/first-release-plan.md) defines the finish line: one small service business per installation, USD and calendar-year accounting. Multi-company SaaS and additional accounting families are later scope. The remaining work is estimated at roughly 10–15 focused build cycles, subject to implementation and deployment findings.
 
 The current version has one business, owner/bookkeeper/reviewer roles and optional database-backed account management. Bookkeeper access supports routine accounting; multi-business access, secure hosted sessions and deployment are not implemented. Basic authentication is limited to local development; a hosted release will need HTTPS and a reviewed session-based login. Activity records are application history, not a tamper-proof audit system.
 
