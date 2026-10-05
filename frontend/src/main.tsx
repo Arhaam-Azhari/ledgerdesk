@@ -13,7 +13,7 @@ import { Adjustments, type AdjustmentState } from "./Adjustments";
 import { OwnerEquity, type EquityState } from "./OwnerEquity";
 import { Reports, type ReportData } from "./Reports";
 import type { ComparisonData } from "./ProfitComparison";
-import type { YearEndData } from "./YearEnd";
+import type { YearEndData, YearEndHistory } from "./YearEnd";
 import type { AccountActivityData } from "./AccountActivity";
 import type { StatementData } from "./CustomerStatements";
 import { CashActivity, type CashData } from "./CashActivity";
@@ -339,6 +339,13 @@ function App() {
       setError(error instanceof Error ? error.message : "Could not compare profit.");
       return null;
     } finally { setBusy(false); }
+  }
+
+  async function loadYearEndHistory(): Promise<YearEndHistory | null> {
+    setBusy(true); setError(""); setNotice("");
+    try { return await api("/api/year-end"); }
+    catch (error) { setError(error instanceof Error ? error.message : "Could not load closing history."); return null; }
+    finally { setBusy(false); }
   }
 
   async function loadYearEnd(year: string): Promise<YearEndData | null> {
@@ -1574,7 +1581,7 @@ function App() {
             />
           )}
         {page === "Reports" && (
-          <Reports busy={busy} load={loadReports} compare={compareProfit} customers={data.customers} statement={loadStatement} statementPdf={downloadStatement} accounts={data.trialBalance} activity={loadAccountActivity} yearEnd={loadYearEnd} workspace={data} />
+          <Reports busy={busy} load={loadReports} compare={compareProfit} customers={data.customers} statement={loadStatement} statementPdf={downloadStatement} accounts={data.trialBalance} activity={loadAccountActivity} yearEnd={loadYearEnd} yearEndHistory={loadYearEndHistory} yearEndOwner={access?.role === "OWNER"} yearEndAct={act} workspace={data} />
         )}
         {page === "Activity" && (
           <section className="card">

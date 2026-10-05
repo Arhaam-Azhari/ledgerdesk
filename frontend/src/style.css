@@ -509,3 +509,7 @@ td code {
 .year-end-references { margin-top: 16px; }
 .year-end-references dd { margin: 4px 0 12px; overflow-wrap: anywhere; }
 .year-end-blockers li { margin-bottom: 8px; }
+
+.year-end-posting { margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e9e8; }
+.year-end-history-record { border-top: 1px solid #e2e9e8; margin-top: 24px; padding-top: 12px; overflow-wrap: anywhere; }
+.year-end-history-record details { margin: 12px 0; }

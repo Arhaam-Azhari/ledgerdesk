@@ -5,7 +5,7 @@ import { CustomerStatements, type StatementCustomer, type StatementLoader, type 
 
 import { AccountActivity, type LedgerAccount, type ActivityLoader } from "./AccountActivity";
 
-import { YearEnd, type YearEndLoader } from "./YearEnd";
+import { YearEnd, type YearEndLoader, type YearEndHistoryLoader, type YearEndAction } from "./YearEnd";
 
 type Account = { code: string; name: string; kind: string; amount: string };
 type Aging = {
@@ -127,6 +127,9 @@ export function Reports({
   accounts,
   activity,
   yearEnd,
+  yearEndHistory,
+  yearEndOwner,
+  yearEndAct,
 }: {
   workspace: object;
   busy: boolean;
@@ -138,6 +141,9 @@ export function Reports({
   accounts: LedgerAccount[];
   activity: ActivityLoader;
   yearEnd: YearEndLoader;
+  yearEndHistory: YearEndHistoryLoader;
+  yearEndOwner: boolean;
+  yearEndAct: YearEndAction;
 }) {
   const [mode, setMode] = useState<"single" | "compare" | "statement" | "activity" | "year-end">("single");
   const [start, setStart] = useState(today().slice(0, 4) + "-01-01");
@@ -266,7 +272,7 @@ export function Reports({
     <button className="secondary" disabled={busy} aria-pressed={mode === "activity"} onClick={() => { setMode("activity"); setResult(null); }}>Account activity</button>
     <button className="secondary" disabled={busy} aria-pressed={mode === "year-end"} onClick={() => { setMode("year-end"); setResult(null); }}>Year-end preview</button>
   </div>;
-  if (mode === "year-end") return <>{modeSelector}<YearEnd busy={busy} workspace={workspace} load={yearEnd} /></>;
+  if (mode === "year-end") return <>{modeSelector}<YearEnd busy={busy} workspace={workspace} load={yearEnd} loadHistory={yearEndHistory} canWrite={yearEndOwner} act={yearEndAct} /></>;
   if (mode === "activity") return <>{modeSelector}<AccountActivity busy={busy} accounts={accounts} workspace={workspace} load={activity} /></>;
   if (mode === "statement") return <>{modeSelector}<CustomerStatements busy={busy} customers={customers} workspace={workspace} load={statement} download={statementPdf} /></>;
   if (mode === "compare") return <>{modeSelector}<ProfitComparison busy={busy} workspace={workspace} load={compare} /></>;

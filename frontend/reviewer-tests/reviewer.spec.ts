@@ -64,6 +64,12 @@ test("reviewer reads reports, cannot post and can lock then switch to owner", as
   await page.getByRole("button", { name: "Run year-end preview", exact: true }).click();
   await expect(page.locator(".year-end-results")).toContainText("Review needed before closing");
   await expect(page.locator(".year-end-results")).toContainText("Proposed closing lines");
+  await expect(page.getByLabel("Year-end review note", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Close year-end earnings", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Load closing history", exact: true }).click();
+  await expect(page.locator(".year-end-history")).toContainText("No year-end closes have been recorded");
+  await expect(page.getByRole("button", { name: /Reopen earnings year/ })).toHaveCount(0);
+
 
 
   await page

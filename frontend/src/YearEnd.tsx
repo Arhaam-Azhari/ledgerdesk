@@ -11,18 +11,33 @@ export type YearEndData = {
   accountingPeriodId: string | null; bankReconciliationId: string | null;
   pendingPrepaidMonths: number; pendingDepreciationMonths: number; blockers: string[]; ready: boolean;
 };
+export type YearEndHistory = { yearEndCloses: {
+  id: string; calendar_year: number; starts_on: string; ends_on: string; status: string; version: number;
+  review_note: string; snapshot: string; entry_id: string | null; accounting_period_id: string; bank_reconciliation_id: string;
+  closed_by: string; closed_at: string; reversal_entry_id: string | null; reopen_reason: string | null;
+  reopened_by: string | null; reopened_at: string | null;
+}[] };
+export type YearEndHistoryLoader = () => Promise<YearEndHistory | null>;
+export type YearEndAction = (path: string, body: object, success: string) => Promise<boolean>;
 export type YearEndLoader = (year: string) => Promise<YearEndData | null>;
 function balance(value: string) {
   const amount = cents(value);
   return amount === 0n ? "$0.00" : `${dollars(amount < 0n ? -amount : amount)} ${amount < 0n ? "Cr" : "Dr"}`;
 }
 
-export function YearEnd({ busy, workspace, load }: { busy: boolean; workspace: object; load: YearEndLoader }) {
+export function YearEnd({ busy, workspace, load, canWrite, loadHistory, act }: {
+  busy: boolean; workspace: object; load: YearEndLoader; canWrite: boolean; loadHistory: YearEndHistoryLoader; act: YearEndAction;
+}) {
   const [year, setYear] = useState(today().slice(0, 4));
   const [result, setResult] = useState<YearEndData | null>(null);
+  const [note, setNote] = useState("");
+  const [history, setHistory] = useState<YearEndHistory | null>(null);
+  const [reopening, setReopening] = useState("");
+  const [reason, setReason] = useState("");
+  const latest = history?.yearEndCloses.find((row) => row.status === "CLOSED");
   const version = useRef(0);
   useEffect(() => {
-    version.current++; setResult(null);
+    version.current++; setResult(null); setHistory(null); setReopening("");
     return () => { version.current++; };
   }, [workspace]);
   return <>
@@ -38,7 +53,7 @@ export function YearEnd({ busy, workspace, load }: { busy: boolean; workspace: o
       }}>
         <fieldset className="owner-fields" disabled={busy}>
           <label>Calendar year<input type="number" min="1" max="9999" step="1" required value={year}
-            onChange={(event) => { version.current++; setYear(event.target.value); setResult(null); }} /></label>
+            onChange={(event) => { version.current++; setYear(event.target.value); setResult(null); setNote(""); }} /></label>
           <button disabled={busy}>Run year-end preview</button>
         </fieldset>
       </form>
@@ -90,6 +105,69 @@ export function YearEnd({ busy, workspace, load }: { busy: boolean; workspace: o
       </table></div>
       {!result.proposedLines.length && <p>No closing lines are proposed for this year's activity.</p>}
       <p>Owner contributions, drawings and permanent asset/liability accounts are not cleared by this earnings proposal. Scroll the balances table horizontally on a narrow screen.</p>
+      {canWrite && <form className="year-end-posting" onSubmit={async (event) => {
+        event.preventDefault();
+        if (!result.ready || !window.confirm(`Close earnings for ${result.year}? This posts the proposed entry and protects the year's supporting reviews.`)) return;
+        if (await act("/api/year-end", { year: result.year, reviewNote: note }, "Year-end earnings closed. Load history to inspect the retained review.")) setNote("");
+      }}>
+        <label>Year-end review note<input required maxLength={240} disabled={busy || !result.ready} value={note} onChange={(event) => setNote(event.target.value)} /></label>
+        <button disabled={busy || !result.ready || !note.trim()}>Close year-end earnings</button>
+        <p>Review the proposal and supporting documents before confirming. A failed request retains the note so the same details can be retried.</p>
+      </form>}
     </section>}
+    <section className="card year-end-history">
+      <h2>Year-end closing history</h2>
+      <button className="secondary" disabled={busy} onClick={async () => {
+        const requested = ++version.current; setHistory(null); setReopening("");
+        const response = await loadHistory();
+        if (requested === version.current) setHistory(response);
+      }}>Load closing history</button>
+      <p>Each close retains the figures reviewed before posting. Reopened records keep their original review and reversal references. Reload the history after changing the books.</p>
+      {!history && <p>Load history to inspect recorded closes and reopening details.</p>}
+      {history && !history.yearEndCloses.length && <p>No year-end closes have been recorded.</p>}
+      {history?.yearEndCloses.map((row) => <article className="year-end-history-record" key={row.id}>
+        <h3>{row.calendar_year} · {row.status === "CLOSED" ? "Closed" : "Reopened"}</h3>
+        <p>{row.starts_on} to {row.ends_on} · version {row.version}</p>
+        <p><strong>Review note:</strong> {row.review_note}<br /><strong>Closed by:</strong> {row.closed_by} · {row.closed_at}</p>
+        {row.reopen_reason && <p><strong>Reopening reason:</strong> {row.reopen_reason}<br /><strong>Reopened by:</strong> {row.reopened_by} · {row.reopened_at}</p>}
+        <details className="year-end-references"><summary>Closing evidence references</summary><dl>
+          <dt>Close ID</dt><dd>{row.id}</dd><dt>Closing journal entry</dt><dd>{row.entry_id || "No entry: inactive year"}</dd>
+          <dt>Accounting review ID</dt><dd>{row.accounting_period_id}</dd><dt>Bank review ID</dt><dd>{row.bank_reconciliation_id}</dd>
+          {row.reversal_entry_id && <><dt>Reversal journal entry</dt><dd>{row.reversal_entry_id}</dd></>}
+        </dl></details>
+        <details><summary>Retained earnings review</summary><RetainedReview snapshot={row.snapshot} /></details>
+        {canWrite && latest?.id === row.id && <>
+          {reopening !== row.id && <button className="secondary" disabled={busy} onClick={() => { setReopening(row.id); setReason(""); }}>Reopen earnings year {row.calendar_year}</button>}
+          {reopening === row.id && <form onSubmit={async (event) => {
+            event.preventDefault();
+            if (!window.confirm(`Reopen earnings for ${row.calendar_year}? The closing entry will be reversed; supporting period and bank reviews remain closed.`)) return;
+            if (await act(`/api/year-end/${encodeURIComponent(row.id)}/reopen`, { version: row.version, reason }, "Year-end earnings reopened. Supporting period and bank reviews remain closed.")) { setReopening(""); setReason(""); }
+          }}>
+            <label>Year-end reopening reason<input required maxLength={240} disabled={busy} value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+            <button disabled={busy || !reason.trim()}>Confirm earnings reopening</button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => setReopening("")}>Cancel earnings reopening</button>
+            <p>Reopen later accounting reviews first. To correct this year, separately reopen its accounting and bank reviews after this reversal.</p>
+          </form>}
+        </>}
+      </article>)}
+    </section>
   </>;
+}
+
+
+function RetainedReview({ snapshot }: { snapshot: string }) {
+  try {
+    const review = JSON.parse(snapshot) as YearEndData;
+    return <>
+      <p>Retained pre-posting figures: {review.startsOn} to {review.endsOn} · {review.currency}. These are the original review, not current account balances.</p>
+      <p>Revenue {dollars(cents(review.profitLoss.revenue))} · Expenses {dollars(cents(review.profitLoss.expenses))} · Profit / loss {dollars(cents(review.profitLoss.netProfit))}</p>
+      <div className="table-wrap"><table aria-label="Retained closing proposal"><thead><tr><th>Account</th><th>Debit USD</th><th>Credit USD</th></tr></thead><tbody>
+        {review.proposedLines.map((line) => <tr key={line.code}><td>{line.code} - {line.name}</td><td>{dollars(cents(line.debit))}</td><td>{dollars(cents(line.credit))}</td></tr>)}
+        <tr><td>Retained totals</td><td>{dollars(cents(review.proposedDebits))}</td><td>{dollars(cents(review.proposedCredits))}</td></tr>
+      </tbody></table></div>
+      {!review.proposedLines.length && <p>No closing lines were needed for this inactive year.</p>}
+    </>;
+  } catch {
+    return <p role="alert">The retained review could not be displayed. Inspect the saved closing record before using it.</p>;
+  }
 }
