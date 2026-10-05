@@ -61,7 +61,7 @@ export function OpeningBooks({ data, owner, busy, preview, loadHistory, act }: {
     const parties = kind === "receivables" ? data.customers : data.vendors;
     const label = kind === "receivables" ? "Invoice" : "Bill";
     return <section><h3>{kind === "receivables" ? "Unpaid invoices" : "Unpaid bills"}</h3>
-      <p>Enter the remaining unpaid amount from prior books. Add {kind === "receivables" ? "customers in Customers" : "suppliers in Vendors"} first.</p>
+      <p>Use fully unpaid original documents from prior books; historical partial payments are unsupported. Add {kind === "receivables" ? "customers in Customers" : "suppliers in Vendors"} first.</p>
       {rows.map((row, index) => {
         const prefix = `${label} ${index + 1}`;
         function update(field: keyof EditorDocument, value: string) { changed(); setRows(rows.map(item => item.key === row.key ? { ...item, [field]: value } : item)); }
