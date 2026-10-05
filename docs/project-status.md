@@ -18,7 +18,7 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | Broader access | Routine bookkeeper permissions implemented; business selection and complete business isolation remain |
 | Opening bank balance | Cleared nonnegative opening, retained setup, first-statement carry-forward and H2/PostgreSQL restoration verified |
 | Period review | Month-end prerequisite checks, retained reports, owner close/reopen history, date protections and H2/PostgreSQL restoration verified |
-| Year-end earnings | Calendar-year proposal, owner posting/reopening APIs and browser controls, shared retained history, snapshots/reversals and operating-report preservation implemented; populated closing restoration fixture remains |
+| Year-end earnings | Calendar-year proposal, owner posting/reopening APIs and browser controls, shared retained history, snapshots/reversals and operating-report preservation implemented; populated close/reopen/replacement restoration checked on H2 and PostgreSQL 17 |
 | Accounting completeness | Complete opening trial-balance migration, fiscal-year closing and additional adjustment types remain |
 | Operations | Encrypted backup storage, scheduled retention and broader recovery fixtures remain |
 

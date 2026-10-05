@@ -55,7 +55,7 @@ The business posting lock serializes closing and competing writes. The proposal,
 
 The closing journal is a controlled exception to the already reviewed period's posting cutoff. Ordinary backdated entries remain blocked. A supporting accounting period cannot be reopened while its earnings close is active, so its bank reconciliation remains protected too. Year-end reopening reverses the actual closing lines while preserving operating reports and original review history, as described below.
 
-This remains a local, single-business USD application with calendar-year earnings closing. Custom fiscal years, dividend closing, tax filing, complete opening trial-balance migration are not implemented. Existing general database restoration checks are regression evidence; restoring a populated year-end close is a separate recovery fixture still to add.
+This remains a local, single-business USD application with calendar-year earnings closing. Custom fiscal years, dividend closing, tax filing, complete opening trial-balance migration are not implemented. The [populated recovery fixture](year-end-restoration.md) checks a close/reopen/replacement cycle after separate H2 and PostgreSQL restores. Broader loss, empty-year and multi-year restoration scenarios remain.
 
 `YearEndPostingTest` covers the worked profit, loss/zero/empty cases, report preservation, retained evidence, consecutive years, exact retries, duplicates, protected dates, rollback, concurrent requests and authenticated read/owner-write permissions on both databases. The [preview guide](year-end.md) provides the accounting basis and reviewed screen captures.
 
@@ -119,4 +119,4 @@ Original desktop/mobile captures were downloaded and visually reviewed. The prev
 
 ![Mobile reopened earnings history with preserved review and reversal reference](screenshots/mobile-year-end-reopened-history.png)
 
-A populated year-end restore fixture remains the next recovery check; general PostgreSQL restoration in this run does not yet populate these closing records.
+This controls run does not populate year-end records in its general restore fixture. The later [earnings recovery scenario](year-end-restoration.md) adds dedicated H2 and PostgreSQL checks.

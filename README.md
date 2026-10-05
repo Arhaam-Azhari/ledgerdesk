@@ -287,6 +287,8 @@ The [development history](docs/development-history.md) links the pull requests f
 
 The [PostgreSQL backup guide](docs/postgres-backups.md) covers native custom-format archives and restoration into a new database. The tool verifies checksums, refuses existing database names and keeps failed targets for operator inspection. A dedicated packaged-backend CI workflow checks restored accounting state, stored account permissions and retained transaction retries; the guide records its current verification status.
 
+The [earnings recovery scenario](docs/year-end-restoration.md) also checks populated close/reopen/replacement history and protected request retries after separate H2 and PostgreSQL restoration.
+
 The [project status](docs/project-status.md) summarizes completed areas and the remaining work toward a hosted product.
 
 ## Opening bank balance
