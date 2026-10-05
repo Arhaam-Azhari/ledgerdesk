@@ -48,7 +48,14 @@ public class BankReconciliation {
                     throw new IllegalArgumentException("Start the day after the opening balance date and carry its exact bank balance.");
             }
             int earlier = db.queryForObject("SELECT COUNT(*) FROM bank_transactions WHERE business_id = 1 AND posted_on < ?", Integer.class, statement.startsOn())
-                    + db.queryForObject("SELECT COUNT(*) FROM journal_entries e WHERE e.business_id = 1 AND e.entry_date < ? AND NOT EXISTS (SELECT 1 FROM opening_bank_balances o WHERE o.id = e.source_id AND o.business_id = 1)", Integer.class, statement.startsOn());
+                    + db.queryForObject("""
+                        SELECT COUNT(*) FROM journal_entries e WHERE e.business_id = 1 AND e.entry_date < ?
+                        AND NOT EXISTS (SELECT 1 FROM opening_bank_balances o WHERE o.id = e.source_id AND o.business_id = 1)
+                        AND NOT EXISTS (SELECT 1 FROM opening_book_invoices i JOIN opening_book_imports o ON o.id = i.opening_books_id
+                            WHERE i.entry_id = e.id AND o.business_id = e.business_id AND o.as_of = e.entry_date)
+                        AND NOT EXISTS (SELECT 1 FROM opening_book_bills b JOIN opening_book_imports o ON o.id = b.opening_books_id
+                            WHERE b.entry_id = e.id AND o.business_id = e.business_id AND o.as_of = e.entry_date)
+                        """, Integer.class, statement.startsOn());
             if (earlier != 0) throw new IllegalArgumentException("The first statement must include the beginning of the recorded books and bank history.");
         } else {
             var latest = closed.get(0);

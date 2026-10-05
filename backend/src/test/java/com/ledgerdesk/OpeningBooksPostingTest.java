@@ -85,6 +85,7 @@ class OpeningBooksPostingTest {
                 assertThat(((java.sql.Date) row.get("entry_date")).toLocalDate()).isEqualTo(cutoff));
         var original = db.queryForMap("SELECT * FROM opening_book_invoices WHERE invoice_id = ?", invoiceId());
         assertThat(original.get("original_reference")).isEqualTo("OLD-SALE"); assertThat(original.get("opening_books_id")).isEqualTo(id);
+        assertThat(db.queryForObject("SELECT source_id FROM journal_entries WHERE id = ?", String.class, original.get("entry_id"))).isEqualTo(invoiceId());
         assertThat(db.queryForObject("SELECT next_invoice_number FROM businesses WHERE id = 1", Long.class)).isEqualTo(2);
         var current = reports.reports(start, end);
         assertThat(current.profitLoss().netProfit()).isZero(); assertThat(current.balanceSheet().difference()).isZero();
@@ -140,6 +141,14 @@ class OpeningBooksPostingTest {
         var preview = bank.preview(statement);
         assertThat(preview.outstandingEntries()).isEmpty(); assertThat(preview.bookDifference()).isZero();
         assertThat(preview.bookBalance()).isEqualByComparingTo("1000.25");
+        // Sharing an imported document's source ID must not exempt an unrelated earlier journal.
+        db.update("INSERT INTO journal_entries VALUES ('unrelated', 1, ?, 'Unrelated earlier entry', ?)", cutoff, invoiceId());
+        db.update("INSERT INTO journal_lines VALUES ('unrelated-debit', 'unrelated', '3200', 1, 0)");
+        db.update("INSERT INTO journal_lines VALUES ('unrelated-credit', 'unrelated', '1100', 0, 1)");
+        assertThatThrownBy(() -> bank.close(statement, "unrelated-bank", "owner")).hasMessageContaining("beginning of the recorded books");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM bank_reconciliations", Integer.class)).isZero();
+        db.update("DELETE FROM journal_lines WHERE entry_id = 'unrelated'");
+        db.update("DELETE FROM journal_entries WHERE id = 'unrelated'");
         bank.close(statement, "bank", "owner");
         assertThat(cash.report(start, end).receipts()).isZero();
         assertThat(cash.report(start, end).payments()).isZero();

@@ -160,6 +160,7 @@ public class OpeningBooksService {
         catch (com.fasterxml.jackson.core.JsonProcessingException error) { throw new IllegalStateException(error); }
         String id = ledger.id();
         var invoiceIds = new ArrayList<String>(); var billIds = new ArrayList<String>();
+        var invoiceEntries = new ArrayList<String>(); var billEntries = new ArrayList<String>();
         var base = new ArrayList<PostingLine>();
         for (Line line : review.lines())
             if (!line.code().equals("1100") && !line.code().equals("2000")
@@ -173,7 +174,7 @@ public class OpeningBooksService {
             db.update("INSERT INTO invoice_numbers VALUES (?, ?)", invoice, number);
             db.update("UPDATE businesses SET next_invoice_number = next_invoice_number + 1 WHERE id = 1");
             // Original dates stay on the document; its carried balance enters the ledger at cutover.
-            ledger.journal(invoice, review.asOf(), "Opening receivable: " + row.reference(), "1100", "3200", row.amount());
+            invoiceEntries.add(ledger.journal(invoice, review.asOf(), "Opening receivable: " + row.reference(), "1100", "3200", row.amount()));
             invoiceIds.add(invoice);
             base.add(new PostingLine("3200", row.amount(), zero()));
         }
@@ -185,7 +186,7 @@ public class OpeningBooksService {
                 VALUES (?, 1, ?, ?, ?, ?, ?, ?, '3200', ?)
                 """, bill, row.partyId(), row.reference(), row.reference().toUpperCase(java.util.Locale.ROOT),
                     row.description(), row.issuedOn(), row.dueOn(), row.amount());
-            ledger.journal(bill, review.asOf(), "Opening payable: " + row.reference(), "3200", "2000", row.amount());
+            billEntries.add(ledger.journal(bill, review.asOf(), "Opening payable: " + row.reference(), "3200", "2000", row.amount()));
             billIds.add(bill);
             base.add(new PostingLine("3200", zero(), row.amount()));
         }
@@ -207,10 +208,11 @@ public class OpeningBooksService {
                 id, review.asOf(), review.reviewNote(), snapshot, entry, id, actor, LocalDateTime.now());
         for (int i = 0; i < invoiceIds.size(); i++) {
             Document row = review.receivables().get(i);
-            db.update("INSERT INTO opening_book_invoices VALUES (?, ?, ?, ?, ?)", invoiceIds.get(i), id,
-                    row.partyId(), row.reference(), row.reference().toUpperCase(java.util.Locale.ROOT));
+            db.update("INSERT INTO opening_book_invoices VALUES (?, ?, ?, ?, ?, ?)", invoiceIds.get(i), id,
+                    row.partyId(), row.reference(), row.reference().toUpperCase(java.util.Locale.ROOT), invoiceEntries.get(i));
         }
-        for (String bill : billIds) db.update("INSERT INTO opening_book_bills VALUES (?, ?)", bill, id);
+        for (int i = 0; i < billIds.size(); i++)
+            db.update("INSERT INTO opening_book_bills VALUES (?, ?, ?)", billIds.get(i), id, billEntries.get(i));
         ledger.complete(key, hash, id, actor, "OPENING_BOOKS_IMPORTED");
         return id;
     }

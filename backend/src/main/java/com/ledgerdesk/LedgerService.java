@@ -84,7 +84,7 @@ public class LedgerService {
         db.update("INSERT INTO audit_events VALUES (?, ?, ?, ?, ?)", id(), LocalDateTime.now(), actor, action, result);
     }
 
-    void journal(String source, LocalDate date, String memo, String debitAccount,
+    String journal(String source, LocalDate date, String memo, String debitAccount,
                          String creditAccount, BigDecimal amount) {
         requireOpenDate(date);
         String entry = id();
@@ -92,6 +92,7 @@ public class LedgerService {
         db.update("INSERT INTO journal_lines VALUES (?, ?, ?, ?, 0)", id(), entry, debitAccount, amount);
         db.update("INSERT INTO journal_lines VALUES (?, ?, ?, 0, ?)", id(), entry, creditAccount, amount);
         // All supported postings create a debit and credit from the same exact amount.
+        return entry;
     }
 
     @Transactional
