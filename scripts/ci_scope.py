@@ -65,7 +65,8 @@ def plan(paths, scripts, full=False):
 def main():
     event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
     manual = os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch'
-    base = event.get('before') or event.get('pull_request', {}).get('base', {}).get('sha')
+    # A replaced run must still check earlier, unmerged changes in this PR.
+    base = event.get('pull_request', {}).get('base', {}).get('sha') or event.get('before')
     if not base or set(base) == {'0'}:
         base = subprocess.check_output(['git', 'rev-parse', 'HEAD^'], text=True).strip()
     paths = subprocess.check_output(['git', 'diff', '--name-only', base, 'HEAD'], text=True).splitlines()
