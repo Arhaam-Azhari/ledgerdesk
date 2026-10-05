@@ -1,6 +1,6 @@
 # Calendar-year earnings preview
 
-This API prepares a read-only review of the revenue and expense balances for January 1 through December 31. It shows the offsets that would clear that year's activity and transfer net profit or loss to retained earnings account 3300. It does not post a closing entry. The browser screen supports the same read-only review. Posting/history and preservation of profit reports after posting are later work.
+This API prepares a read-only review of the revenue and expense balances for January 1 through December 31. It shows the offsets that would clear that year's activity and transfer net profit or loss to retained earnings account 3300. The browser screen supports read-only review. The [owner posting API](year-end-posting.md) now posts the reviewed proposal, retains closing history and preserves operating profit reports. Browser posting/history controls and year-end reopening remain later work.
 
 ## Run a preview
 
@@ -30,7 +30,7 @@ Temporary-account opening, period and closing balances use signed debit minus cr
 
 ## Prerequisites and limits
 
-`ready` means the preview's checks passed; there is still no posting operation. The selected year-end needs an active accounting period close and active bank reconciliation ending on December 31. Reopened records do not qualify. Due prepaid and depreciation months through that date must be posted or appropriately ended, and the trial balance, balance sheet and proposed lines must balance.
+`ready` means the preview's checks passed. The owner posting API rechecks them before committing; running the preview itself does not post. The selected year-end needs an active accounting period close and active bank reconciliation ending on December 31. Reopened records do not qualify. Due prepaid and depreciation months through that date must be posted or appropriately ended, and the trial balance, balance sheet and proposed lines must balance.
 
 Any revenue or expense account with a nonzero balance before January 1 blocks readiness. Checking each account matters: an earlier year's equal revenue and expenses still need closing even when its net profit was zero. The draft displays only the selected year's offsets, so it must not be used to clear those older balances. Future postings and other businesses' ledger entries are excluded. The application still serves business 1 with a shared chart of accounts; this check does not introduce multi-business access.
 
@@ -69,3 +69,5 @@ The test checks invalid whole-year inputs, failed-read retry, disabled controls 
 ![Year-end review with balanced proposed closing lines](screenshots/year-end-preview.png)
 
 ![Mobile year-end review with the balances table scrolled right](screenshots/mobile-year-end-preview.png)
+
+The [posting guide](year-end-posting.md) explains the new owner API, retained history, report treatment, repeat-request behavior and current reopening limit. For a closed year, this screen displays the retained pre-posting proposal with an already-closed blocker.
