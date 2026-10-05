@@ -48,3 +48,5 @@ frontend/year-end-control-results/
 frontend/opening-books-results/
 
 frontend/session-results/
+
+deploy/secrets/
