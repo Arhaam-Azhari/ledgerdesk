@@ -1,4 +1,5 @@
 import { authMode as loadAuthMode, sessionAction, type AuthMode } from "./session";
+import { FirstUse } from "./FirstUse";
 import { OpeningBooks, type OpeningBooksRequest, type OpeningBooksPreview, type OpeningBooksHistory } from "./OpeningBooks";
 import {
   AccountingPeriods,
@@ -956,6 +957,11 @@ function App() {
         )}
         {page === "Overview" && (
           <>
+            {access?.canWrite && data.ledger.length === 0 && (
+              <FirstUse owner={access.role === "OWNER"} busy={busy} open={(next) => {
+                setPage(next); setNotice(""); setError("");
+              }} />
+            )}
             <p className="intro">
               A clear view of recorded sales, purchases, and outstanding
               balances.

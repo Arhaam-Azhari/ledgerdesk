@@ -10,6 +10,7 @@ COMPONENTS = {
     'Adjustments': ['adjustments'], 'Bank': ['e2e', 'reconciliation'],
     'BankMatching': ['e2e', 'reconciliation'], 'BankReconciliation': ['reconciliation'],
     'BillHandoff': ['handoff'], 'CashActivity': ['cash'],
+    'FirstUse': ['e2e', 'bookkeeper', 'reviewer'],
     'CustomerStatements': ['reports'], 'FixedAssets': ['assets'],
     'OpeningBankBalance': ['opening'], 'OpeningBooks': ['opening-books'],
     'OwnPassword': ['password'], 'OwnerEquity': ['equity'], 'Prepaids': ['prepaid'],
