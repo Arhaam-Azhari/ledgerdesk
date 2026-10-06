@@ -5,7 +5,7 @@ test("owner sets the business name and retries an uncertain save without duplica
   async function login(username: string, password: string) {
     await page.getByLabel("Username", { exact: true }).fill(username);
     await page.getByLabel("Password", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Open workspace", exact: true }).click();
+    await page.getByRole("button", { name: "Open workspace →", exact: true }).click();
   }
   await page.goto("/");
   await login("demo", "demo-local-only");
