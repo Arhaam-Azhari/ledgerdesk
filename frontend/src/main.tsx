@@ -109,7 +109,7 @@ type State = PeriodState &
   MatchState &
   ReconciliationState & {
     business: string;
-    businessVersion: number;
+    businessVersion: string;
     currency: string;
     customers: Customer[];
     invoices: Invoice[];
