@@ -8,9 +8,9 @@ The target is one service business per installation, USD, and calendar-year earn
 | Login, logout, account changes and role access | Passed in [run 37396246007](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37396246007) |
 | HTTPS install, restart and encrypted PostgreSQL recovery | Passed in [run 37388921759](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388921759) |
 | Starting guide | Build and browser checks passed in [run 37396791830](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37396791830) |
-| Saved business name, invoice copies and recovery | Implemented; new checks pending |
-| Walk through a fresh installation with the written instructions | Pending |
-| Review current desktop/mobile screens and downloaded documents | Pending |
+| Saved business name, invoice copies and recovery | H2/PostgreSQL and hosted name recovery passed; corrected browser check pending |
+| Walk through a fresh installation with the written instructions | Written guide and expanded HTTPS scenario prepared; execution pending |
+| Review current desktop/mobile screens and downloaded documents | Hosted Overview screens reviewed; business screen and final document review remain |
 | Check the final combined branch and merge the draft work | Pending |
 | Choose the live host, domain and backup location | Pending |
 | Verify the live installation before using real records | Pending |

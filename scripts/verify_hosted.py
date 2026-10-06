@@ -1,5 +1,6 @@
 """Exercise the disposable CI installation over Caddy's local HTTPS certificate."""
 import http.cookiejar
+from decimal import Decimal
 import json
 import os
 from pathlib import Path
@@ -36,8 +37,59 @@ def request(path, body=None, form=False):
         response = error
     with response:
         raw = response.read()
-        data = json.loads(raw) if response.headers.get_content_type() == 'application/json' else raw.decode()
+        media = response.headers.get_content_type()
+        data = json.loads(raw) if media == 'application/json' else (raw if media == 'application/pdf' else raw.decode())
         return response.status, response.headers, data
+
+def post(path, body):
+    status, _, data = request(path, body)
+    assert status == 200, (path, status, data)
+    return data
+
+def read(path):
+    status, _, data = request(path)
+    assert status == 200, (path, status)
+    return data
+
+REPORTS = '/api/reports?startsOn=2026-09-01&endsOn=2026-10-31'
+
+def snapshot():
+    return {'state': read('/api/state'), 'reports': read(REPORTS)}
+
+def walkthrough():
+    customer = post('/api/customers', {'name': 'Maple Coffee Co.', 'email': 'accounts@maple.example'})['id']
+    vendor = post('/api/vendors', {'name': 'Harbor Supply', 'email': 'accounts@harbor.example'})['id']
+    invoice = post('/api/invoices', {'customerId': customer, 'description': 'Design work', 'issuedOn': '2026-09-01', 'dueOn': '2026-09-30', 'amount': '1200.00'})['id']
+    payment = {'paidOn': '2026-09-03', 'amount': '700.00'}
+    payment_path = f'/api/invoices/{invoice}/payments'
+    first = post(payment_path, payment)
+    assert post(payment_path, payment) == first
+    bill = post('/api/bills', {'vendorId': vendor, 'reference': 'SUP-104', 'description': 'Office supplies', 'issuedOn': '2026-10-01', 'dueOn': '2026-10-31', 'accountCode': '5000', 'amount': '600.00'})['id']
+    post(f'/api/bills/{bill}/payments', {'paidOn': '2026-10-02', 'amount': '200.00'})
+    post('/api/expenses', {'vendorId': vendor, 'description': 'Design software', 'spentOn': '2026-10-03', 'accountCode': '5100', 'amount': '50.00'})
+    csv = 'transaction_id,date,description,amount\nHOSTED-1,2026-09-03,Customer payment,700.00\nHOSTED-2,2026-10-02,Bill payment,-200.00\nHOSTED-3,2026-10-03,Software,-50.00\n'
+    imported = {'label': 'September-October statement', 'csv': csv}
+    assert post('/api/bank/imports/preview', imported)['added'] == 3
+    post('/api/bank/imports', imported)
+    for transaction in read('/api/state')['bankTransactions']:
+        candidates = read(f"/api/bank/transactions/{transaction['id']}/candidates")
+        assert len(candidates) == 1
+        post(f"/api/bank/transactions/{transaction['id']}/match", {'lineId': candidates[0]['line_id']})
+    statement = {'startsOn': '2026-09-01', 'endsOn': '2026-10-31', 'openingBalance': '0.00', 'closingBalance': '450.00'}
+    preview = post('/api/bank/reconciliations/preview', statement)
+    assert Decimal(str(preview['bookBalance'])) == Decimal('450.00')
+    assert all(Decimal(str(preview[key])) == 0 for key in ('statementDifference', 'bookDifference'))
+    assert not preview['unmatchedTransactions']
+    post('/api/bank/reconciliations', statement)
+    reports = read(REPORTS)
+    for key, amount in {'revenue': '1200.00', 'expenses': '650.00', 'netProfit': '550.00'}.items():
+        assert Decimal(str(reports['profitLoss'][key])) == Decimal(amount)
+    assert Decimal(str(reports['receivables']['total'])) == Decimal('500.00')
+    assert Decimal(str(reports['payables']['total'])) == Decimal('400.00')
+    assert reports['trialBalance']['debits'] == reports['trialBalance']['credits']
+    status, headers, pdf = request(f'/api/invoices/{invoice}/pdf')
+    assert status == 200 and pdf.startswith(b'%PDF-') and headers['Cache-Control'] == 'no-store'
+    return invoice
 
 def ready():
     for _ in range(60):
@@ -66,14 +118,13 @@ def main():
     # Business setup must survive both restart and encrypted database recovery.
     version = request('/api/state')[2]['businessVersion']
     assert request('/api/business', {'name': 'Hosted recovery studio', 'version': version})[0] == 200
-    name = 'Hosted installation supplier'
-    assert request('/api/vendors', {'name': name, 'email': 'supplier@example.test'})[0] == 200
-    before = request('/api/state')[2]
+    invoice = walkthrough()
+    before = snapshot()
     subprocess.run(['docker', 'compose', '-f', 'compose.hosted.yaml', 'restart', 'api'], check=True, stdout=subprocess.DEVNULL)
     ready()
     assert request('/api/state')[0] == 401
     login()
-    assert request('/api/state')[2] == before
+    assert snapshot() == before
     # Stop the sole writer, then recover the encrypted archive into a fresh database.
     subprocess.run(['docker', 'compose', '-f', 'compose.hosted.yaml', 'stop', 'api'], check=True, stdout=subprocess.DEVNULL)
     container = subprocess.check_output(['docker', 'compose', '-f', 'compose.hosted.yaml', 'ps', '-q', 'database'], text=True).strip()
@@ -95,10 +146,11 @@ def main():
         ready()
         assert request('/api/state')[0] == 401
         login()
-        assert request('/api/state')[2] == before
+        assert snapshot() == before
+        assert read(f'/api/invoices/{invoice}/pdf').startswith(b'%PDF-')
     assert request('/api/session/logout', {})[0] == 200
     assert request('/api/state')[0] == 401
-    print('Hosted HTTPS sign-in, secure cookie, private reads, restart persistence, encrypted database recovery and logout verified.')
+    print('Hosted setup, invoice/partial payment, bill/expense, matched bank close, reports/PDF, restart, encrypted recovery and logout verified.')
 
 if __name__ == '__main__':
     main()

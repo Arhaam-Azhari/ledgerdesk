@@ -1,6 +1,6 @@
-# Hosted deployment (prepared, not yet verified)
+# Hosted deployment
 
-This Compose setup builds the frontend and Java service, keeps PostgreSQL private, and serves the browser and API from one HTTPS address through Caddy. It is for one business per installation. It has not been run yet; it is not a completed deployment or recovery milestone. The hosted-installation workflow builds both images and checks HTTPS login, cookie flags, private reads, logout and record persistence after an API restart. It also checks the real browser on desktop and mobile, saving screenshots as the `hosted-browser-proof` artifact. Its disposable localhost check accepts Caddy's private certificate; public deployments must use a trusted certificate.
+This Compose setup builds the frontend and Java service, keeps PostgreSQL private, and serves the browser and API from one HTTPS address through Caddy. It is for one business per installation. The disposable installation passed HTTPS access, browser checks, restart and encrypted PostgreSQL recovery in [run 37397384492](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37397384492). A public installation still needs its host and domain. The hosted-installation workflow builds both images and checks HTTPS login, cookie flags, private reads, logout and record persistence after an API restart. It also checks the real browser on desktop and mobile, saving screenshots as the `hosted-browser-proof` artifact. Its disposable localhost check accepts Caddy's private certificate; public deployments must use a trusted certificate.
 
 ## Prepare a Linux host
 
@@ -30,6 +30,8 @@ Retrieve the owner password from its protected file, then sign in at your config
 - Restart with `docker compose -f compose.hosted.yaml restart` and confirm records remain and old in-memory sessions require another sign-in.
 - Check `docker compose -f compose.hosted.yaml ps` and service logs if startup fails. Only the web service publishes ports.
 
-`docker compose -f compose.hosted.yaml down` retains database and certificate volumes. Do not use `down -v` on an installation whose records you need. A named volume is not a backup. Hosted backup encryption, off-host storage, retention and a populated restore exercise remain to be implemented and tested before release.
+`docker compose -f compose.hosted.yaml down` retains database and certificate volumes. Do not use `down -v` on an installation whose records you need. A named volume is not a backup. Use the [encrypted backup and recovery procedure](encrypted-backups.md). Encryption and populated database recovery passed in CI; off-host copies, scheduling and retention still need an operator.
 
 The setup follows Caddy's [Docker](https://caddyserver.com/docs/running) and [HTTPS](https://caddyserver.com/docs/quick-starts/https) guidance, Docker's [Compose secrets](https://docs.docker.com/compose/how-tos/use-secrets/), and Spring's [configuration trees](https://docs.spring.io/spring-boot/reference/features/external-config.html). Image tags currently follow supported major versions; record resolved image digests for a release.
+
+After signing in, use the [fresh-install walkthrough](release-walkthrough.md). The expanded CI scenario is prepared to check its accounting figures before and after encrypted recovery; that expanded scenario is not counted as passing until its run completes.

@@ -38,6 +38,6 @@ One business per installation still needs hosted security and operational testin
 
 ## Planning estimate
 
-Allow roughly 10–15 further focused build cycles for this first-release scope. This is a planning estimate, not a measured completion percentage or a delivery promise. Opening records and hosted security are the largest uncertainties; findings can change the estimate. Work cycles can stay short, while CI and real process checks may take additional time.
+Opening books, hosted sessions, HTTPS installation, encrypted recovery and the starting guide are implemented. Business-name checks passed on both databases and through hosted recovery; its corrected browser check is pending. Next is the fresh-install walkthrough and final combined review. Use the release checklist for current remaining work rather than the earlier build-cycle estimate.
 
 After each stage, update [project status](project-status.md) with delivered behavior and link the tested PR/run in [verification notes](verification.md). At the end, evaluate this checklist instead of treating the number of PRs or tests as the completion percentage.
