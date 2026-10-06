@@ -1,0 +1,17 @@
+.git
+.env
+deploy/secrets
+**/node_modules
+**/target
+**/dist
+**/*-results
+**/*.log
+**/*.mv.db
+**/*.dump
+**/__pycache__
+backend/demo-data
+docs/*
+!docs/examples
+attachments
+
+**/*.age

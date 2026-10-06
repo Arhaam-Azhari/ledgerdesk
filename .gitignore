@@ -44,3 +44,14 @@ frontend/account-activity-results/
 frontend/year-end-results/
 
 frontend/year-end-control-results/
+
+frontend/opening-books-results/
+
+frontend/session-results/
+frontend/business-results/
+
+deploy/secrets/
+
+frontend/hosted-results/
+
+*.age

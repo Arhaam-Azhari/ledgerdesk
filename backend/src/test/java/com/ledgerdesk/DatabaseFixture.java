@@ -11,6 +11,6 @@ final class DatabaseFixture {
             db.update("DELETE FROM " + table);
         db.update("DELETE FROM customers WHERE id <> 'demo-customer'");
         db.update("DELETE FROM businesses WHERE id <> 1");
-        db.update("UPDATE businesses SET next_invoice_number = 1 WHERE id = 1");
+        db.update("UPDATE businesses SET next_invoice_number = 1, name = 'Northline Design Studio', settings_version = 0 WHERE id = 1");
     }
 }

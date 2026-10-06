@@ -356,3 +356,39 @@ PR #41 source `a00cd2f59cfa95a7dbd2956c82a02949f646b813` passed all three jobs i
 The $1,100.35 opening trial retains $100.10 unpaid receivables, $40.04 unpaid payables, bank $1,000.25 and equity $1,060.31. The tests compare every requested account balance, original preview/snapshot/source/entry metadata, individually balanced journals, earlier and operating reports, aging and statements. Partial/full settlement leaves operating profit unchanged; full settlement clears both controls and leaves cash $1,060.31. Ordinary new sales/purchases still post operating profit. Other checks cover cleared first-statement carry-forward, cutover/void/overpayment protections, retained retries, duplicates, rollback and numbering, zero/loss/large bridges, concurrent setup, multiple source parties and authenticated history/owner writes.
 
 The first H2 run caught an integration gap in the first-bank-review check. The fix retains exact imported-document journal IDs and exempts only those cutover entries; a new assertion preserves rejection of an unrelated earlier entry using the same document source ID. The corrected full run passed on both databases. See [posting instructions, retained sources and supported limits](opening-books.md#post-the-reviewed-opening). Existing browser/recovery checks remain regression evidence: the browser import controls and a populated opening-books restore scenario are still to add.
+
+
+## Opening-books browser workflow (PR #42, pending)
+
+The owner editor, server preview, confirmation and shared original-review/current-settlement history are implemented in the draft [PR #42](https://github.com/Arhaam-Azhari/ledgerdesk/pull/42). The frontend production build passes locally. Source `c1c1748ae1a03b9637b382e1c30f04d2d595206a` passed 333 integration tests on each of H2/PostgreSQL 17, 14 backup-tool tests and both PostgreSQL process recovery fixtures in [run 37362407992](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37362407992). Those restoration fixtures remain regression checks; they do not populate opening-book imports.
+
+The first browser execution failed before entering the workspace because the test used an exact login-button match without the visible arrow. The corrected test uses the existing login label and runs before the other browser workflows. Corrected source `98f95c9b1a6d407284aef1a5d3c7b8040067b2e6`, tree `c553ddc786b769eaa69ef17d9753b8e1404cebd3`, is saved in [run 37363132820](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37363132820). PostgreSQL process recovery passed; backend/browser jobs were still queued at this checkpoint. Do not count the new workflow as passing or merge based on prepared captures.
+
+The pending isolated workflow checks control/document mismatch, invalidated previews, failed preview/history reads, confirmation cancellation, a lost response after an actual committed import followed by an identical-key retry, unchanged original snapshots after full settlement, evidence references, desktop/mobile overflow and populated reviewer/bookkeeper history with import/preview write denials. It uses fresh H2 books, backend port 8098 and frontend port 5198. Run `npm run test:opening-books` from `frontend` after packaging the backend. The next checkpoint must inspect successful captures, publish the originals, replace this pending status with the actual run result and merge the expected PR head.
+
+
+## Check selection
+
+CI now picks browser workflows from changed frontend files. Navigation/style edits keep basic owner, reviewer and bookkeeper coverage; shared money, dependencies and unknown frontend files keep all browser checks. Backend edits keep both database suites, while schema, account/security and backup changes also keep recovery checks. Manual workflow runs remain full checks. Documentation-only PRs do not need application checks. An open code PR keeps coverage for all its unmerged changes when a newer run replaces an older one. Five local selection tests pass; GitHub execution is still needed before merging this workflow change.
+
+
+## Opening-import recovery fixture (pending)
+
+The new process fixture restores populated opening books on H2/PostgreSQL, including partial payments and a first bank review. It compares retained evidence and dated reports, retries original commands, checks protected operations and reading roles, then settles the restored documents without new operating profit. Local Python compilation, workflow parsing and 19 tool tests passed. Actual restoration and browser screenshots remain pending GitHub execution. Recovery-script changes now run recovery jobs without unrelated backend/browser suites; full manual runs remain available.
+
+
+The opening-books H2 process scenario passed in [run 37367361649](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37367361649), including actual backup/restore and subsequent full settlement. Browser execution reached the editor and caught an exact label lookup that included dropdown option text; the selector now uses the displayed combobox name. PostgreSQL execution and the corrected browser workflow remain pending.
+
+
+## Opening books and hosted recovery follow-up
+
+[Run 37388314053](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388314053) passed the H2/PostgreSQL backend suites, opening-books browser scenario and populated opening-books restoration on both databases. Its browser job later failed on an outdated reviewer-menu expectation. The corrected reviewer check passed separately in [run 37390313662](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37390313662); the fix is now carried through the login, hosted and backup branches. The dedicated session account-change browser scenario still needs the follow-up run.
+
+[Hosted run 37388541488](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388541488) passed the HTTPS installation. [Backup run 37388921759](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388921759), source `a0dc7965d6e21abe0bb6d9b74aa040443a8fb434`, passed all five age checks, including real encryption and wrong-key rejection, then restored the encrypted native PostgreSQL backup into a fresh database and verified unchanged application state over HTTPS. Restart persistence, secure cookie flags, private reads and logout passed, followed by one hosted Chromium workflow covering desktop/reload/mobile access. This evidence is from disposable CI, not a public production deployment. Screenshots are retained in that run's hosted-browser-proof artifact and have not yet been visually reviewed.
+
+
+## Business setup follow-up
+
+Source `6ce48df3c01d94c9f294ae99ee44a03451338db5` passed backend suites on H2 and PostgreSQL and both restore jobs in [run 37397384494](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37397384494). Business checks cover naming in the workspace/PDF, unchanged accounting entries and numbers, replay after a later edit, stale/invalid forms and owner/CSRF/request-key enforcement. Its browser job stopped at an exact login-button selector that omitted the displayed arrow; the selector is corrected and its follow-up is pending.
+
+[Hosted run 37397384492](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37397384492) passed saved-name restart and encrypted PostgreSQL recovery, plus secure-cookie desktop/mobile access. Both hosted Overview screenshots were downloaded and visually reviewed for readable text, wrapping and layout. The starting guide is visible on empty books and the saved name appears in the header/sidebar. Current proof is retained in that run's hosted-browser-proof artifact. The expanded financial walkthrough is a new prepared check, not yet passing evidence.

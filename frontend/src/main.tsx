@@ -1,3 +1,7 @@
+import { authMode as loadAuthMode, sessionAction, type AuthMode } from "./session";
+import { FirstUse } from "./FirstUse";
+import { BusinessSettings } from "./BusinessSettings";
+import { OpeningBooks, type OpeningBooksRequest, type OpeningBooksPreview, type OpeningBooksHistory } from "./OpeningBooks";
 import {
   AccountingPeriods,
   type PeriodState,
@@ -28,7 +32,7 @@ import {
   type MatchState,
   type BankCandidate,
 } from "./BankMatching";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 import { Purchases, type PurchaseState, type Receipt } from "./Purchases";
@@ -105,6 +109,7 @@ type State = PeriodState &
   MatchState &
   ReconciliationState & {
     business: string;
+    businessVersion: string;
     currency: string;
     customers: Customer[];
     invoices: Invoice[];
@@ -117,6 +122,7 @@ type State = PeriodState &
 
 function App() {
   const [credentials, setCredentials] = useState("");
+  const [loginMode, setLoginMode] = useState<AuthMode | null>(null);
   const [access, setAccess] = useState<{
     username: string;
     role: string;
@@ -133,10 +139,59 @@ function App() {
   const [customerId, setCustomerId] = useState("");
   const requests = useRef(new Map<string, string>());
 
+  function clearWorkspace() {
+    setData(null); setCredentials(""); setAccess(null); setPage("Overview");
+    setEditing(null); setCustomerId(""); setChangingPassword(false); requests.current.clear();
+  }
+  function authHeaders(auth = credentials): Record<string, string> {
+    return loginMode === "basic" ? { Authorization: `Basic ${auth}` } : {};
+  }
+  async function workspaceFetch(path: string, options: RequestInit = {}, auth = credentials) {
+    const response = await fetch(path, { ...options, credentials: "same-origin", headers: { ...authHeaders(auth), ...(options.headers as Record<string, string> || {}) } });
+    if (response.status === 401 && loginMode === "session") {
+      clearWorkspace();
+      throw new Error("Your session ended. Sign in again.");
+    }
+    return response;
+  }
+  useEffect(() => {
+    let active = true;
+    async function connect() {
+      setBusy(true);
+      try {
+        const mode = await loadAuthMode();
+        if (!active) return;
+        setLoginMode(mode);
+        if (mode === "session") {
+          // A page reload can resume a valid cookie session without resubmitting a password.
+          const identity = await fetch("/api/access", { credentials: "same-origin", cache: "no-store" });
+          if (identity.ok) {
+            const workspace = await fetch("/api/state", { credentials: "same-origin", cache: "no-store" });
+            if (workspace.ok) {
+              const account = await identity.json(), books = await workspace.json();
+              if (active) { setAccess(account); setData(books); if (!account.canWrite) setPage("Reports"); }
+            }
+          }
+        }
+      } catch (error) { if (active) setError(error instanceof Error ? error.message : "Could not connect. Try again."); }
+      finally { if (active) setBusy(false); }
+    }
+    void connect();
+    return () => { active = false; };
+  }, []);
+  async function lockWorkspace() {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      if (loginMode === "session") await sessionAction("/api/session/logout");
+      clearWorkspace();
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not confirm sign-out. Try again."); }
+    finally { setBusy(false); }
+  }
+
   async function api(path: string, body?: object, auth = credentials) {
-    const headers: Record<string, string> = { Authorization: `Basic ${auth}` };
+    const headers = authHeaders(auth);
     if (body) {
-      const csrfResponse = await fetch("/api/csrf", {
+      const csrfResponse = await workspaceFetch("/api/csrf", {
         credentials: "same-origin",
       });
       if (!csrfResponse.ok)
@@ -152,12 +207,12 @@ function App() {
         headers["Idempotency-Key"] = requests.current.get(signature)!;
       }
     }
-    const response = await fetch(path, {
+    const response = await workspaceFetch(path, {
       method: body ? "POST" : "GET",
       headers,
       credentials: "same-origin",
       body: body ? JSON.stringify(body) : undefined,
-    });
+    }, auth);
     if (!response.ok) {
       const details = await response.json().catch(() => ({}));
       throw new Error(
@@ -175,7 +230,7 @@ function App() {
     const workspace = await api("/api/state", undefined, auth);
     setAccess(identity);
     setData(workspace);
-    if (identity.role !== "OWNER" && ["Accounts", "Opening bank balance", "Owner transfers"].includes(page))
+    if (identity.role !== "OWNER" && ["Business settings", "Accounts", "Opening bank balance", "Owner transfers"].includes(page))
       setPage("Reports");
     if (!identity.canWrite)
       setPage((current) =>
@@ -183,6 +238,7 @@ function App() {
           "Reports",
           "Cash activity",
           "Period close",
+          "Opening books",
           "General ledger",
           "Trial balance",
           "Activity",
@@ -341,6 +397,22 @@ function App() {
     } finally { setBusy(false); }
   }
 
+  async function previewOpeningBooks(body: OpeningBooksRequest): Promise<OpeningBooksPreview | null> {
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const result = await api("/api/opening-books/preview", body);
+      requests.current.delete("/api/opening-books/preview" + JSON.stringify(body));
+      return result;
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not preview opening books."); return null; }
+    finally { setBusy(false); }
+  }
+  async function loadOpeningBooks(): Promise<OpeningBooksHistory | null> {
+    setBusy(true); setError(""); setNotice("");
+    try { return await api("/api/opening-books"); }
+    catch (error) { setError(error instanceof Error ? error.message : "Could not load opening history."); return null; }
+    finally { setBusy(false); }
+  }
+
   async function loadYearEndHistory(): Promise<YearEndHistory | null> {
     setBusy(true); setError(""); setNotice("");
     try { return await api("/api/year-end"); }
@@ -385,8 +457,8 @@ function App() {
     try {
       // Use the result's customer and dates, not an editor that may have changed.
       const query = new URLSearchParams({ startsOn: statement.startsOn, endsOn: statement.endsOn });
-      const response = await fetch(`/api/reports/customers/${encodeURIComponent(statement.customer.id)}/statement/pdf?${query}`, {
-        headers: { Authorization: `Basic ${credentials}` }, credentials: "same-origin", cache: "no-store",
+      const response = await workspaceFetch(`/api/reports/customers/${encodeURIComponent(statement.customer.id)}/statement/pdf?${query}`, {
+        headers: authHeaders(), credentials: "same-origin", cache: "no-store",
       });
       if (!response.ok) throw new Error("Could not download the statement PDF. Try again.");
       if (response.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase() !== "application/pdf")
@@ -513,7 +585,7 @@ function App() {
       const signature = path + file.name + file.type + hash;
       if (!requests.current.has(signature))
         requests.current.set(signature, crypto.randomUUID());
-      const csrf = await fetch("/api/csrf", {
+      const csrf = await workspaceFetch("/api/csrf", {
         credentials: "same-origin",
       }).then((response) => {
         if (!response.ok) throw new Error("Could not obtain a request token.");
@@ -521,11 +593,11 @@ function App() {
       });
       const body = new FormData();
       body.append("file", file);
-      const response = await fetch(path, {
+      const response = await workspaceFetch(path, {
         method: "POST",
         credentials: "same-origin",
         headers: {
-          Authorization: `Basic ${credentials}`,
+          ...authHeaders(),
           [csrf.headerName]: csrf.token,
           "Idempotency-Key": requests.current.get(signature)!,
         },
@@ -552,8 +624,8 @@ function App() {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(`/api/receipts/${receipt.id}`, {
-        headers: { Authorization: `Basic ${credentials}` },
+      const response = await workspaceFetch(`/api/receipts/${receipt.id}`, {
+        headers: authHeaders(),
         credentials: "same-origin",
       });
       if (!response.ok) throw new Error("The receipt could not be downloaded.");
@@ -582,8 +654,8 @@ function App() {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(`/api/invoices/${invoice.id}/pdf`, {
-        headers: { Authorization: `Basic ${credentials}` },
+      const response = await workspaceFetch(`/api/invoices/${invoice.id}/pdf`, {
+        headers: authHeaders(),
         credentials: "same-origin",
       });
       if (!response.ok)
@@ -625,18 +697,20 @@ function App() {
               setBusy(true);
               setError("");
               const f = new FormData(e.currentTarget);
-              const bytes = new TextEncoder().encode(
-                `${f.get("username")}:${f.get("password")}`,
-              );
-              const auth = btoa(
-                Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""),
-              );
+              const form = e.currentTarget;
               try {
-                await refresh(auth);
-                setCredentials(auth);
+                if (loginMode === "session") {
+                  await sessionAction("/api/session/login", new URLSearchParams({ username: String(f.get("username")), password: String(f.get("password")) }));
+                  await refresh();
+                } else if (loginMode === "basic") {
+                  const bytes = new TextEncoder().encode(`${f.get("username")}:${f.get("password")}`);
+                  const auth = btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(""));
+                  await refresh(auth); setCredentials(auth);
+                } else throw new Error("Connect to the login service first.");
               } catch (err) {
                 setError((err as Error).message);
               } finally {
+                (form.elements.namedItem("password") as HTMLInputElement).value = "";
                 setBusy(false);
               }
             }}
@@ -654,7 +728,7 @@ function App() {
                 required
               />
             </label>
-            <button disabled={busy}>
+            <button disabled={busy || loginMode === null}>
               {busy ? "Opening workspace…" : "Open workspace →"}
             </button>
           </form>
@@ -664,7 +738,8 @@ function App() {
               {error}
             </p>
           )}
-          <small>Local demo: demo / demo-local-only. Use fictional data.</small>
+          {loginMode === null && !busy && <button onClick={async () => { setBusy(true); setError(""); try { setLoginMode(await loadAuthMode()); } catch (error) { setError(error instanceof Error ? error.message : "Could not connect."); } finally { setBusy(false); } }}>Retry connection</button>}
+          <small>{loginMode === "session" ? "Sign in with your stored account. Sessions end after inactivity." : "Local demo: demo / demo-local-only. Use fictional data."}</small>
         </div>
       </main>
     );
@@ -684,9 +759,10 @@ function App() {
     "Bank matching",
     "Reconciliation",
     "Period close",
+          "Opening books",
     "Reports",
     "Cash activity",
-    ...(access?.role === "OWNER" ? ["Owner transfers", "Opening bank balance"] : []),
+    ...(access?.role === "OWNER" ? ["Business settings", "Owner transfers", "Opening bank balance"] : []),
     "Adjustments",
     "Accruals",
     "Prepaid expenses",
@@ -773,7 +849,7 @@ function App() {
         <div className="logo">
           L<span>Ledgerdesk</span>
         </div>
-        <p className="workspace">NORTHLINE DESIGN STUDIO</p>
+        <p className="workspace">{data.business}</p>
         <nav>
           {nav
             .filter(
@@ -783,6 +859,7 @@ function App() {
                   "Reports",
                   "Cash activity",
                   "Period close",
+          "Opening books",
                   "General ledger",
                   "Trial balance",
                   "Activity",
@@ -812,31 +889,22 @@ function App() {
       <main>
         <header>
           <div>
-            <p className="eyebrow">NORTHLINE / ACCOUNTING</p>
+            <p className="eyebrow">{data.business} / ACCOUNTING</p>
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
             <button
               disabled={busy}
-              onClick={() => {
-                setData(null);
-                setCredentials("");
-                setAccess(null);
-                setPage("Overview");
-                setEditing(null);
-                setCustomerId("");
-                setChangingPassword(false);
-                requests.current.clear();
-              }}
+              onClick={lockWorkspace}
             >
-              Lock workspace
+              {loginMode === "session" ? "Sign out" : "Lock workspace"}
             </button>
             {access?.persistentAccounts && (
               <button className="secondary" disabled={busy} onClick={() => { setChangingPassword(true); setError(""); setNotice(""); }}>
                 Change my password
               </button>
             )}
-            <span className="demo-tag">Fictional business · USD</span>
+            <span className="demo-tag">One business · {data.currency}</span>
             <button
               className="secondary"
               disabled={busy}
@@ -891,6 +959,11 @@ function App() {
         )}
         {page === "Overview" && (
           <>
+            {access?.canWrite && data.ledger.length === 0 && (
+              <FirstUse owner={access.role === "OWNER"} busy={busy} open={(next) => {
+                setPage(next); setNotice(""); setError("");
+              }} />
+            )}
             <p className="intro">
               A clear view of recorded sales, purchases, and outstanding
               balances.
@@ -962,6 +1035,10 @@ function App() {
               </p>
             </section>
           </>
+        )}
+        {page === "Business settings" && access?.role === "OWNER" && (
+          <BusinessSettings key={data.businessVersion} name={data.business} version={data.businessVersion} busy={busy}
+            save={(name, version) => act("/api/business", { name, version }, "Business details saved.")} />
         )}
         {page === "Invoices" && (
           <>
@@ -1522,6 +1599,7 @@ function App() {
         {page === "Adjustments" && (
           <Adjustments data={data} busy={busy} act={act} />
         )}
+        {page === "Opening books" && <OpeningBooks data={data} owner={access?.role === "OWNER"} busy={busy} preview={previewOpeningBooks} loadHistory={loadOpeningBooks} act={act} />}
         {page === "Opening bank balance" && access?.role === "OWNER" && (
           <OpeningBankBalance data={data} busy={busy} act={act} />
         )}

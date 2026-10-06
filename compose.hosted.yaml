@@ -1,0 +1,64 @@
+name: ledgerdesk-hosted
+services:
+  database:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ledgerdesk
+      POSTGRES_USER: ledgerdesk
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+    secrets: [database_password]
+    volumes:
+      - hosted_database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U ledgerdesk -d ledgerdesk]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: api
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    environment:
+      SPRING_PROFILES_ACTIVE: session
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      DATABASE_URL: jdbc:postgresql://database:5432/ledgerdesk
+      DATABASE_USER: ledgerdesk
+      APP_USERNAME: ${LEDGERDESK_OWNER:?Set LEDGERDESK_OWNER}
+    secrets:
+      - source: database_password
+        target: spring.datasource.password
+      - source: owner_password
+        target: app.password
+    depends_on:
+      database:
+        condition: service_healthy
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+      target: web
+    restart: unless-stopped
+    environment:
+      LEDGERDESK_DOMAIN: ${LEDGERDESK_DOMAIN:?Set LEDGERDESK_DOMAIN}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - hosted_caddy_data:/data
+      - hosted_caddy_config:/config
+    depends_on: [api]
+secrets:
+  database_password:
+    file: ./deploy/secrets/database-password
+  owner_password:
+    file: ./deploy/secrets/owner-password
+volumes:
+  hosted_database:
+  hosted_caddy_data:
+  hosted_caddy_config:

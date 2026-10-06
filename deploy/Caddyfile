@@ -1,0 +1,10 @@
+{$LEDGERDESK_DOMAIN} {
+    encode zstd gzip
+    handle /api/* {
+        reverse_proxy api:8080
+    }
+    handle {
+        root * /srv
+        file_server
+    }
+}

@@ -14,11 +14,11 @@ The existing sales, purchases, ledger, reports, bank reconciliation, adjustments
 | First-use workflow | Business setup, clear validation and useful empty states for supported workflows | A new operator can set up fictional books and complete the documented workflow without undocumented preparation |
 | Release acceptance | Review accounting, authorization, mobile access, exports, documentation and remaining limitations together | Full checks, retained proof, current screenshots, demo instructions and a release checklist with no unresolved blocking items |
 
-Opening books comes first because the current setup records only a cleared bank balance. An existing business also needs supported carried balances and documents it can subsequently settle. A generic journal to control accounts without corresponding documents would leave aging and payments inconsistent.
+Opening books comes first because the earlier setup recorded only a cleared bank balance. An existing business also needs supported carried balances and documents it can subsequently settle. A generic journal to control accounts without corresponding documents would leave aging and payments inconsistent.
 
 ## Opening-books design to resolve next
 
-The [opening-books preview](opening-books.md) now validates and posts supported balances and fully unpaid documents, retaining the reviewed sources and cutoff. Settlements and accounting controls have service/API tests; browser import, populated recovery and final operator review remain. The design and acceptance checklist is:
+The [opening-books preview](opening-books.md) now validates and posts supported balances and fully unpaid documents, retaining the reviewed sources and cutoff. Settlements and accounting controls have service/API tests; browser import/shared history are now implemented; populated recovery and final operator review remain. The design and acceptance checklist is:
 
 - Pick an explicit cutover date. Operating activity begins afterward; historical income must not appear as new operating revenue simply because books were imported.
 - Represent outstanding customer and supplier amounts with retained source records that remain payable/collectible. Reconcile their totals with the corresponding control-account balances.
@@ -26,9 +26,9 @@ The [opening-books preview](opening-books.md) now validates and posts supported 
 - Define how existing opening-bank setup interacts with the broader import so bank funds cannot be recorded twice.
 - Decide which prepaid and fixed-asset histories can be carried correctly, including their remaining schedules. Reject unsupported cases explicitly rather than accepting incomplete accounting records.
 - Preview and validate before posting. Retain the reviewed request, actor, cutover, posting references and retry key; serialize setup with other writes and roll back failures.
-- Verify opening reports, bank carry-forward, subsequent settlements, date protections and recovery on both databases before adding browser controls.
+- Verify opening reports, bank carry-forward, subsequent settlements, date protections and recovery on both databases alongside browser controls.
 
-This is a design checklist, not a claim that these imports already exist. The implementation may require several small checkpoints: supported model and preview, posting and controls, browser workflow, and populated recovery evidence.
+The model/preview, posting/controls and browser workflow checkpoints are implemented. Populated restoration must still verify the retained sources and subsequent operation on both databases. Unsupported accounting histories remain outside this import model.
 
 ## Features outside this release
 
@@ -38,6 +38,6 @@ One business per installation still needs hosted security and operational testin
 
 ## Planning estimate
 
-Allow roughly 10–15 further focused build cycles for this first-release scope. This is a planning estimate, not a measured completion percentage or a delivery promise. Opening records and hosted security are the largest uncertainties; findings can change the estimate. Work cycles can stay short, while CI and real process checks may take additional time.
+Opening books, hosted sessions, HTTPS installation, encrypted recovery and the starting guide are implemented. Business-name checks passed on both databases and through hosted recovery; its corrected browser check is pending. Next is the fresh-install walkthrough and final combined review. Use the release checklist for current remaining work rather than the earlier build-cycle estimate.
 
 After each stage, update [project status](project-status.md) with delivered behavior and link the tested PR/run in [verification notes](verification.md). At the end, evaluate this checklist instead of treating the number of PRs or tests as the completion percentage.

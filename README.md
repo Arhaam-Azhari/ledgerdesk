@@ -2,7 +2,7 @@
 
 A small-business accounting application for freelancers and service agencies. It connects invoices, purchases, payments, and bank statements to a double-entry ledger, so the amount earned, cash received or spent, and balances still owed stay separate.
 
-The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, expense category adjustments, accrued expenses, prepaid expenses, fixed assets, and cash activity reports are working milestones. Additional adjustment types, user roles, and deployment remain on the roadmap.
+The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, expense category adjustments, accrued expenses, prepaid expenses, fixed assets, and cash activity reports are working milestones. Owner, bookkeeper and reviewer access, opening books, calendar-year closing, cookie sign-in, HTTPS installation and encrypted PostgreSQL recovery are implemented. The final release review and live deployment remain.
 
 ## Working now
 
@@ -32,6 +32,8 @@ The sample business is **Northline Design Studio**, a fictional agency using USD
 - Review accounting periods, retain report snapshots and protect closed books.
 - Reopen the latest accounting close with a reason while keeping its original reports.
 - Keep local demo records between restarts.
+
+For first setup, see [starting a workspace](docs/first-use.md). For installation, use [HTTPS deployment](docs/hosted-deployment.md), [the fresh-install walkthrough](docs/release-walkthrough.md) and [the remaining release checklist](docs/release-checklist.md).
 
 ## Run locally
 
@@ -77,7 +79,7 @@ Continue with the purchase side:
 6. On **Vendors**, Harbor Supply shows $600 billed, $200 paid, and $400 outstanding. The direct software expense is already paid and contributes no payable balance.
 7. If these are the only transactions, the overview shows $450 bank, $500 receivables, $400 payables, $1,200 revenue, and $650 expenses. Trial balance totals are $1,600 on each side.
 
-The figures include all recorded dates, including future dates. The overview and trial balance are all-time ledger balances. Reconciliation uses the chosen statement end date; opening balance migration remains a later milestone. The Reports screen provides a separate dated view. Spending from an empty demo ledger can produce a negative recorded bank balance. This program records transactions; it does not move money.
+The figures include all recorded dates, including future dates. The overview and trial balance are all-time ledger balances. Reconciliation uses the chosen statement end date; opening balances are available through the reviewed opening-books workflow. The Reports screen provides a separate dated view. Spending from an empty demo ledger can produce a negative recorded bank balance. This program records transactions; it does not move money.
 
 ## Import, match, and reconcile the statement
 
@@ -93,7 +95,7 @@ Continue from the otherwise empty walkthrough above:
 
 Closing rechecks the books on the server. A statement difference means the imported movement does not explain the entered balances; a book difference means the closing balance adjusted for outstanding entries does not agree with the ledger. Unmatched rows and bank matches to future-dated book entries must also be resolved. Outstanding payments may clear next month and remain outstanding in the earlier statement.
 
-The first close starts from zero and includes the recorded history. Subsequent statements must follow without gaps or overlaps. Existing opening balance migration, live bank feeds, arbitrary export columns, split matches, and matching reversal entries are not implemented. The accepted CSV format and full rules are in [Bank imports](docs/bank-imports.md) and [Statement reconciliation](docs/bank-reconciliation.md).
+The first close starts from zero and includes the recorded history. Subsequent statements must follow without gaps or overlaps. Reviewed opening balances are supported. Live bank feeds, arbitrary export columns, split matches, and matching reversal entries are not implemented. The accepted CSV format and full rules are in [Bank imports](docs/bank-imports.md) and [Statement reconciliation](docs/bank-reconciliation.md).
 
 Actual captures: [imported rows](docs/screenshots/bank-imports.png), [reviewed matches](docs/screenshots/bank-matching.png), [reconciliation review](docs/screenshots/reconciliation-review.png), [saved close](docs/screenshots/reconciliation-closed.png), and [mobile reopening](docs/screenshots/mobile-reconciliation.png). Captures use separate fictional test scenarios; their amounts may differ from this walkthrough.
 
@@ -186,7 +188,7 @@ All 333 backend integration tests passed on each of H2 and PostgreSQL 17, alongs
 
 ## Next milestones
 
-1. Opening books beyond the bank balance, with supported source records and restoration evidence.
+1. Populated opening-books restoration and final operator review for the supported import model.
 2. Secure hosted sessions, HTTPS deployment, protected backups and retention, first-use workflow and release acceptance.
 
 The [first-release plan](docs/first-release-plan.md) defines the finish line: one small service business per installation, USD and calendar-year accounting. Multi-company SaaS and additional accounting families are later scope. The remaining work is estimated at roughly 10–15 focused build cycles, subject to implementation and deployment findings.
@@ -338,4 +340,4 @@ The [calendar-year earnings preview](docs/year-end.md) prepares balanced revenue
 
 ## Opening-books preview
 
-The [owner opening-books preview](docs/opening-books.md) validates an explicit cutover trial balance against fully unpaid customer and supplier documents. It checks account sides, source parties, normalized references, exact differences and fresh accounting data without creating records or silently balancing the draft. Bank, receivables, payables and equity are supported; scheduled balances and historical partial payments need separate models. Owners can post the reviewed request through the controlled API. The import retains its snapshot, original document references and cleared bank cutoff; later collections/payments settle native documents without new operating profit. Browser import controls remain to add.
+The [owner opening-books preview](docs/opening-books.md) validates an explicit cutover trial balance against fully unpaid customer and supplier documents. It checks account sides, source parties, normalized references, exact differences and fresh accounting data without creating records or silently balancing the draft. Bank, receivables, payables and equity are supported; scheduled balances and historical partial payments need separate models. Owners can post the reviewed request through the controlled API. The import retains its snapshot, original document references and cleared bank cutoff; later collections/payments settle native documents without new operating profit. The Opening books screen provides reviewed import and shared retained history. Populated opening-import restoration remains the next checkpoint.

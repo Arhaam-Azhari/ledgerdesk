@@ -1,0 +1,50 @@
+name: Hosted installation check
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: [deploy/**, compose.hosted.yaml, .dockerignore, .github/workflows/hosted.yml, scripts/verify_hosted.py, scripts/encrypted_backup.py, scripts/test_encrypted_backup.py, frontend/hosted-tests/**, frontend/playwright.hosted.config.ts]
+permissions:
+  contents: read
+concurrency:
+  group: hosted-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  installation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LEDGERDESK_DOMAIN: localhost
+      LEDGERDESK_OWNER: installation-owner
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y age
+          python3 -m unittest discover -s scripts -p 'test_encrypted_backup.py'
+          mkdir -p deploy/secrets
+          chmod 700 deploy/secrets
+          openssl rand -hex 32 > deploy/secrets/database-password
+          openssl rand -hex 32 > deploy/secrets/owner-password
+          chmod 444 deploy/secrets/*
+          docker compose -f compose.hosted.yaml config --quiet
+          docker compose -f compose.hosted.yaml up -d --build
+      - run: python3 scripts/verify_hosted.py
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run test:hosted
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hosted-browser-proof
+          path: frontend/hosted-results/
+      - if: failure()
+        run: docker compose -f compose.hosted.yaml logs --tail=100
+      - if: always()
+        run: docker compose -f compose.hosted.yaml down
