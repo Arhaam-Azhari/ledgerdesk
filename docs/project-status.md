@@ -1,6 +1,6 @@
 # Project status
 
-Ledgerdesk currently works as a local, single-business USD accounting application. The development history records each feature and recovery milestone. Receipt-restoration checks extend that recovery evidence. This is a working portfolio application with substantial accounting behavior; finishing a hosted product still requires the work below.
+Ledgerdesk is a single-business USD accounting application with local and HTTPS installation workflows. The combined build is merged into main. The development history records each feature and recovery milestone. Receipt-restoration checks extend that recovery evidence. This is a working portfolio application with substantial accounting behavior; a live installation still needs its host, domain and off-host backup location.
 
 | Area | Current state |
 | --- | --- |
@@ -22,9 +22,9 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | Year-end earnings | Calendar-year proposal, owner posting/reopening APIs and browser controls, shared retained history, snapshots/reversals and operating-report preservation implemented; populated close/reopen/replacement restoration checked on H2 and PostgreSQL 17 |
 | Accounting completeness | Supported opening migration and calendar-year closing implemented; unsupported histories, custom fiscal years and further adjustment types remain outside this release |
 | Operations | Encrypted PostgreSQL storage and hosted recovery verified; off-host scheduling and retention remain manual |
-| First use | Starting guide passed browser checks; saved business name and invoice-copy checks passed on H2/PostgreSQL; name survived hosted recovery; corrected business browser check pending |
+| First use | Starting guide, saved name, stale-edit/retry checks and invoice-copy behavior passed the final combined backend/browser/recovery runs |
 
-The core workflows can already demonstrate a document progressing through payment, ledger posting, bank reconciliation, reporting and recovery. Next is the first-use workflow and final release review. Hosted checks use a disposable CI installation; a public deployment still needs a hosting decision. Multi-business support remains later scope.
+The core workflows can already demonstrate a document progressing through payment, ledger posting, bank reconciliation, reporting and recovery. Final combined checks and screen review passed. The next step is live hosting. Hosted checks use a disposable CI installation; a public deployment still needs a hosting decision. Multi-business support remains later scope.
 
 The [first-release plan](first-release-plan.md) now defines a finite target: a deployable, documented single-business USD application with supported opening books, hosted sessions, recovery and a final acceptance review. Multi-company SaaS and additional accounting families remain later scope. There is no measured completion percentage; counting merged PRs or tests would obscure the remaining work. The earlier estimate covered opening books and hosted access, which are now implemented. Remaining work is tracked in the release checklist; fresh-install review and final combined checks are next. The current [README](../README.md), [development history](development-history.md) and [verification notes](verification.md) show what is implemented and what evidence supports it.
 

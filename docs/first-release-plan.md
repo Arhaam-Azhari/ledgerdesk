@@ -38,6 +38,6 @@ One business per installation still needs hosted security and operational testin
 
 ## Planning estimate
 
-Opening books, hosted sessions, HTTPS installation, encrypted recovery and the starting guide are implemented. Business-name checks passed on both databases and through hosted recovery; its corrected browser check is pending. Next is the fresh-install walkthrough and final combined review. Use the release checklist for current remaining work rather than the earlier build-cycle estimate.
+Opening books, hosted sessions, HTTPS installation, encrypted recovery and the starting guide are implemented. Business-name checks, the fresh-install HTTPS walkthrough and final combined backend/browser/recovery checks passed. PR #49 is merged. The remaining work is the actual live installation. Use the release checklist for current remaining work rather than the earlier build-cycle estimate.
 
 After each stage, update [project status](project-status.md) with delivered behavior and link the tested PR/run in [verification notes](verification.md). At the end, evaluate this checklist instead of treating the number of PRs or tests as the completion percentage.
