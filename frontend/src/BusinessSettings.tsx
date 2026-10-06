@@ -2,9 +2,9 @@ import { useState } from "react";
 
 export function BusinessSettings({ name, version, busy, save }: {
   name: string;
-  version: number;
+  version: string;
   busy: boolean;
-  save: (name: string, version: number) => Promise<boolean>;
+  save: (name: string, version: string) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState(name);
   // Keep the revision from when this form opened, so another owner's edit is not overwritten.

@@ -69,7 +69,7 @@ def walkthrough():
     post('/api/expenses', {'vendorId': vendor, 'description': 'Design software', 'spentOn': '2026-10-03', 'accountCode': '5100', 'amount': '50.00'})
     csv = 'transaction_id,date,description,amount\nHOSTED-1,2026-09-03,Customer payment,700.00\nHOSTED-2,2026-10-02,Bill payment,-200.00\nHOSTED-3,2026-10-03,Software,-50.00\n'
     imported = {'label': 'September-October statement', 'csv': csv}
-    assert post('/api/bank/imports/preview', imported)['added'] == 3
+    assert post('/api/bank/imports/preview', imported)['added'] == '3'
     post('/api/bank/imports', imported)
     for transaction in read('/api/state')['bankTransactions']:
         candidates = read(f"/api/bank/transactions/{transaction['id']}/candidates")
