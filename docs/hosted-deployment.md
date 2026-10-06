@@ -34,4 +34,4 @@ Retrieve the owner password from its protected file, then sign in at your config
 
 The setup follows Caddy's [Docker](https://caddyserver.com/docs/running) and [HTTPS](https://caddyserver.com/docs/quick-starts/https) guidance, Docker's [Compose secrets](https://docs.docker.com/compose/how-tos/use-secrets/), and Spring's [configuration trees](https://docs.spring.io/spring-boot/reference/features/external-config.html). Image tags currently follow supported major versions; record resolved image digests for a release.
 
-After signing in, use the [fresh-install walkthrough](release-walkthrough.md). The expanded CI scenario is prepared to check its accounting figures before and after encrypted recovery; that expanded scenario is not counted as passing until its run completes.
+After signing in, use the [fresh-install walkthrough](release-walkthrough.md). Its full accounting scenario passed over HTTPS before and after encrypted recovery in [run 37399173275](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37399173275).
