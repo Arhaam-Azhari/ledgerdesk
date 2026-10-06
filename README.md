@@ -4,6 +4,21 @@ A small-business accounting application for freelancers and service agencies. It
 
 The sample business is **Northline Design Studio**, a fictional agency using USD and accrual accounting. Invoicing, purchases, CSV bank imports, reviewed matching, statement reconciliation, dated financial reports, owner funding/withdrawals, expense category adjustments, accrued expenses, prepaid expenses, fixed assets, and cash activity reports are working milestones. Owner, bookkeeper and reviewer access, opening books, calendar-year closing, cookie sign-in, HTTPS installation and encrypted PostgreSQL recovery are implemented. The final release review and live deployment remain.
 
+## Screenshots
+
+Desktop overview after an invoice, two payments and a software expense. All records are fictional.
+
+![LedgerDesk desktop overview](docs/screenshots/release-desktop.png)
+
+<details>
+<summary>Mobile overview</summary>
+
+![LedgerDesk mobile overview](docs/screenshots/release-mobile.png)
+
+</details>
+
+More examples: [invoice PDF](docs/invoice-example.pdf), [profit and loss](docs/screenshots/profit-loss.png), and [bank reconciliation](docs/screenshots/reconciliation-closed.png). These captures use separate demo scenarios.
+
 ## Working now
 
 - Add customers and save, edit, post, or discard a complete invoice draft.
