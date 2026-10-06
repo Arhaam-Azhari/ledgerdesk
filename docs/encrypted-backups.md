@@ -1,4 +1,4 @@
-# Protected PostgreSQL backups (in progress)
+# Protected PostgreSQL backups
 
 The PostgreSQL backup tool already saves an archive and a checksum manifest. `encrypted_backup.py` wraps those two files in age encryption for storage or transfer. It checks the manifest before encryption and after decryption, refuses existing destinations, and publishes no output after a failed operation. Decryption only accepts the two expected plain files; it never extracts arbitrary archive paths.
 
@@ -30,4 +30,4 @@ Restore into a fresh database, then configure the stopped application to use it.
 
 A starting retention policy is seven daily copies and four weekly copies, with at least one verified off-host copy. Keep the last known-good recovery point until its replacement has been checked. Scheduling and pruning are not automated yet.
 
-Four local rejection checks pass. The real encryption/wrong-key test needs age and was skipped locally. The hosted CI workflow installs age and is prepared to encrypt a populated native PostgreSQL backup, decrypt it, restore a fresh database, and compare the application state over HTTPS. This exercise has not passed yet.
+All five encryption checks, including the real age round trip and wrong-key rejection, passed in [run 37388921759](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388921759). The same run encrypted a populated native PostgreSQL backup, decrypted it, restored a fresh database and compared the application state over HTTPS. Hosted browser sign-in, reload, mobile layout and logout also passed. This was a disposable CI installation; off-host scheduling and retention are still manual.

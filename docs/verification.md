@@ -378,3 +378,10 @@ The new process fixture restores populated opening books on H2/PostgreSQL, inclu
 
 
 The opening-books H2 process scenario passed in [run 37367361649](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37367361649), including actual backup/restore and subsequent full settlement. Browser execution reached the editor and caught an exact label lookup that included dropdown option text; the selector now uses the displayed combobox name. PostgreSQL execution and the corrected browser workflow remain pending.
+
+
+## Opening books and hosted recovery follow-up
+
+[Run 37388314053](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388314053) passed the H2/PostgreSQL backend suites, opening-books browser scenario and populated opening-books restoration on both databases. Its browser job later failed on an outdated reviewer-menu expectation. The corrected reviewer check passed separately in [run 37390313662](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37390313662); the fix is now carried through the login, hosted and backup branches. The dedicated session account-change browser scenario still needs the follow-up run.
+
+[Hosted run 37388541488](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388541488) passed the HTTPS installation. [Backup run 37388921759](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388921759), source `a0dc7965d6e21abe0bb6d9b74aa040443a8fb434`, passed all five age checks, including real encryption and wrong-key rejection, then restored the encrypted native PostgreSQL backup into a fresh database and verified unchanged application state over HTTPS. Restart persistence, secure cookie flags, private reads and logout passed, followed by one hosted Chromium workflow covering desktop/reload/mobile access. This evidence is from disposable CI, not a public production deployment. Screenshots are retained in that run's hosted-browser-proof artifact and have not yet been visually reviewed.

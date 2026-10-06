@@ -14,15 +14,15 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | Local access | Stored owner/bookkeeper/reviewer accounts, account administration, self-service password changes, last-owner protection and offline owner recovery implemented |
 | Database recovery | Separate-file H2 restore and native PostgreSQL 17 restore verified through packaged-backend process tests |
 | Attachment recovery | PNG/JPEG restore verified in PR #15; PR #16 extends the same checks to a static PDF |
-| Hosted release | Secure hosted sessions, HTTPS deployment and operational configuration remain |
+| Hosted release | Cookie sessions and reproducible HTTPS installation implemented; hosted restart and encrypted recovery passed in disposable CI; public hosting and final acceptance remain |
 | Broader access | Routine bookkeeper permissions implemented; business selection and complete business isolation remain |
-| Opening books | Owner preview/posting, supported balance/document reconciliation, retained sources, settlement/cutover controls and browser import/shared history implemented; populated import recovery remains |
+| Opening books | Owner preview/posting, supported balance/document reconciliation, retained sources, settlement/cutover controls and browser import/shared history implemented; populated import recovery passed on H2 and PostgreSQL 17 |
 | Opening bank balance | Cleared nonnegative opening, retained setup, first-statement carry-forward and H2/PostgreSQL restoration verified |
 | Period review | Month-end prerequisite checks, retained reports, owner close/reopen history, date protections and H2/PostgreSQL restoration verified |
 | Year-end earnings | Calendar-year proposal, owner posting/reopening APIs and browser controls, shared retained history, snapshots/reversals and operating-report preservation implemented; populated close/reopen/replacement restoration checked on H2 and PostgreSQL 17 |
-| Accounting completeness | Complete opening trial-balance migration, fiscal-year closing and additional adjustment types remain |
-| Operations | Encrypted backup storage, scheduled retention and broader recovery fixtures remain |
+| Accounting completeness | Supported opening migration and calendar-year closing implemented; unsupported histories, custom fiscal years and further adjustment types remain outside this release |
+| Operations | Encrypted PostgreSQL storage and hosted recovery verified; off-host scheduling and retention remain manual |
 
-The core workflows can already demonstrate a document progressing through payment, ledger posting, bank reconciliation, reporting and recovery. The remaining work is meaningful: more roles and businesses affect authorization throughout the application, and hosted sessions/deployment change how credentials and private records are handled.
+The core workflows can already demonstrate a document progressing through payment, ledger posting, bank reconciliation, reporting and recovery. Next is the first-use workflow and final release review. Hosted checks use a disposable CI installation; a public deployment still needs a hosting decision. Multi-business support remains later scope.
 
 The [first-release plan](first-release-plan.md) now defines a finite target: a deployable, documented single-business USD application with supported opening books, hosted sessions, recovery and a final acceptance review. Multi-company SaaS and additional accounting families remain later scope. There is no measured completion percentage; counting merged PRs or tests would obscure the remaining work. A rough planning estimate is 10–15 further focused build cycles, with opening imports and hosted deployment the largest uncertainties. The current [README](../README.md), [development history](development-history.md) and [verification notes](verification.md) show what is implemented and what evidence supports it.
