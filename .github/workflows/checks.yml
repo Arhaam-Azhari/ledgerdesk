@@ -112,6 +112,7 @@ jobs:
             frontend/year-end-control-results/
             frontend/opening-books-results/
             frontend/session-results/
+            frontend/business-results/
             frontend/equity-results/
             frontend/adjustment-results/
             frontend/accrual-results/

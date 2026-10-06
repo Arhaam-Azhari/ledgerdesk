@@ -1,0 +1,18 @@
+# Before the first release
+
+The target is one service business per installation, USD, and calendar-year earnings closing.
+
+| Item | Status |
+| --- | --- |
+| Opening books and document settlement after recovery | Passed on H2 and PostgreSQL in [run 37388314053](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388314053) |
+| Login, logout, account changes and role access | Passed in [run 37396246007](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37396246007) |
+| HTTPS install, restart and encrypted PostgreSQL recovery | Passed in [run 37388921759](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37388921759) |
+| Starting guide | Build and browser checks passed in [run 37396791830](https://github.com/Arhaam-Azhari/ledgerdesk/actions/runs/37396791830) |
+| Saved business name, invoice copies and recovery | Implemented; new checks pending |
+| Walk through a fresh installation with the written instructions | Pending |
+| Review current desktop/mobile screens and downloaded documents | Pending |
+| Check the final combined branch and merge the draft work | Pending |
+| Choose the live host, domain and backup location | Pending |
+| Verify the live installation before using real records | Pending |
+
+The HTTPS and recovery runs use a disposable CI installation. They do not mean the application is already running on a public host. Backup scheduling and retention still need an operator. Multi-business support, other currencies, custom fiscal years, payroll and tax filing stay outside this release.

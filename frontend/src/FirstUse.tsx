@@ -7,6 +7,7 @@ export function FirstUse({ owner, busy, open }: {
     <section className="card first-use" aria-labelledby="first-use-title">
       <h2 id="first-use-title">Start your books</h2>
       <p>No accounting entries have been posted yet. This workspace keeps one business in USD.</p>
+      {owner && <button className="secondary" disabled={busy} onClick={() => open("Business settings")}>Set business details</button>}
       <ol>
         <li>
           <h3>Choose where your books begin</h3>

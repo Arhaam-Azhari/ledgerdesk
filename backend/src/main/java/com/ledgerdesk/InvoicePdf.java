@@ -50,7 +50,7 @@ public class InvoicePdf {
                 layout.gap(20);
                 layout.text("Single service amount in USD. No sales tax, discount, or payment instructions are configured.", 9);
                 layout.text("This copy reflects payments and invoice status at the time of download.", 9);
-                layout.text("Sample business - local development document.", 9);
+                layout.text("Amounts in USD. Keep a copy for your records.", 9);
                 if (layout.substituted())
                     layout.text("Characters outside this font appear as Unicode codes in square brackets.", 9);
             }

@@ -1,5 +1,6 @@
 import { authMode as loadAuthMode, sessionAction, type AuthMode } from "./session";
 import { FirstUse } from "./FirstUse";
+import { BusinessSettings } from "./BusinessSettings";
 import { OpeningBooks, type OpeningBooksRequest, type OpeningBooksPreview, type OpeningBooksHistory } from "./OpeningBooks";
 import {
   AccountingPeriods,
@@ -108,6 +109,7 @@ type State = PeriodState &
   MatchState &
   ReconciliationState & {
     business: string;
+    businessVersion: number;
     currency: string;
     customers: Customer[];
     invoices: Invoice[];
@@ -228,7 +230,7 @@ function App() {
     const workspace = await api("/api/state", undefined, auth);
     setAccess(identity);
     setData(workspace);
-    if (identity.role !== "OWNER" && ["Accounts", "Opening bank balance", "Owner transfers"].includes(page))
+    if (identity.role !== "OWNER" && ["Business settings", "Accounts", "Opening bank balance", "Owner transfers"].includes(page))
       setPage("Reports");
     if (!identity.canWrite)
       setPage((current) =>
@@ -760,7 +762,7 @@ function App() {
           "Opening books",
     "Reports",
     "Cash activity",
-    ...(access?.role === "OWNER" ? ["Owner transfers", "Opening bank balance"] : []),
+    ...(access?.role === "OWNER" ? ["Business settings", "Owner transfers", "Opening bank balance"] : []),
     "Adjustments",
     "Accruals",
     "Prepaid expenses",
@@ -847,7 +849,7 @@ function App() {
         <div className="logo">
           L<span>Ledgerdesk</span>
         </div>
-        <p className="workspace">NORTHLINE DESIGN STUDIO</p>
+        <p className="workspace">{data.business}</p>
         <nav>
           {nav
             .filter(
@@ -887,7 +889,7 @@ function App() {
       <main>
         <header>
           <div>
-            <p className="eyebrow">NORTHLINE / ACCOUNTING</p>
+            <p className="eyebrow">{data.business} / ACCOUNTING</p>
             <h1>{page}</h1>
           </div>
           <div className="header-tools">
@@ -902,7 +904,7 @@ function App() {
                 Change my password
               </button>
             )}
-            <span className="demo-tag">Fictional business · USD</span>
+            <span className="demo-tag">One business · {data.currency}</span>
             <button
               className="secondary"
               disabled={busy}
@@ -1033,6 +1035,10 @@ function App() {
               </p>
             </section>
           </>
+        )}
+        {page === "Business settings" && access?.role === "OWNER" && (
+          <BusinessSettings key={data.businessVersion} name={data.business} version={data.businessVersion} busy={busy}
+            save={(name, version) => act("/api/business", { name, version }, "Business details saved.")} />
         )}
         {page === "Invoices" && (
           <>

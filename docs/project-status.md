@@ -22,7 +22,10 @@ Ledgerdesk currently works as a local, single-business USD accounting applicatio
 | Year-end earnings | Calendar-year proposal, owner posting/reopening APIs and browser controls, shared retained history, snapshots/reversals and operating-report preservation implemented; populated close/reopen/replacement restoration checked on H2 and PostgreSQL 17 |
 | Accounting completeness | Supported opening migration and calendar-year closing implemented; unsupported histories, custom fiscal years and further adjustment types remain outside this release |
 | Operations | Encrypted PostgreSQL storage and hosted recovery verified; off-host scheduling and retention remain manual |
+| First use | Starting guide passed browser checks; owner-editable business name and updated invoice copies implemented with checks pending |
 
 The core workflows can already demonstrate a document progressing through payment, ledger posting, bank reconciliation, reporting and recovery. Next is the first-use workflow and final release review. Hosted checks use a disposable CI installation; a public deployment still needs a hosting decision. Multi-business support remains later scope.
 
 The [first-release plan](first-release-plan.md) now defines a finite target: a deployable, documented single-business USD application with supported opening books, hosted sessions, recovery and a final acceptance review. Multi-company SaaS and additional accounting families remain later scope. There is no measured completion percentage; counting merged PRs or tests would obscure the remaining work. A rough planning estimate is 10–15 further focused build cycles, with opening imports and hosted deployment the largest uncertainties. The current [README](../README.md), [development history](development-history.md) and [verification notes](verification.md) show what is implemented and what evidence supports it.
+
+The [release checklist](release-checklist.md) tracks the remaining acceptance work and live installation steps.

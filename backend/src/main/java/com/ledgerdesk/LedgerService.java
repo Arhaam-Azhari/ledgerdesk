@@ -26,6 +26,25 @@ public class LedgerService {
     public record DraftChanges(Invoice invoice, long version) {}
     public record DraftVersion(long version) {}
     public record Payment(LocalDate paidOn, String amount) {}
+    public record BusinessChanges(String name, long version) {}
+
+    @Transactional
+    public String updateBusiness(BusinessChanges request, String key, String actor) {
+        if (request == null) throw new IllegalArgumentException("Business details are required.");
+        String name = text(request.name(), 120, "Business name");
+        if (name.codePoints().anyMatch(Character::isISOControl))
+            throw new IllegalArgumentException("Use a business name without control characters.");
+        lockBusiness();
+        String hash = fingerprint(List.of("business-settings", name, request.version()));
+        String previous = retry(key, hash);
+        if (previous != null) return previous;
+        long version = db.queryForObject("SELECT settings_version FROM businesses WHERE id = 1", Long.class);
+        if (request.version() != version)
+            throw new IllegalArgumentException("Business details changed. Reload the workspace before saving again.");
+        db.update("UPDATE businesses SET name = ?, settings_version = settings_version + 1 WHERE id = 1", name);
+        complete(key, hash, "1", actor, "BUSINESS_UPDATED");
+        return "1";
+    }
 
     static BigDecimal money(String value) {
         try {
@@ -222,7 +241,7 @@ public class LedgerService {
     public Map<String, Object> invoiceDocument(String invoiceId) {
         var rows = db.queryForList("SELECT i.*, n.number_value, c.name AS customer_name, c.email AS customer_email FROM invoices i JOIN invoice_numbers n ON n.invoice_id = i.id JOIN customers c ON c.id = i.customer_id WHERE i.id = ? AND i.business_id = 1", invoiceId);
         if (rows.isEmpty()) throw new IllegalArgumentException("Invoice not found.");
-        return Map.of("invoice", rows.get(0), "business", "Northline Design Studio", "payments",
+        return Map.of("invoice", rows.get(0), "business", db.queryForObject("SELECT name FROM businesses WHERE id = 1", String.class), "payments",
                 db.queryForList("SELECT paid_on, amount FROM payments WHERE invoice_id = ? ORDER BY paid_on, id", invoiceId));
     }
 
@@ -276,13 +295,15 @@ public class LedgerService {
     @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public Map<String, Object> state() {
         List<Map<String, Object>> trial = db.queryForList("SELECT a.code, a.name, a.kind, COALESCE(SUM(l.debit), 0) AS debits, COALESCE(SUM(l.credit), 0) AS credits FROM accounts a LEFT JOIN journal_lines l ON l.account_code = a.code GROUP BY a.code, a.name, a.kind ORDER BY a.code");
-        Map<String, Object> result = new java.util.LinkedHashMap<>(Map.of("business", "Northline Design Studio", "currency", "USD", "customers",
+        var business = db.queryForMap("SELECT name, currency, settings_version FROM businesses WHERE id = 1");
+        Map<String, Object> result = new java.util.LinkedHashMap<>(Map.of("business", business.get("name"), "currency", business.get("currency"), "customers",
                 db.queryForList("SELECT c.*, COALESCE(SUM(CASE WHEN i.status = 'POSTED' THEN i.amount ELSE 0 END), 0) AS invoiced, COALESCE(SUM(i.paid), 0) AS paid, COALESCE(SUM(CASE WHEN i.status = 'POSTED' THEN i.amount - i.paid ELSE 0 END), 0) AS outstanding FROM customers c LEFT JOIN invoices i ON i.customer_id = c.id GROUP BY c.id, c.business_id, c.name, c.email ORDER BY c.name, c.id"), "invoices",
                 db.queryForList("SELECT i.*, n.number_value, c.name AS customer_name FROM invoices i JOIN invoice_numbers n ON n.invoice_id = i.id JOIN customers c ON c.id = i.customer_id ORDER BY issued_on DESC, id"),
                 "drafts", db.queryForList("SELECT d.*, c.name AS customer_name FROM invoice_drafts d JOIN customers c ON c.id = d.customer_id WHERE d.cancelled = FALSE AND d.posted_invoice_id IS NULL ORDER BY d.issued_on DESC, d.id"),
                 "trialBalance", trial, "ledger", db.queryForList("SELECT e.entry_date, e.memo, e.source_id, e.id AS entry_id, a.code, a.name, l.debit, l.credit FROM journal_entries e JOIN journal_lines l ON l.entry_id = e.id JOIN accounts a ON a.code = l.account_code ORDER BY e.entry_date, e.id, l.credit"),
                 "payments", db.queryForList("SELECT * FROM payments ORDER BY paid_on DESC"),
                 "audit", db.queryForList("SELECT * FROM audit_events ORDER BY occurred_at DESC")));
+        result.put("businessVersion", business.get("settings_version"));
         result.putAll(AdjustmentService.readState(db));
         result.putAll(AccrualService.readState(db));
         result.putAll(PrepaidService.readState(db));

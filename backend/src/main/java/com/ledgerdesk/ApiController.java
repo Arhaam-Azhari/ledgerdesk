@@ -18,6 +18,10 @@ public class ApiController {
         return Map.of("token", token.getToken(), "headerName", token.getHeaderName());
     }
     @GetMapping("/state") Map<String, Object> state() { return ledger.state(); }
+    @PostMapping("/business") Map<String, String> business(@RequestBody LedgerService.BusinessChanges body,
+            @RequestHeader("Idempotency-Key") String key, Principal user) {
+        return Map.of("id", ledger.updateBusiness(body, key, user.getName()));
+    }
     @PostMapping("/customers") Map<String, String> customer(@RequestBody LedgerService.Customer body,
             @RequestHeader("Idempotency-Key") String key, Principal user) {
         return Map.of("id", ledger.addCustomer(body, key, user.getName()));

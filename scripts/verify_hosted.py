@@ -27,7 +27,7 @@ def request(path, body=None, form=False):
         headers[token['headerName']] = token['token']
         headers['Content-Type'] = 'application/x-www-form-urlencoded' if form else 'application/json'
         if not form:
-            headers['Idempotency-Key'] = 'installation-vendor'
+            headers['Idempotency-Key'] = 'installation-' + path
         body = (urllib.parse.urlencode(body) if form else json.dumps(body)).encode()
     req = urllib.request.Request(BASE + path, data=body, headers=headers)
     try:
@@ -63,6 +63,9 @@ def main():
     assert request('/api/state')[0] == 401
     login()
     assert request('/api/access')[2]['role'] == 'OWNER'
+    # Business setup must survive both restart and encrypted database recovery.
+    version = request('/api/state')[2]['businessVersion']
+    assert request('/api/business', {'name': 'Hosted recovery studio', 'version': version})[0] == 200
     name = 'Hosted installation supplier'
     assert request('/api/vendors', {'name': name, 'email': 'supplier@example.test'})[0] == 200
     before = request('/api/state')[2]

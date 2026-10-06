@@ -28,6 +28,7 @@
     "test:year-end-controls": "playwright test --config playwright.year-end-controls.config.ts",
     "test:opening-books": "playwright test --config playwright.opening-books.config.ts",
     "test:session": "playwright test --config playwright.session.config.ts",
+    "test:business": "playwright test --config playwright.business.config.ts",
     "test:hosted": "playwright test --config playwright.hosted.config.ts"
   },
   "dependencies": {

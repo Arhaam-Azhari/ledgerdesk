@@ -11,6 +11,7 @@ COMPONENTS = {
     'BankMatching': ['e2e', 'reconciliation'], 'BankReconciliation': ['reconciliation'],
     'BillHandoff': ['handoff'], 'CashActivity': ['cash'],
     'FirstUse': ['e2e', 'bookkeeper', 'reviewer'],
+    'BusinessSettings': ['business', 'bookkeeper', 'reviewer'],
     'CustomerStatements': ['reports'], 'FixedAssets': ['assets'],
     'OpeningBankBalance': ['opening'], 'OpeningBooks': ['opening-books'],
     'OwnPassword': ['password'], 'OwnerEquity': ['equity'], 'Prepaids': ['prepaid'],
@@ -19,6 +20,7 @@ COMPONENTS = {
     'YearEnd': ['year-end', 'year-end-controls'],
 }
 TEST_DIRS = {
+    'business-tests': 'business',
     'session-tests': 'session', 'tests': 'e2e', 'report-tests': 'reports', 'accounts-tests': 'accounts',
     'asset-tests': 'assets', 'year-end-control-tests': 'year-end-controls',
     'period-tests': 'periods', 'opening-tests': 'opening', 'opening-books-tests': 'opening-books',
